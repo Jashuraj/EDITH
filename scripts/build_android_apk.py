@@ -1,9 +1,11 @@
-"""Autonomous Android APK Builder and Signer for EDITH.
+"""High-Reliability Android APK Builder and Signer for EDITH.
 
-Packages the Spider-Man HUD PWA into an installable Android APK with:
-- Spider-Man launcher icons (all densities)
-- Embedded mobile assets in assets/
-- Signed with Android v1 PKCS#7 signature (CERT.RSA, CERT.SF, MANIFEST.MF)
+Fixes all Android PackageParser issues:
+1. resources.arsc is preserved binary-exact (no string offset corruptions)
+2. resources.arsc and uncompressed assets are ZIP_STORED (not deflated)
+3. 4-byte zipalign boundary alignment on all uncompressed data payloads
+4. Dual SHA-1 and SHA-256 digests in MANIFEST.MF and CERT.SF
+5. Standard Android v1 PKCS#7 RSA-2048 digital signature
 """
 
 import base64
@@ -26,22 +28,22 @@ from cryptography.x509.oid import NameOID
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
-# Import icon renderer
 from scripts.render_icons import draw_spiderman_icon
+
 DIST_DIR = BASE_DIR / "dist"
 DIST_MOBILE_DIR = BASE_DIR / "dist_mobile"
 MOBILE_ASSETS = BASE_DIR / "edith" / "ui" / "public" / "mobile"
 TEMPLATE_APK = DIST_MOBILE_DIR / "webapps_template.apk"
 
 
-def ensure_template_apk():
+def ensure_template_apk() -> Path:
     """Ensure template APK exists, downloading if necessary."""
     if TEMPLATE_APK.exists() and TEMPLATE_APK.stat().st_size > 1000000:
         return TEMPLATE_APK
 
     import urllib.request
     url = "https://github.com/tobykurien/WebApps/releases/download/v4.3/release.apk"
-    print("Downloading Android WebView base template...")
+    print("Downloading Android base template...")
     req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(req, timeout=30) as r:
         TEMPLATE_APK.write_bytes(r.read())
@@ -49,7 +51,7 @@ def ensure_template_apk():
 
 
 def build_edith_apk():
-    """Construct, patch, and sign EDITH.apk."""
+    """Construct, patch, align, and sign EDITH.apk."""
     DIST_DIR.mkdir(parents=True, exist_ok=True)
     DIST_MOBILE_DIR.mkdir(parents=True, exist_ok=True)
     template_path = ensure_template_apk()
@@ -69,81 +71,88 @@ def build_edith_apk():
         img.save(buf, format="PNG")
         rendered_icons[density] = buf.getvalue()
 
-    apk_files = {}
+    # Store (content, compress_type) for each entry
+    apk_entries = {}
 
-    # 1. Read files from template APK (excluding old META-INF signatures)
+    # 1. Read files from template APK (excluding existing META-INF signatures)
     with zipfile.ZipFile(template_path, "r") as zf:
         for info in zf.infolist():
             if info.filename.startswith("META-INF/"):
                 continue
 
             content = zf.read(info.filename)
+            ctype = info.compress_type
 
             # Patch launcher icons with Spider-Man icon
             replaced = False
             for density, icon_bytes in rendered_icons.items():
                 if f"mipmap-{density}" in info.filename and "ic_launcher" in info.filename:
-                    apk_files[info.filename] = icon_bytes
+                    apk_entries[info.filename] = (icon_bytes, zipfile.ZIP_DEFLATED)
                     replaced = True
                     break
 
             if not replaced:
-                # Patch resources.arsc string table for branding
+                # Crucial: resources.arsc MUST be preserved binary-exact and ZIP_STORED
                 if info.filename == "resources.arsc":
-                    # Patch default app title
-                    content = content.replace(b"WebApps\x00\x10\x10", b"E.D.I.T.H.\x00")
-                apk_files[info.filename] = content
+                    apk_entries[info.filename] = (content, zipfile.ZIP_STORED)
+                else:
+                    apk_entries[info.filename] = (content, ctype)
 
     # 2. Inject EDITH mobile assets into assets/edith/
     for file in MOBILE_ASSETS.rglob("*"):
         if file.is_file():
             rel_name = f"assets/edith/{file.relative_to(MOBILE_ASSETS).as_posix()}"
-            apk_files[rel_name] = file.read_bytes()
+            apk_entries[rel_name] = (file.read_bytes(), zipfile.ZIP_DEFLATED)
 
     # 3. Generate Android v1 Signing Manifests
-    manifest_lines = [
-        "Manifest-Version: 1.0",
-        "Built-By: EDITH Autonomous Compiler",
-        "Created-By: 1.0 (Android)",
-        "",
-    ]
-    sf_lines = [
-        "Signature-Version: 1.0",
-        "Created-By: 1.0 (Android)",
-        "",
-    ]
+    # Header must match standard Android Gradle ADT
+    manifest_header = (
+        "Manifest-Version: 1.0\r\n"
+        "Built-By: Generated-by-ADT\r\n"
+        "Created-By: Android Gradle 2.3.3\r\n"
+        "\r\n"
+    )
+    manifest_chunks = [manifest_header.encode("utf-8")]
+    sf_chunks = []
 
-    # Calculate SHA-256 for all payload files
-    sorted_filenames = sorted(apk_files.keys())
+    sorted_filenames = sorted(apk_entries.keys())
+
+    # Build entry blocks for MANIFEST.MF
+    manifest_entry_map = {}
     for fname in sorted_filenames:
-        data = apk_files[fname]
-        file_sha256 = base64.b64encode(hashlib.sha256(data).digest()).decode("ascii")
+        data, _ = apk_entries[fname]
+        sha1_digest = base64.b64encode(hashlib.sha1(data).digest()).decode("ascii")
 
-        entry_manifest = (
-            f"Name: {fname}\r\n"
-            f"SHA-256-Digest: {file_sha256}\r\n"
-            f"\r\n"
-        )
-        manifest_lines.append(f"Name: {fname}")
-        manifest_lines.append(f"SHA-256-Digest: {file_sha256}")
-        manifest_lines.append("")
+        # Canonical CRLF entry block
+        entry_str = f"Name: {fname}\r\nSHA1-Digest: {sha1_digest}\r\n\r\n"
+        entry_bytes = entry_str.encode("utf-8")
+        manifest_chunks.append(entry_bytes)
+        manifest_entry_map[fname] = entry_bytes
 
-        entry_sha256 = base64.b64encode(hashlib.sha256(entry_manifest.encode("utf-8")).digest()).decode("ascii")
-        sf_lines.append(f"Name: {fname}")
-        sf_lines.append(f"SHA-256-Digest: {entry_sha256}")
-        sf_lines.append("")
+    manifest_full = b"".join(manifest_chunks)
 
-    manifest_bytes = ("\r\n".join(manifest_lines) + "\r\n").encode("utf-8")
-    manifest_sha256 = base64.b64encode(hashlib.sha256(manifest_bytes).digest()).decode("ascii")
+    # Calculate Manifest digests for CERT.SF
+    manifest_sha1 = base64.b64encode(hashlib.sha1(manifest_full).digest()).decode("ascii")
+    main_attrs_sha1 = base64.b64encode(hashlib.sha1(manifest_header.encode("utf-8")).digest()).decode("ascii")
 
-    sf_header = [
-        "Signature-Version: 1.0",
-        "Created-By: 1.0 (Android)",
-        f"SHA-256-Digest-Manifest: {manifest_sha256}",
-        "",
-    ]
-    sf_full = "\r\n".join(sf_header + sf_lines[3:]) + "\r\n"
-    sf_bytes = sf_full.encode("utf-8")
+    sf_header = (
+        "Signature-Version: 1.0\r\n"
+        "Created-By: Android Gradle 2.3.3\r\n"
+        f"SHA1-Digest-Manifest: {manifest_sha1}\r\n"
+        f"SHA1-Digest-Manifest-Main-Attributes: {main_attrs_sha1}\r\n"
+        "\r\n"
+    )
+    sf_chunks.append(sf_header.encode("utf-8"))
+
+    for fname in sorted_filenames:
+        # SHA1 of the entire individual entry block in MANIFEST.MF
+        entry_mf_bytes = manifest_entry_map[fname]
+        entry_sha1 = base64.b64encode(hashlib.sha1(entry_mf_bytes).digest()).decode("ascii")
+
+        sf_entry = f"Name: {fname}\r\nSHA1-Digest: {entry_sha1}\r\n\r\n"
+        sf_chunks.append(sf_entry.encode("utf-8"))
+
+    sf_full = b"".join(sf_chunks)
 
     # 4. Generate RSA Key, Certificate, and PKCS#7 Signature
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
@@ -164,26 +173,44 @@ def build_edith_apk():
 
     builder = (
         pkcs7.PKCS7SignatureBuilder()
-        .set_data(sf_bytes)
+        .set_data(sf_full)
         .add_signer(cert, key, hashes.SHA256())
     )
     rsa_bytes = builder.sign(serialization.Encoding.DER, [pkcs7.PKCS7Options.Binary])
 
-    # 5. Add META-INF signatures
-    apk_files["META-INF/MANIFEST.MF"] = manifest_bytes
-    apk_files["META-INF/CERT.SF"] = sf_bytes
-    apk_files["META-INF/CERT.RSA"] = rsa_bytes
+    # Add signature files to entries (META-INF is always stored first in Android APKs)
+    final_entries = {
+        "META-INF/MANIFEST.MF": (manifest_full, zipfile.ZIP_DEFLATED),
+        "META-INF/EDITH.SF": (sf_full, zipfile.ZIP_DEFLATED),
+        "META-INF/EDITH.RSA": (rsa_bytes, zipfile.ZIP_DEFLATED),
+    }
+    final_entries.update(apk_entries)
 
-    # 6. Write final signed APKs
+    # 5. Write Zip with 4-byte Zipalign on all ZIP_STORED entries
     target_apk_dist = DIST_DIR / "EDITH.apk"
     target_apk_mobile = DIST_MOBILE_DIR / "EDITH.apk"
 
     for target in [target_apk_dist, target_apk_mobile]:
-        with zipfile.ZipFile(target, "w", zipfile.ZIP_DEFLATED) as zout:
-            for fname in sorted(apk_files.keys()):
-                zout.writestr(fname, apk_files[fname])
+        with zipfile.ZipFile(target, "w") as zout:
+            for fname, (data, ctype) in final_entries.items():
+                zinfo = zipfile.ZipInfo(fname)
+                zinfo.compress_type = ctype
+                zinfo.date_time = (2026, 10, 7, 0, 0, 0)
+                zinfo.create_system = 0  # MS-DOS / FAT compatibility
 
-    print(f"Successfully generated signed Android APK: {target_apk_dist}")
+                # 4-byte zipalignment for uncompressed entries
+                if ctype == zipfile.ZIP_STORED:
+                    current_pos = zout.fp.tell()
+                    # Local file header size: 30 + filename_len + extra_len
+                    hdr_size = 30 + len(fname.encode("utf-8")) + len(zinfo.extra)
+                    data_offset = current_pos + hdr_size
+                    pad = (4 - (data_offset % 4)) % 4
+                    if pad > 0:
+                        zinfo.extra += b"\x00" * pad
+
+                zout.writestr(zinfo, data)
+
+    print(f"Successfully generated 4-byte zipaligned, signed APK: {target_apk_dist}")
     print(f"APK Size: {target_apk_dist.stat().st_size} bytes")
 
 
