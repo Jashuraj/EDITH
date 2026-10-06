@@ -50,6 +50,38 @@ def ensure_template_apk() -> Path:
     return TEMPLATE_APK
 
 
+def ensure_signer_tools() -> tuple[Path, Path]:
+    """Ensure uber-apk-signer.jar and portable java.exe exist."""
+    tools_dir = BASE_DIR / "scripts" / "tools"
+    tools_dir.mkdir(parents=True, exist_ok=True)
+    java_exe = tools_dir / "jre" / "jdk-17.0.20.1+1-jre" / "bin" / "java.exe"
+    signer_jar = tools_dir / "uber-apk-signer.jar"
+
+    if not signer_jar.exists() or signer_jar.stat().st_size < 1000000:
+        import urllib.request
+        signer_url = "https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar"
+        print("Downloading uber-apk-signer.jar...")
+        req = urllib.request.Request(signer_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            signer_jar.write_bytes(r.read())
+
+    if not java_exe.exists():
+        import urllib.request
+        jre_zip = tools_dir / "jre.zip"
+        jre_url = "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.20.1%2B1/OpenJDK17U-jre_x64_windows_hotspot_17.0.20.1_1.zip"
+        print("Downloading portable JRE 17...")
+        req = urllib.request.Request(jre_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=120) as r:
+            jre_zip.write_bytes(r.read())
+        jre_dir = tools_dir / "jre"
+        jre_dir.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(jre_zip, "r") as zf:
+            zf.extractall(jre_dir)
+        jre_zip.unlink(missing_ok=True)
+
+    return java_exe, signer_jar
+
+
 def build_edith_apk():
     """Construct, patch, align, and sign EDITH.apk."""
     DIST_DIR.mkdir(parents=True, exist_ok=True)
@@ -210,7 +242,29 @@ def build_edith_apk():
 
                 zout.writestr(zinfo, data)
 
-    print(f"Successfully generated 4-byte zipaligned, signed APK: {target_apk_dist}")
+    print(f"Successfully generated initial APK: {target_apk_dist}")
+
+    # 6. Apply Android v1, v2, v3 Signature Scheme using uber-apk-signer and portable JRE
+    java_exe, signer_jar = ensure_signer_tools()
+
+    import subprocess
+    print("Signing APK with Android v1, v2, v3 schemes using uber-apk-signer...")
+    subprocess.run(
+        [
+            str(java_exe),
+            "-jar",
+            str(signer_jar),
+            "-a",
+            str(target_apk_dist),
+            str(target_apk_mobile),
+            "--allowResign",
+            "--overwrite",
+            "--verbose",
+        ],
+        check=True,
+    )
+    print("Successfully signed APK with v1, v2, v3 schemes.")
+
     print(f"APK Size: {target_apk_dist.stat().st_size} bytes")
 
 

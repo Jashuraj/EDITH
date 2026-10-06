@@ -35,3 +35,7 @@ dist_mobile/
 
 # PyInstaller intermediate build files
 build/
+
+# Signing tools and APK idsig files
+scripts/tools/
+*.idsig
