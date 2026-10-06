@@ -32,3 +32,6 @@ $RECYCLE.BIN/
 
 # Mobile distribution artifacts
 dist_mobile/
+
+# PyInstaller intermediate build files
+build/

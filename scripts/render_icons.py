@@ -29,19 +29,19 @@ def draw_spiderman_icon(size: int) -> Image.Image:
     d.ellipse(
         (center - radius, center - radius, center + radius, center + radius),
         outline=(25, 45, 80, 255),
-        width=int(3 * scale)
+        width=max(1, int(3 * scale))
     )
-    cyan_r = radius - (12 * scale)
+    cyan_r = radius * 0.94
     d.ellipse(
         (center - cyan_r, center - cyan_r, center + cyan_r, center + cyan_r),
         outline=(0, 229, 255, 220),
-        width=int(2 * scale)
+        width=max(1, int(2 * scale))
     )
-    red_r = radius - (24 * scale)
+    red_r = radius * 0.88
     d.ellipse(
         (center - red_r, center - red_r, center + red_r, center + red_r),
         outline=(255, 23, 68, 160),
-        width=int(1.5 * scale)
+        width=max(1, int(1.5 * scale))
     )
 
     # 3. Spider-Web Radar Lines in the background
