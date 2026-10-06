@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>E.D.I.T.H. Mobile</title>
+  
+  <!-- Progressive Web App Meta -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#060814">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="EDITH">
+  
+  <!-- Icons -->
+  <link rel="icon" type="image/x-icon" href="./assets/favicon.ico">
+  <link rel="apple-touch-icon" href="./assets/icon-192.png">
+  
+  <!-- Styles -->
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <!-- Spider-Web Radar Background Canvas -->
+  <canvas id="web-canvas"></canvas>
+  <div class="hud-vignette"></div>
+
+  <!-- Primary Application Container -->
+  <div class="app-container">
+    
+    <!-- Top Header HUD -->
+    <header class="hud-header">
+      <div class="brand-section">
+        <img src="./assets/spiderman_logo.svg" alt="EDITH Spider Logo" class="brand-logo-img">
+        <span class="brand-title">E.D.I.T.H.<span class="brand-dot"></span></span>
+      </div>
+
+      <div class="header-status-badge" id="btn-status-badge" title="Configure Connection">
+        <span class="status-dot" id="status-dot"></span>
+        <span id="status-text">CONNECTING...</span>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn-icon" id="btn-toggle-tts" title="Toggle Voice Output">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path id="tts-wave-1" d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            <path id="tts-wave-2" d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+          </svg>
+        </button>
+        <button class="btn-icon" id="btn-open-settings" title="Open Settings">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Center HUD Body -->
+    <main class="hud-body">
+      <!-- Reticle and Arc Reactor Core -->
+      <div class="reticle-container">
+        <svg class="reticle-svg" viewBox="0 0 250 250">
+          <!-- Outer Tech Rotating Ring -->
+          <circle class="reticle-ring-outer" cx="125" cy="125" r="115" fill="none" stroke-width="1.5"></circle>
+          <circle cx="125" cy="125" r="105" fill="none" stroke="rgba(0, 229, 255, 0.15)" stroke-width="1"></circle>
+          
+          <!-- Left Red Arc Gauge -->
+          <circle class="reticle-arc-red" cx="125" cy="125" r="95" fill="none" transform="rotate(130 125 125)"></circle>
+          <!-- Right Cyan Arc Gauge -->
+          <circle class="reticle-arc-cyan" cx="125" cy="125" r="95" fill="none" transform="rotate(310 125 125)"></circle>
+        </svg>
+
+        <span class="chevron-left">&lt;</span>
+        <span class="chevron-right">&gt;</span>
+
+        <!-- Oscilloscope Waveform Canvas -->
+        <canvas id="oscilloscope-canvas"></canvas>
+
+        <!-- Central Spider Insignia Core -->
+        <div class="spider-core" id="spider-core-trigger" title="Tap to Toggle Listening">
+          <img src="./assets/spiderman_logo.svg" alt="Spider-Man Logo" class="spider-core-img">
+        </div>
+      </div>
+
+      <!-- Quick Action Controls -->
+      <div class="quick-actions-bar">
+        <button class="chip-btn" data-cmd="open youtube">▶ YouTube</button>
+        <button class="chip-btn" data-cmd="play song on youtube">🎵 Music</button>
+        <button class="chip-btn" data-cmd="lock screen">🔒 Lock PC</button>
+        <button class="chip-btn" data-cmd="volume up">🔊 Vol Up</button>
+        <button class="chip-btn" data-cmd="volume down">🔉 Vol Down</button>
+        <button class="chip-btn" data-cmd="open chrome">🌐 Chrome</button>
+        <button class="chip-btn" data-cmd="take screenshot">📸 Screen</button>
+        <button class="chip-btn" data-cmd="battery status">🔋 Battery</button>
+        <button class="chip-btn" data-cmd="open terminal">⚡ Terminal</button>
+        <button class="chip-btn red-chip" data-cmd="emergency stop">🛑 E-STOP</button>
+      </div>
+
+      <!-- Live Feedback Console Card -->
+      <div class="live-console-card">
+        <div class="console-header">
+          <span id="console-channel">CHANNEL: READY</span>
+          <span id="console-ping">LATENCY: --ms</span>
+        </div>
+        <div class="console-text" id="console-output">
+          System online. Ready for mobile voice or typed instruction.
+        </div>
+      </div>
+    </main>
+
+    <!-- Bottom Command Input Capsule -->
+    <footer class="hud-footer">
+      <div class="input-capsule">
+        <input type="text" id="cmd-input" class="cmd-input" placeholder="Ask EDITH or give instruction..." autocomplete="off" autocapitalize="none">
+        <button class="btn-send" id="btn-send" title="Send Command">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
+
+      <button class="btn-mic" id="btn-mic" title="Voice Input">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+          <line x1="12" y1="19" x2="12" y2="23"></line>
+          <line x1="8" y1="23" x2="16" y2="23"></line>
+        </svg>
+      </button>
+    </footer>
+
+  </div>
+
+  <!-- Settings & Connectivity Modal -->
+  <div class="modal-overlay" id="modal-settings">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title">SYSTEM CONFIG</span>
+        <button class="btn-icon" id="btn-close-settings">✕</button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Connection Mode</label>
+        <div class="mode-toggle-group">
+          <button class="mode-btn active" data-mode="auto">AUTO</button>
+          <button class="mode-btn" data-mode="local">WI-FI LAN</button>
+          <button class="mode-btn" data-mode="cloud">INTERNET</button>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Local Wi-Fi Endpoint</label>
+        <input type="text" id="cfg-local-url" class="form-input" placeholder="http://192.168.1.167:8794">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Internet Cloud Tunnel URL</label>
+        <input type="text" id="cfg-cloud-url" class="form-input" placeholder="https://xxx.trycloudflare.com or pinggy.link">
+      </div>
+
+      <div class="form-group" style="margin-top: 4px;">
+        <button class="btn-secondary" id="btn-start-tunnel" style="width: 100%;">
+          ⚡ Launch Cloud Tunnel on Laptop
+        </button>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Pairing Token (Optional)</label>
+        <input type="text" id="cfg-token" class="form-input" placeholder="Device authentication token">
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-secondary" id="btn-test-conn">Test Link</button>
+        <button class="btn-primary" id="btn-save-settings">Save & Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="./app.js"></script>
+</body>
+</html>

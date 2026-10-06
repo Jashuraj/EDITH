@@ -148,6 +148,36 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             res = VISION.analyze_screen()
             self._send_json(res)
 
+        elif parsed.path in ("/ping", "/health"):
+            self._send_json({"status": "ok", "system": CONFIG.system_name})
+
+        elif parsed.path == "/mobile/config":
+            import socket
+            local_ip = "127.0.0.1"
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                s.connect(("8.8.8.8", 80))
+                local_ip = s.getsockname()[0]
+                s.close()
+            except Exception:
+                pass
+            from edith.phone.tunnel import TUNNEL_MANAGER
+            self._send_json({
+                "system_name": CONFIG.system_name,
+                "local_ip": local_ip,
+                "ui_port": 8794,
+                "phone_port": 8795,
+                "cloud_url": TUNNEL_MANAGER.get_active_url(),
+                "tunnel_status": TUNNEL_MANAGER.get_status(),
+            })
+
+        elif parsed.path == "/api/tunnel":
+            from edith.phone.tunnel import TUNNEL_MANAGER
+            self._send_json(TUNNEL_MANAGER.get_status())
+
+        elif parsed.path in ("/mobile", "/mobile/"):
+            self.path = "/mobile/index.html"
+            super().do_GET()
         elif parsed.path == "/" or parsed.path == "/index.html":
             self.path = "/index.html"
             super().do_GET()
@@ -358,6 +388,23 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             STATE.set_state_sync(SystemState.READY, reason="User resumed system")
             self._send_json({"success": True, "state": "READY", "emergency_stopped": False})
 
+        elif parsed.path == "/api/tunnel":
+            from edith.phone.tunnel import TUNNEL_MANAGER
+            action = data.get("action", "status")
+            if action == "start":
+                provider = data.get("provider", "pinggy")
+                url = TUNNEL_MANAGER.start_tunnel(provider=provider, port=8794)
+                self._send_json({"success": bool(url), "tunnel_url": url, "provider": provider})
+            elif action == "stop":
+                TUNNEL_MANAGER.stop_tunnel()
+                self._send_json({"success": True, "tunnel_url": None})
+            elif action == "set_custom":
+                custom_url = data.get("url", "").strip()
+                url = TUNNEL_MANAGER.set_custom_url(custom_url)
+                self._send_json({"success": True, "tunnel_url": url})
+            else:
+                self._send_json(TUNNEL_MANAGER.get_status())
+
         else:
             self.send_error(404, "Endpoint not found")
 
@@ -367,6 +414,8 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(raw)))
         self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
         self.end_headers()
         self.wfile.write(raw)
 
@@ -375,10 +424,10 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
         pass
 
 
-def create_ui_server(port: int = 8794) -> ThreadingHTTPServer:
-    """Instantiate the localhost UI server."""
+def create_ui_server(port: int = 8794, host: str = "0.0.0.0") -> ThreadingHTTPServer:
+    """Instantiate the UI server."""
     UI_DIR.mkdir(parents=True, exist_ok=True)
     STATE_DIR.mkdir(parents=True, exist_ok=True)
-    server = ThreadingHTTPServer(("127.0.0.1", port), EdithUIHandler)
-    logger.info("EDITH UI Server ready at http://127.0.0.1:%d", port)
+    server = ThreadingHTTPServer((host, port), EdithUIHandler)
+    logger.info("EDITH UI Server ready at http://%s:%d", host, port)
     return server

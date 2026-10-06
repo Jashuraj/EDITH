@@ -29,3 +29,6 @@ ehthumbs.db
 Desktop.ini
 $RECYCLE.BIN/
 .DS_Store
+
+# Mobile distribution artifacts
+dist_mobile/

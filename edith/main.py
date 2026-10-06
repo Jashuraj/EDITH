@@ -117,10 +117,22 @@ def serve_all(ui_port: int = 8794, phone_port: int = 8795) -> None:
     except Exception as ex:
         logger.warning("Could not initialize clap detector: %s", ex)
 
+    # Retrieve LAN IP for phone pairing
+    import socket
+    local_ip = "127.0.0.1"
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        local_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        pass
+
     print("=" * 65)
-    print(f"  {CONFIG.system_name} SERVERS ACTIVE")
-    print(f"  • Holographic UI:    http://127.0.0.1:{ui_port}")
-    print(f"  • Phone Gateway:     http://127.0.0.1:{phone_port}")
+    print(f"  {CONFIG.system_name} SERVERS ACTIVE (0.0.0.0)")
+    print(f"  • Holographic UI:    http://127.0.0.1:{ui_port} (LAN: http://{local_ip}:{ui_port})")
+    print(f"  • Phone Gateway:     http://127.0.0.1:{phone_port} (LAN: http://{local_ip}:{phone_port})")
+    print(f"  • Mobile App (PWA):  http://{local_ip}:{ui_port}/mobile")
     if clap_active:
         print("  • Double-Clap Welcome: ACTIVE (Local SAPI Voice)")
     print("  Press Ctrl+C to terminate.")
