@@ -15,14 +15,15 @@
     TTS_ENABLED: "edith_mobile_tts_enabled",
   };
 
-  const defaultLocalUrl = window.location.origin.startsWith("http")
+  const DEFAULT_CLOUD_URL = "https://edith-core-jashu.loca.lt";
+  const defaultLocalUrl = window.location.origin.startsWith("http") && !window.location.origin.includes("loca.lt")
     ? window.location.origin
     : "http://192.168.1.167:8794";
 
   const state = {
     mode: localStorage.getItem(STORAGE_KEYS.MODE) || "auto", // auto, local, cloud
     localUrl: localStorage.getItem(STORAGE_KEYS.LOCAL_URL) || defaultLocalUrl,
-    cloudUrl: localStorage.getItem(STORAGE_KEYS.CLOUD_URL) || "",
+    cloudUrl: localStorage.getItem(STORAGE_KEYS.CLOUD_URL) || DEFAULT_CLOUD_URL,
     token: localStorage.getItem(STORAGE_KEYS.TOKEN) || "",
     ttsEnabled: localStorage.getItem(STORAGE_KEYS.TTS_ENABLED) !== "false",
     activeEndpoint: "",
@@ -237,7 +238,7 @@
         setConnectionState("OFFLINE", "", null, "Cloud URL not configured");
         return;
       }
-      const res = await pingEndpoint(cloud, 4000);
+      const res = await pingEndpoint(cloud, 3000);
       if (res.ok) {
         setConnectionState("CLOUD", cloud, res.ms);
         return;
@@ -246,25 +247,29 @@
       return;
     }
 
-    // AUTO Mode: Priority to Local WiFi, fallback to Cloud Tunnel
-    const localPing = await pingEndpoint(local, 1800);
-    if (localPing.ok) {
-      setConnectionState("LOCAL", local, localPing.ms);
+    // AUTO Mode: Concurrent probe of local WiFi and global cloud
+    const [localRes, cloudRes] = await Promise.all([
+      local ? pingEndpoint(local, 1800) : Promise.resolve({ ok: false, ms: 0 }),
+      cloud ? pingEndpoint(cloud, 2800) : Promise.resolve({ ok: false, ms: 0 }),
+    ]);
+
+    if (localRes.ok) {
+      setConnectionState("LOCAL", local, localRes.ms);
       return;
     }
 
-    if (cloud) {
-      const cloudPing = await pingEndpoint(cloud, 3500);
-      if (cloudPing.ok) {
-        setConnectionState("CLOUD", cloud, cloudPing.ms);
-        return;
-      }
+    if (cloudRes.ok) {
+      setConnectionState("CLOUD", cloud, cloudRes.ms);
+      return;
     }
 
-    setConnectionState("OFFLINE", local, null);
+    setConnectionState("OFFLINE", local || cloud, null, "Searching for EDITH mainframe...");
   }
 
+  let previousType = "INITIAL";
+
   function setConnectionState(type, endpoint, latency, msg) {
+    const wasOffline = !state.isOnline;
     state.activeType = type;
     state.activeEndpoint = endpoint;
     state.latencyMs = latency;
@@ -272,26 +277,37 @@
 
     if (type === "LOCAL") {
       dom.statusDot.style.background = "#00e676";
-      dom.statusDot.style.boxShadow = "0 0 8px #00e676";
+      dom.statusDot.style.boxShadow = "0 0 10px #00e676";
       dom.statusText.textContent = `WI-FI (${latency}ms)`;
       dom.consoleChannel.textContent = `CHANNEL: LOCAL WI-FI`;
       dom.consolePing.textContent = `LATENCY: ${latency}ms`;
+      if (wasOffline || previousType !== "LOCAL") {
+        logConsole("LINK ACCEPTED", `Connected to laptop via Local Wi-Fi (${latency}ms). Ready.`);
+        speakResponse("EDITH system linked on local Wi-Fi, Creator.");
+        triggerHaptic(40);
+      }
     } else if (type === "CLOUD") {
       dom.statusDot.style.background = "#00e5ff";
-      dom.statusDot.style.boxShadow = "0 0 8px #00e5ff";
+      dom.statusDot.style.boxShadow = "0 0 10px #00e5ff";
       dom.statusText.textContent = `CLOUD (${latency}ms)`;
-      dom.consoleChannel.textContent = `CHANNEL: CLOUD INTERNET`;
+      dom.consoleChannel.textContent = `CHANNEL: GLOBAL INTERNET`;
       dom.consolePing.textContent = `LATENCY: ${latency}ms`;
+      if (wasOffline || previousType !== "CLOUD") {
+        logConsole("LINK ACCEPTED", `Connected to laptop via Global Cloud Tunnel (${latency}ms). Ready.`);
+        speakResponse("EDITH mainframe online via satellite cloud link.");
+        triggerHaptic(40);
+      }
     } else {
       dom.statusDot.style.background = "#ff1744";
       dom.statusDot.style.boxShadow = "0 0 8px #ff1744";
-      dom.statusText.textContent = "OFFLINE";
-      dom.consoleChannel.textContent = `CHANNEL: DISCONNECTED`;
+      dom.statusText.textContent = "SEARCHING...";
+      dom.consoleChannel.textContent = `CHANNEL: SCANNING`;
       dom.consolePing.textContent = `LATENCY: --ms`;
-      if (msg) {
-        logConsole("ALERT", msg);
+      if (msg && previousType !== "OFFLINE") {
+        logConsole("STANDBY", "Searching for EDITH on laptop. Launch EDITH.exe to connect.");
       }
     }
+    previousType = type;
   }
 
   // ---------------- Command Execution ----------------

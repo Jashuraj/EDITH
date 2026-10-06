@@ -116,7 +116,7 @@ class TunnelManager:
         try:
             npx_bin = "npx.cmd" if os.name == "nt" else "npx"
             p = subprocess.Popen(
-                [npx_bin, "--yes", "localtunnel", "--port", str(port)],
+                [npx_bin, "--yes", "localtunnel", "--port", str(port), "--subdomain", "edith-core-jashu"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.STDOUT,
                 text=True,

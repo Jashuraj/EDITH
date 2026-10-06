@@ -269,4 +269,5 @@ def build_edith_apk():
 
 
 if __name__ == "__main__":
-    build_edith_apk()
+    from scripts.build_native_apk import main as build_native_main
+    build_native_main()
