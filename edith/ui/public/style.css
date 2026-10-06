@@ -1,0 +1,1230 @@
+/* ============================================================
+   EDITH — Iron Man / Ultron Holographic HUD
+   v2.0 — Full redesign by Antigravity
+   ============================================================ */
+
+:root {
+  --bg:          #040a12;
+  --cyan:        #00e5ff;
+  --cyan-dim:    rgba(0, 229, 255, 0.35);
+  --cyan-glow:   rgba(0, 229, 255, 0.15);
+  --blue:        #0055ff;
+  --amber:       #ffb700;
+  --red:         #ff0055;
+  --green:       #10b981;
+  --purple:      #a855f7;
+  --glass:       rgba(4, 14, 28, 0.78);
+  --glass-edge:  rgba(0, 229, 255, 0.2);
+  --text:        #c8eef5;
+  --text-dim:    #4a7f92;
+  --mono:        'Consolas', 'Fira Code', 'Courier New', monospace;
+}
+
+/* ---- Brand New Day & Tactical Focus Themes (E.V Matrix) ---- */
+body.theme-bnd {
+  --cyan:        #85dbe1;
+  --cyan-dim:    rgba(133, 219, 225, 0.4);
+  --cyan-glow:   rgba(133, 219, 225, 0.2);
+  --blue:        #2ea8b8;
+  --glass:       rgba(7, 18, 30, 0.78);
+  --glass-edge:  rgba(133, 219, 225, 0.25);
+  --text:        #e0f7fa;
+  --text-dim:    #5ea1ac;
+}
+
+body.theme-focus {
+  --cyan:        #ff3d00;
+  --cyan-dim:    rgba(255, 61, 0, 0.4);
+  --cyan-glow:   rgba(255, 61, 0, 0.2);
+  --blue:        #ff1744;
+  --amber:       #ff9100;
+  --glass:       rgba(28, 7, 7, 0.82);
+  --glass-edge:  rgba(255, 61, 0, 0.28);
+  --text:        #ffebee;
+  --text-dim:    #b06363;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ---- Base ---- */
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  overflow: hidden;
+  width: 100vw;
+  height: 100vh;
+  user-select: none;
+}
+
+/* ---- Scan-line overlay ---- */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.07) 3px,
+    rgba(0, 0, 0, 0.07) 4px
+  );
+  pointer-events: none;
+  z-index: 5;
+}
+
+/* ---- Corner bracket decorators ---- */
+.hud-layer::before,
+.hud-layer::after {
+  content: '';
+  position: absolute;
+  width: 60px;
+  height: 60px;
+  border-color: var(--cyan-dim);
+  border-style: solid;
+  pointer-events: none;
+}
+.hud-layer::before {
+  top: 8px;
+  left: 8px;
+  border-width: 2px 0 0 2px;
+}
+.hud-layer::after {
+  bottom: 8px;
+  right: 8px;
+  border-width: 0 2px 2px 0;
+}
+
+/* ---- Three.js canvas ---- */
+#canvas-container {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* ---- HUD layer grid ---- */
+.hud-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  display: grid;
+  grid-template-columns: 310px 1fr 350px;
+  grid-template-rows: 56px 1fr auto;
+  padding: 14px;
+  gap: 12px;
+}
+
+/* ---- Glass card ---- */
+.glass-card {
+  background: rgba(4, 14, 28, 0.65);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid var(--glass-edge);
+  border-radius: 10px;
+  padding: 14px;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+/* inner top-edge glow line */
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+  opacity: 0.5;
+}
+
+/* cyber corner accent from E.V */
+.glass-card::after {
+  content: '';
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 12px;
+  height: 12px;
+  border-top: 2px solid var(--cyan);
+  border-left: 2px solid var(--cyan);
+  pointer-events: none;
+}
+
+.glass-card:hover {
+  border-color: rgba(0, 229, 255, 0.45);
+  box-shadow: 0 0 28px rgba(0, 229, 255, 0.12);
+}
+
+/* ---- Section label ---- */
+.section-label {
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-label::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 1px;
+  background: var(--cyan);
+  flex-shrink: 0;
+}
+
+/* ============================================================
+   HEADER
+   ============================================================ */
+.hud-header {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  display: flex !important;
+  flex-direction: row !important;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 18px;
+  overflow: visible;
+  min-height: 56px;
+  gap: 12px;
+  z-index: 20;
+}
+
+.hud-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.hud-title h1 {
+  font-size: 22px;
+  letter-spacing: 6px;
+  color: var(--cyan);
+  font-weight: 900;
+  text-shadow: 0 0 18px rgba(0, 229, 255, 0.7);
+}
+
+.badge {
+  font-size: 9px;
+  padding: 3px 7px;
+  border-radius: 3px;
+  letter-spacing: 1.5px;
+  border: 1px solid;
+  line-height: 1;
+}
+
+.badge-sys  { border-color: var(--cyan);  color: var(--cyan); }
+.badge-ver  { border-color: #4a7f92;      color: #4a7f92; }
+
+.hud-header-right {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.hud-header-right strong { color: var(--cyan); }
+
+/* blinking status dot */
+.dot-live {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 8px var(--green);
+  animation: blink-live 1.4s infinite;
+}
+
+@keyframes blink-live {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.15; }
+}
+
+/* ---- HUD Header Center Widgets (Clock, Weather, Themes) ---- */
+.hud-header-center {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+  flex-shrink: 1;
+}
+
+.hud-clock {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+#clock-time {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--cyan);
+  text-shadow: 0 0 10px var(--cyan-glow);
+}
+
+#clock-date {
+  font-size: 8px;
+  letter-spacing: 1.5px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+}
+
+.hud-weather {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 4px 10px;
+  border: 1px solid var(--glass-edge);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+#w-temp {
+  color: var(--cyan);
+  font-weight: 700;
+  font-size: 11px;
+}
+
+#w-desc {
+  color: var(--text);
+}
+
+#w-city {
+  color: var(--text-dim);
+}
+
+.hud-themes {
+  display: flex;
+  gap: 4px;
+}
+
+.theme-btn {
+  background: transparent;
+  border: 1px solid var(--glass-edge);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 8px;
+  padding: 3px 7px;
+  border-radius: 3px;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+
+.theme-btn:hover, .theme-btn.active {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(0, 229, 255, 0.1);
+  box-shadow: 0 0 8px var(--cyan-glow);
+}
+
+/* ---- Modules & Workshop Ticker (from E.V matrix) ---- */
+.modules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 10px;
+}
+
+.module-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 10px;
+}
+
+.module-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 6px var(--green);
+  display: inline-block;
+  margin-right: 6px;
+}
+
+.workshop-card {
+  margin-top: 10px;
+  padding: 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--glass-edge);
+  display: flex;
+  flex-direction: column;
+  min-height: 110px;
+  max-height: 130px;
+}
+
+.workshop-log {
+  flex: 1;
+  overflow-y: auto;
+  font-size: 9px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  scrollbar-width: none;
+}
+
+.workshop-log::-webkit-scrollbar {
+  display: none;
+}
+
+.workshop-log .wl {
+  display: block;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.workshop-log .wt {
+  color: var(--cyan-dim);
+  margin-right: 4px;
+}
+
+.workshop-log .tag {
+  color: var(--cyan);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* ---- Scrolling code strip ---- */
+#codestrip {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  padding: 1px 4px 6px;
+  opacity: 0.8;
+}
+
+#code-line {
+  display: inline-block;
+  animation: codeScroll 28s linear infinite;
+}
+
+@keyframes codeScroll {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+
+/* ---- Circular Audio Visualizer Ring on Center Stage ---- */
+.audio-viz-canvas {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 320px;
+  height: 320px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* ============================================================
+   TELEMETRY SIDEBAR (LEFT)
+   ============================================================ */
+.telemetry-card {
+  grid-column: 1;
+  grid-row: 2;
+  gap: 0;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cyan-dim) transparent;
+}
+
+.telemetry-card::-webkit-scrollbar { width: 4px; }
+.telemetry-card::-webkit-scrollbar-thumb { background: var(--cyan-dim); border-radius: 2px; }
+
+.telemetry-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(0, 229, 255, 0.07);
+  font-size: 11px;
+}
+
+.telemetry-row:last-child { border-bottom: none; }
+
+.t-label {
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  font-size: 10px;
+}
+
+.t-val {
+  color: var(--cyan);
+  font-weight: bold;
+  text-align: right;
+  font-size: 11px;
+}
+
+.t-val.ok    { color: var(--green); }
+.t-val.warn  { color: var(--amber); }
+.t-val.err   { color: var(--red); }
+
+/* bar for RAM/CPU usage */
+.t-bar-wrap {
+  width: 100%;
+  height: 3px;
+  background: rgba(0, 229, 255, 0.1);
+  border-radius: 2px;
+  margin-top: 3px;
+  overflow: hidden;
+}
+
+.t-bar {
+  height: 100%;
+  background: var(--cyan);
+  border-radius: 2px;
+  transition: width 1s ease;
+  box-shadow: 0 0 6px var(--cyan);
+}
+
+/* model selector */
+.model-select {
+  background: rgba(0, 20, 50, 0.85);
+  border: 1px solid var(--glass-edge);
+  color: var(--cyan);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+  max-width: 100%;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.model-select:hover,
+.model-select:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan-glow);
+}
+
+.model-select option {
+  background: #030c18;
+  color: var(--text);
+}
+
+/* ============================================================
+   CENTER ORB STAGE
+   ============================================================ */
+.stage-center {
+  grid-column: 2;
+  grid-row: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 18px;
+  pointer-events: none;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* override any glass-card styling for complete pass-through */
+.stage-center::before { display: none !important; }
+.stage-center.glass-card {
+  background: transparent !important;
+  border: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* ============================================================
+   HOLOGRAPHIC AR BACKGROUND CAMERA LAYER (Barehands / Ultron)
+   ============================================================ */
+body.ar-active {
+  background: transparent !important;
+}
+
+body.ar-active::after {
+  opacity: 0.12;
+}
+
+#ar-camera-container {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  display: none;
+}
+
+#bg-camera {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+  filter: contrast(1.15) brightness(1.08);
+  opacity: 1.0;
+}
+
+#bg-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(-1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.state-badge {
+  font-size: 11px;
+  letter-spacing: 4px;
+  padding: 7px 24px;
+  border-radius: 20px;
+  border: 1px solid var(--cyan);
+  background: rgba(0, 229, 255, 0.08);
+  color: var(--cyan);
+  box-shadow: 0 0 22px rgba(0, 229, 255, 0.25);
+  text-transform: uppercase;
+  transition: color 0.4s, border-color 0.4s, box-shadow 0.4s;
+  pointer-events: none;
+}
+
+/* ============================================================
+   MISSION CONTROL (RIGHT)
+   ============================================================ */
+.mission-card {
+  grid-column: 3;
+  grid-row: 2;
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+#mission-log {
+  font-size: 11.5px;
+  line-height: 1.65;
+  color: var(--text-dim);
+  overflow-y: auto;
+  flex: 1;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cyan-dim) transparent;
+  padding-right: 4px;
+}
+
+#mission-log::-webkit-scrollbar       { width: 4px; }
+#mission-log::-webkit-scrollbar-track { background: transparent; }
+#mission-log::-webkit-scrollbar-thumb { background: var(--cyan-dim); border-radius: 2px; }
+
+#mission-log .log-entry {
+  padding: 2px 0;
+  border-left: 2px solid transparent;
+  padding-left: 8px;
+  margin-bottom: 3px;
+  transition: border-color 0.2s;
+}
+
+#mission-log .log-system  { border-color: var(--text-dim); color: var(--text-dim); }
+#mission-log .log-user    { border-color: var(--cyan); color: var(--cyan); font-weight: bold; }
+#mission-log .log-edith   { border-color: var(--green); color: var(--text); }
+#mission-log .log-reflex  { border-color: var(--amber); color: var(--amber); }
+#mission-log .log-error   { border-color: var(--red); color: var(--red); }
+#mission-log .log-thinking {
+  color: var(--amber);
+  font-style: italic;
+  animation: thinking-blink 1s infinite;
+}
+
+@keyframes thinking-blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* ============================================================
+   BOTTOM CONSOLE (FOOTER)
+   ============================================================ */
+.hud-footer {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px;
+}
+
+.console-prompt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.console-prompt::before {
+  content: '//';
+  color: var(--cyan-dim);
+}
+
+.cmd-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+  flex: 1;
+}
+
+.cmd-input {
+  flex: 1;
+  background: rgba(0, 20, 48, 0.6);
+  border: 1px solid var(--glass-edge);
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.cmd-input::placeholder { color: var(--text-dim); opacity: 0.6; }
+
+.cmd-input:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.2);
+}
+
+.btn-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* ---- Buttons ---- */
+.action-btn {
+  background: rgba(0, 229, 255, 0.1);
+  border: 1px solid var(--glass-edge);
+  color: var(--text-dim);
+  padding: 9px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition: all 0.18s;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+}
+
+.action-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--cyan);
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+
+.action-btn:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.3);
+}
+
+.btn-transmit {
+  background: rgba(0, 229, 255, 0.18);
+  border-color: var(--cyan);
+  color: var(--cyan);
+  font-weight: bold;
+  padding: 9px 22px;
+}
+
+.btn-transmit:hover {
+  background: var(--cyan);
+  color: #000;
+  box-shadow: 0 0 22px rgba(0, 229, 255, 0.7);
+}
+
+.btn-voice {
+  border-color: rgba(16, 185, 129, 0.35);
+  color: rgba(16, 185, 129, 0.7);
+}
+
+.btn-voice:hover {
+  border-color: var(--green);
+  color: var(--green);
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.4);
+}
+
+.btn-voice.active {
+  background: rgba(16, 185, 129, 0.18) !important;
+  border-color: var(--green) !important;
+  color: var(--green) !important;
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.5) !important;
+  animation: pulse-voice 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes pulse-voice {
+  from { box-shadow: 0 0 8px rgba(16, 185, 129, 0.3); }
+  to   { box-shadow: 0 0 24px rgba(16, 185, 129, 0.8); }
+}
+
+.btn-gesture.active {
+  border-color: var(--amber) !important;
+  color: var(--amber) !important;
+  box-shadow: 0 0 14px rgba(255, 183, 0, 0.4) !important;
+}
+
+.btn-emergency {
+  border-color: rgba(255, 0, 85, 0.4);
+  color: rgba(255, 0, 85, 0.7);
+}
+
+.btn-emergency:hover {
+  background: var(--red) !important;
+  border-color: var(--red) !important;
+  color: #fff !important;
+  box-shadow: 0 0 22px rgba(255, 0, 85, 0.8) !important;
+}
+
+.btn-voice-mute {
+  border-color: rgba(0, 229, 255, 0.35);
+  color: var(--cyan);
+}
+
+.btn-voice-mute.muted {
+  border-color: rgba(255, 60, 60, 0.5) !important;
+  color: rgba(255, 100, 100, 0.8) !important;
+  background: rgba(255, 0, 0, 0.1) !important;
+}
+
+.btn-vision {
+  border-color: rgba(168, 85, 247, 0.4);
+  color: #c084fc;
+}
+
+.btn-vision:hover {
+  border-color: #a855f7;
+  color: #fff;
+  box-shadow: 0 0 16px rgba(168, 85, 247, 0.5);
+}
+
+.ar-toggle-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0, 10, 25, 0.85);
+  border: 1px solid var(--cyan-dim);
+  color: var(--cyan);
+  font-family: var(--mono);
+  font-size: 8px;
+  letter-spacing: 1px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  z-index: 35;
+  transition: all 0.2s ease;
+}
+
+.ar-toggle-btn:hover {
+  background: rgba(0, 229, 255, 0.25);
+  border-color: var(--cyan);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.5);
+}
+
+.ar-toggle-btn.active {
+  background: rgba(0, 229, 255, 0.35) !important;
+  border-color: var(--cyan) !important;
+  color: #fff !important;
+  box-shadow: 0 0 10px rgba(0, 229, 255, 0.6) !important;
+}
+
+/* ============================================================
+   WEBCAM + GESTURE OVERLAY
+   ============================================================ */
+.webcam-container {
+  position: fixed;
+  top: 76px;
+  right: 375px;
+  width: 220px;
+  height: 148px;
+  border-radius: 8px;
+  border: 1px solid var(--cyan-dim);
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.25);
+  z-index: 30;
+  overflow: hidden;
+  background: rgba(0, 8, 20, 0.92);
+  display: none;
+}
+
+#webcam-pip {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1);
+}
+
+#webcam-overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  transform: scaleX(-1);
+  pointer-events: none;
+}
+
+.gesture-status-tag {
+  position: absolute;
+  bottom: 5px;
+  left: 6px;
+  right: 6px;
+  font-size: 9px;
+  background: rgba(0, 0, 0, 0.75);
+  color: var(--cyan);
+  padding: 2px 5px;
+  border-radius: 3px;
+  text-align: center;
+  z-index: 25;
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  letter-spacing: 0.5px;
+}
+
+/* ---- Holographic hand cursor ---- */
+#hand-cursor {
+  position: fixed;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--cyan);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 50;
+  transform: translate(-50%, -50%);
+  display: none;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.8), 0 0 30px rgba(0, 229, 255, 0.3);
+  transition: border-color 0.1s, transform 0.05s linear, box-shadow 0.1s;
+}
+
+#hand-cursor::before,
+#hand-cursor::after {
+  content: '';
+  position: absolute;
+  background: var(--cyan);
+}
+
+#hand-cursor::before {
+  left: 50%;
+  top: -6px;
+  bottom: -6px;
+  width: 1px;
+  transform: translateX(-50%);
+  opacity: 0.6;
+}
+
+#hand-cursor::after {
+  top: 50%;
+  left: -6px;
+  right: -6px;
+  height: 1px;
+  transform: translateY(-50%);
+  opacity: 0.6;
+}
+
+#hand-cursor.pinching {
+  border-color: var(--amber);
+  background: rgba(255, 183, 0, 0.18);
+  box-shadow: 0 0 20px rgba(255, 183, 0, 0.9);
+  transform: translate(-50%, -50%) scale(0.75);
+}
+
+/* ============================================================
+   BOOT SEQUENCE OVERLAY
+   ============================================================ */
+#boot-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  transition: opacity 0.6s ease;
+}
+
+#boot-overlay.fade-out {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.boot-title {
+  font-size: 48px;
+  letter-spacing: 16px;
+  color: var(--cyan);
+  text-shadow: 0 0 40px rgba(0, 229, 255, 0.8);
+  animation: boot-flicker 2s ease-in-out;
+}
+
+@keyframes boot-flicker {
+  0%   { opacity: 0; }
+  10%  { opacity: 1; }
+  12%  { opacity: 0.2; }
+  14%  { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+.boot-bar-wrap {
+  width: 320px;
+  height: 2px;
+  background: rgba(0, 229, 255, 0.15);
+  border-radius: 1px;
+  overflow: hidden;
+}
+
+.boot-bar {
+  height: 100%;
+  width: 0%;
+  background: var(--cyan);
+  box-shadow: 0 0 10px var(--cyan);
+  animation: boot-fill 0.8s ease forwards;
+}
+
+@keyframes boot-fill {
+  0%   { width: 0%; }
+  60%  { width: 85%; }
+  100% { width: 100%; }
+}
+
+.boot-lines {
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  letter-spacing: 1px;
+  line-height: 1.9;
+}
+
+/* ============================================================
+   RESPONSIVE HUD (TABLETS, LAPTOPS & SPLIT WINDOWS)
+   ============================================================ */
+@media (max-width: 1250px) {
+  .creator-tag {
+    display: none;
+  }
+  .header-divider {
+    display: none;
+  }
+}
+
+@media (max-width: 1120px) {
+  .hud-layer {
+    grid-template-columns: 280px 1fr 300px;
+    padding: 10px;
+    gap: 10px;
+  }
+  .webcam-container {
+    right: 315px;
+    width: 200px;
+    height: 130px;
+  }
+  .hud-header {
+    padding: 0 12px;
+    gap: 8px;
+  }
+  .hud-weather {
+    display: none;
+  }
+}
+
+@media (max-width: 880px) {
+  .hud-layer {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto;
+    overflow-y: auto;
+    pointer-events: auto;
+  }
+  .hud-header {
+    grid-column: 1;
+    grid-row: 1;
+  }
+  .telemetry-card {
+    grid-column: 1;
+    grid-row: 2;
+    max-height: 240px;
+  }
+  .stage-center {
+    display: none;
+  }
+  .mission-card {
+    grid-column: 1;
+    grid-row: 3;
+    max-height: 280px;
+  }
+  .hud-footer {
+    grid-column: 1;
+    grid-row: 4;
+  }
+  .webcam-container {
+    top: 70px;
+    right: 12px;
+    width: 180px;
+    height: 120px;
+  }
+  .btn-row {
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+}
+
+/* ============================================================
+   COMMAND GUIDE DIRECTORY MODAL
+   ============================================================ */
+.guide-modal {
+  position: fixed;
+  inset: 50px 80px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  background: rgba(4, 12, 24, 0.94);
+  border: 1px solid var(--cyan);
+  box-shadow: 0 0 50px rgba(0, 229, 255, 0.35);
+  border-radius: 12px;
+  padding: 24px 28px;
+  overflow-y: auto;
+  pointer-events: auto;
+  animation: modal-fade-in 0.25s ease forwards;
+}
+
+@keyframes modal-fade-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.guide-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--glass-edge);
+  padding-bottom: 14px;
+  margin-bottom: 20px;
+}
+
+.guide-title {
+  font-size: 14px;
+  letter-spacing: 2px;
+}
+
+.guide-close-btn {
+  background: transparent;
+  border: 1px solid var(--cyan-dim);
+  color: var(--cyan);
+  font-size: 22px;
+  width: 34px;
+  height: 34px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+
+.guide-close-btn:hover {
+  background: rgba(0, 229, 255, 0.2);
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.6);
+}
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
+}
+
+.guide-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guide-col-title {
+  font-size: 11px;
+  color: var(--cyan);
+  letter-spacing: 2px;
+  font-weight: bold;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(0, 229, 255, 0.2);
+}
+
+.cmd-chip {
+  background: rgba(0, 229, 255, 0.05);
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 11px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cmd-chip:hover {
+  background: rgba(0, 229, 255, 0.18);
+  border-color: var(--cyan);
+  color: var(--cyan);
+  transform: translateX(4px);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.35);
+}
+
+.btn-cmd-guide {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  margin-right: 6px;
+  font-size: 10px;
+  padding: 5px 12px;
+  letter-spacing: 1px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-cmd-guide:hover {
+  background: rgba(0, 229, 255, 0.18);
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.4);
+}
+
+@media (max-width: 880px) {
+  .guide-modal {
+    inset: 15px;
+    padding: 16px;
+  }
+}

@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EDITH — Autonomous AI OS</title>
+  <link rel="stylesheet" href="style.css?v=2.6.0">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+  <!-- Boot Sequence Overlay -->
+  <div id="boot-overlay">
+    <div class="boot-title">EDITH</div>
+    <div class="boot-bar-wrap"><div class="boot-bar"></div></div>
+    <div class="boot-lines">
+      EVEN DEAD, I'M THE HERO<br>
+      CREATOR: JASHWANTH RAJ &nbsp;|&nbsp; LOCAL-FIRST AUTONOMOUS AI OS
+    </div>
+  </div>
+ 
+  <!-- Holographic AR Camera Background Layer (Barehands / Ultron) -->
+  <div id="ar-camera-container">
+    <video id="bg-camera" autoplay playsinline muted></video>
+    <canvas id="bg-overlay"></canvas>
+  </div>
+
+  <!-- Three.js Canvas -->
+  <div id="canvas-container"></div>
+
+  <!-- Holographic hand cursor -->
+  <div id="hand-cursor"></div>
+
+  <!-- Webcam PiP (corner view) -->
+  <div class="webcam-container" id="webcam-box">
+    <button id="btn-ar-bg" class="ar-toggle-btn" onclick="window.toggleArBackground && window.toggleArBackground()" title="Toggle full-screen background camera feed">CAM BG: OFF</button>
+    <video id="webcam-pip" autoplay playsinline muted></video>
+    <canvas id="webcam-overlay"></canvas>
+    <div id="gesture-tag" class="gesture-status-tag">STANDBY</div>
+  </div>
+
+  <!-- HUD Layer -->
+  <div class="hud-layer">
+
+    <!-- ── Header ── -->
+    <header class="hud-header glass-card" style="display:flex !important; flex-direction:row !important; justify-content:space-between !important; align-items:center !important; overflow:visible !important; min-height:56px !important; z-index:20 !important;">
+      <div class="hud-title" style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
+        <h1>EDITH</h1>
+        <span class="badge badge-sys">AUTONOMOUS OS</span>
+        <span class="badge badge-ver">v2.5</span>
+      </div>
+
+      <div class="hud-header-center" style="display:flex; flex-direction:row; align-items:center; gap:16px; flex-shrink:1;">
+        <div class="hud-clock">
+          <span id="clock-time">--:--:--</span>
+          <span id="clock-date">SYSTEM READY</span>
+        </div>
+        <div class="hud-weather" title="Local Atmospheric Telemetry">
+          <span id="w-temp">24°C</span>
+          <span id="w-desc">OPTIMAL</span>
+          <span id="w-city">LOCAL STATION</span>
+        </div>
+        <div class="hud-themes" title="Select UI Hologram Mode">
+          <button class="theme-btn theme-cyan active" onclick="setTheme('default')" title="JARVIS Cyan">JARVIS</button>
+          <button class="theme-btn theme-bnd" onclick="setTheme('bnd')" title="Spider-Man Brand New Day Theme">BND</button>
+          <button class="theme-btn theme-focus" onclick="setTheme('focus')" title="Tactical Combat Mode">TACTICAL</button>
+        </div>
+      </div>
+
+      <div class="hud-header-right" style="display:flex; flex-direction:row; align-items:center; gap:14px; flex-shrink:0;">
+        <button class="action-btn btn-cmd-guide" id="btn-guide" onclick="toggleGuide()" style="display:inline-flex !important; visibility:visible !important; opacity:1 !important; flex-shrink:0 !important; cursor:pointer !important;">COMMAND GUIDE</button>
+        <span class="dot-live" title="System Online"></span>
+        <span class="creator-tag">CREATOR:&nbsp;<strong>JASHWANTH RAJ</strong></span>
+        <span class="header-divider">&nbsp;|&nbsp;</span>
+        <span id="header-state-text" style="color: var(--cyan); letter-spacing:2px;">READY</span>
+      </div>
+    </header>
+
+    <!-- ── Telemetry Sidebar ── -->
+    <aside class="telemetry-card glass-card">
+      <div class="section-label">SYSTEM TELEMETRY</div>
+
+      <div class="telemetry-row">
+        <span class="t-label">CPU</span>
+        <span class="t-val" id="val-cpu">i5-8350U</span>
+      </div>
+
+      <div class="telemetry-row" style="flex-direction:column; align-items:flex-start; gap:4px;">
+        <div style="display:flex;justify-content:space-between;width:100%;">
+          <span class="t-label">RAM LOAD</span>
+          <span class="t-val" id="val-ram">—</span>
+        </div>
+        <div class="t-bar-wrap"><div class="t-bar" id="bar-ram" style="width:50%"></div></div>
+      </div>
+
+      <div class="telemetry-row" style="flex-direction:column; align-items:flex-start; gap:4px;">
+        <div style="display:flex;justify-content:space-between;width:100%;">
+          <span class="t-label">STORAGE</span>
+          <span class="t-val" id="val-disk">—</span>
+        </div>
+        <div class="t-bar-wrap"><div class="t-bar" id="bar-disk" style="width:35%"></div></div>
+      </div>
+
+      <div class="telemetry-row">
+        <span class="t-label">POWER</span>
+        <span class="t-val" id="val-battery">—</span>
+      </div>
+
+      <div class="telemetry-row" style="flex-direction:column; align-items:flex-start; gap:5px;">
+        <span class="t-label">LOCAL AI MODEL</span>
+        <select id="val-model" class="model-select" onchange="switchModel(this.value)" title="Switch Active Ollama Model">
+          <option value="hermes3:3b">hermes3:3b</option>
+        </select>
+      </div>
+
+      <div class="telemetry-row">
+        <span class="t-label">NETWORK</span>
+        <span class="t-val" id="val-runtime">DETECTING...</span>
+      </div>
+
+      <div class="telemetry-row" style="flex-direction:column; align-items:flex-start; gap:5px;">
+        <div style="display:flex;justify-content:space-between;width:100%;">
+          <span class="t-label">AUDIO INPUT</span>
+          <span class="t-val ok" id="val-mic-badge">AUTO</span>
+        </div>
+        <select id="val-mic-select" class="model-select" onchange="switchMicDevice(this.value)" title="Active Microphone Input Source">
+          <option value="">SCANNING AUDIO...</option>
+        </select>
+      </div>
+
+      <div class="section-label" style="margin-top:14px;">CORE MODULES</div>
+      <div class="modules-list">
+        <div class="module-item"><span><span class="module-dot"></span>STT</span><span class="t-val ok">WEBSPEECH</span></div>
+        <div class="module-item"><span><span class="module-dot"></span>CORE</span><span class="t-val ok" id="mod-core">HYBRID AI</span></div>
+        <div class="module-item"><span><span class="module-dot"></span>VOICE</span><span class="t-val ok">SYNTHESIZER</span></div>
+        <div class="module-item"><span><span class="module-dot"></span>VISION</span><span class="t-val ok">MEDIAPIPE</span></div>
+      </div>
+
+      <div class="workshop-card">
+        <div class="section-label" style="margin-bottom:6px;">WORKSHOP OPERATIONS</div>
+        <div id="workshop-log" class="workshop-log"></div>
+      </div>
+    </aside>
+
+    <!-- ── Center Stage (pass-through for 3D orb & AR camera) ── -->
+    <div class="stage-center">
+      <canvas id="audio-viz" class="audio-viz-canvas" width="320" height="320"></canvas>
+      <div class="state-badge" id="current-state-badge">READY</div>
+    </div>
+
+    <!-- ── Mission Control ── -->
+    <aside class="mission-card glass-card">
+      <div class="section-label">MISSION CONTROL &amp; EVENT LOG</div>
+      <div id="mission-log">
+        <div class="log-entry log-system">EDITH Autonomous OS online.</div>
+        <div class="log-entry log-system">Deterministic reflex engine active (&lt;15ms latency).</div>
+        <div class="log-entry log-system">Neural router connected to hybrid free AI / Ollama.</div>
+        <div class="log-entry log-system">Ready for voice or text instructions.</div>
+      </div>
+    </aside>
+
+    <!-- ── Bottom Console ── -->
+    <footer class="hud-footer glass-card">
+      <div id="codestrip"><span id="code-line"></span></div>
+      <div class="cmd-row">
+        <input
+          type="text"
+          id="cmd-input"
+          class="cmd-input"
+          placeholder="&gt; Message EDITH or give OS order... (e.g. 'open youtube and play brand new day trailer', 'lock pc')"
+          autocomplete="off"
+          spellcheck="false"
+        />
+      </div>
+      <div class="btn-row">
+        <button class="action-btn btn-transmit" id="btn-submit" onclick="submitCommand()">TRANSMIT</button>
+        <button class="action-btn btn-voice" id="btn-voice" onclick="toggleVoice()">MIC: OFF</button>
+        <button class="action-btn btn-voice-mute" id="btn-voice-mute" onclick="toggleJarvisVoiceMute()" title="Mute/Unmute Jarvis spoken voice responses">VOICE: ON</button>
+        <button class="action-btn btn-vision" id="btn-vision" onclick="triggerVision()" title="EDITH screen perception analysis">SEE SCREEN</button>
+        <button class="action-btn btn-gesture" id="btn-gestures" onclick="window.toggleGestures ? window.toggleGestures() : logEntry('Gestures module loading...', 'system')">GESTURE: OFF</button>
+        <button class="action-btn btn-emergency" id="btn-stop" onclick="toggleEmergencyStop()">&#x2715; STOP</button>
+      </div>
+    </footer>
+
+    <!-- ── OS Command Directory Modal ── -->
+    <div id="guide-modal" class="guide-modal glass-card" style="display: none;">
+      <div class="guide-header">
+        <div class="guide-title">
+          <span style="color:var(--cyan);font-weight:bold;">EDITH OS COMMAND DIRECTORY</span>
+          <span style="font-size:11px;color:var(--text-dim);margin-left:14px;">CLICK ANY CHIP TO TRANSMIT COMMAND</span>
+        </div>
+        <button class="guide-close-btn" onclick="toggleGuide()">&times;</button>
+      </div>
+      <div class="guide-grid">
+        <div class="guide-col">
+          <div class="guide-col-title">&#128250; MEDIA & WEB SEARCH</div>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">open youtube and play brand new day trailer</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">play lofi beats on youtube</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">pause music</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">next song</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">previous song</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">search youtube for iron man theme</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">search google for quantum computing</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">google python documentation</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">open github</button>
+        </div>
+        <div class="guide-col">
+          <div class="guide-col-title">&#128187; APPLICATIONS</div>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">open chrome</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">close chrome</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">open notepad</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">close notepad</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">open vs code</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">open calc</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">open terminal</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">open task manager</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">open paint</button>
+        </div>
+        <div class="guide-col">
+          <div class="guide-col-title">&#9000; TYPING & MOUSE</div>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">type hello world</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">type welcome to edith in notepad</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">click</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">double click</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">right click</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">scroll down</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">press enter</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">select all</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">copy</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">paste</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">save</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">undo</button>
+        </div>
+        <div class="guide-col">
+          <div class="guide-col-title">&#128193; WINDOWS & FOLDERS</div>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">show desktop</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">minimize all</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">restore windows</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">open downloads</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">open documents</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">open desktop</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">open pictures</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">open c drive</button>
+        </div>
+        <div class="guide-col">
+          <div class="guide-col-title">&#9881; SYSTEM & TELEMETRY</div>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">battery status</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">look at my screen</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">mute voice</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">unmute voice</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">switch mic to bluetooth</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">list processes</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">network status</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">flush dns</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">empty recycle bin</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">take screenshot</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">volume up</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">volume down</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">what time is it</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">who are you</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">lock pc</button>
+          <button class="cmd-chip" onclick="runChip(this.innerText)">cancel shutdown</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /hud-layer -->
+
+  <script src="orb.js"></script>
+  <script type="module" src="gestures.js"></script>
+
+  <script>
+    // ── State ────────────────────────────────────────────────
+    let isVoiceActive = false;
+    let recognition = null;
+    let isTransmitting = false;
+    let ttsEnabled = true;
+    let selectedAudioDeviceId = '';
+
+    // ── Boot overlay ─────────────────────────────────────────
+    window.addEventListener('DOMContentLoaded', () => {
+      setTimeout(() => {
+        const overlay = document.getElementById('boot-overlay');
+        if (overlay) {
+          overlay.classList.add('fade-out');
+          setTimeout(() => overlay.remove(), 400);
+        }
+      }, 750);
+
+      loadAvailableModels();
+      loadAudioDevices();
+      warmSpeechVoices();
+      updateClock();
+      fetchWeather();
+      initCodeStrip();
+      initAudioVisualizer();
+      const savedTheme = localStorage.getItem('edith_theme') || 'default';
+      setTheme(savedTheme);
+    });
+
+    // ── Clock & Telemetry Widgets ────────────────────────────
+    function updateClock() {
+      const now = new Date();
+      const t = document.getElementById('clock-time');
+      const d = document.getElementById('clock-date');
+      if (t) t.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      if (d) d.textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    setInterval(updateClock, 1000);
+
+    async function fetchWeather() {
+      try {
+        const res = await fetch('/weather');
+        if (!res.ok) return;
+        const w = await res.json();
+        const t = document.getElementById('w-temp');
+        const desc = document.getElementById('w-desc');
+        const city = document.getElementById('w-city');
+        if (t) t.textContent = (w.temp ? w.temp + '°C' : '24°C');
+        if (desc) desc.textContent = (w.desc || 'OPTIMAL').toUpperCase();
+        if (city) city.textContent = (w.city || 'LOCAL STATION').toUpperCase();
+      } catch (_) {}
+    }
+    setInterval(fetchWeather, 60000);
+
+    // ── Theme Switcher (JARVIS Cyan / Brand New Day / Tactical) ─
+    function setTheme(mode) {
+      document.body.classList.remove('theme-bnd', 'theme-focus');
+      if (mode === 'bnd') {
+        document.body.classList.add('theme-bnd');
+      } else if (mode === 'focus') {
+        document.body.classList.add('theme-focus');
+      }
+      if (window.setActiveTheme) {
+        window.setActiveTheme(mode);
+      } else if (window.setOrbColor) {
+        window.setOrbColor(mode === 'focus' ? 0xff3d00 : (mode === 'bnd' ? 0x85dbe1 : 0x00e5ff));
+      }
+      document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
+      const activeBtn = document.querySelector(`.theme-btn.theme-${mode}`);
+      if (activeBtn) activeBtn.classList.add('active');
+      try { localStorage.setItem('edith_theme', mode); } catch (_) {}
+    }
+    window.setTheme = setTheme;
+
+    // ── Workshop Operations Log (E.V Matrix) ─────────────────
+    const WORKSHOP_OPS = [
+      ['arc reactor', 'core telemetry 100% nominal'],
+      ['neural bus', 'hybrid AI reasoning pipeline active'],
+      ['reflex engine', 'deterministic execution (<15ms)'],
+      ['spatial audio', 'bidirectional buffer synchronized'],
+      ['vision matrix', 'MediaPipe 21 hand landmarks tracking'],
+      ['security gate', 'emergency stop killswitch armed'],
+      ['os bridge', 'Win32 Shell COM automation ready'],
+      ['power grid', 'battery monitoring online'],
+      ['subagents', 'architect, tasks & computer operational'],
+      ['spider-link', 'Brand New Day protocols engaged'],
+      ['stt stream', 'Web Speech API continuous listening'],
+      ['screen capture', 'hardware display pipeline attached']
+    ];
+    function appendWorkshopLog() {
+      const box = document.getElementById('workshop-log');
+      if (!box) return;
+      const [tag, txt] = WORKSHOP_OPS[Math.floor(Math.random() * WORKSHOP_OPS.length)];
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const line = document.createElement('div');
+      line.className = 'wl';
+      line.innerHTML = `<span class="wt">[${timeStr}]</span> <span class="tag">${tag}</span> ›› ${txt}`;
+      box.appendChild(line);
+      while (box.children.length > 25) box.removeChild(box.firstChild);
+      box.scrollTop = box.scrollHeight;
+    }
+    for (let i = 0; i < 4; i++) appendWorkshopLog();
+    setInterval(appendWorkshopLog, 3500);
+
+    // ── Scrolling Telemetry Code Strip ───────────────────────
+    function initCodeStrip() {
+      const el = document.getElementById('code-line');
+      if (!el) return;
+      const tokens = [
+        '0x1A3F', 'EDITH.core.tick()', 'stt=webspeech.ok', 'reflex=<15ms',
+        'fps=60', 'hybrid=active', 'security=nominal', 'vram=stable',
+        'ws://8794', 'bnd.matrix.sync', 'com.shell.active', 'hands=tracking'
+      ];
+      let str = '';
+      for (let i = 0; i < 20; i++) str += tokens[Math.floor(Math.random() * tokens.length)] + '   //   ';
+      el.textContent = str + str;
+    }
+
+    // ── Circular Audio Waveform Visualizer ───────────────────
+    function initAudioVisualizer() {
+      const canvas = document.getElementById('audio-viz');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      let vizAngle = 0;
+
+      function renderViz() {
+        requestAnimationFrame(renderViz);
+        const w = canvas.width;
+        const h = canvas.height;
+        ctx.clearRect(0, 0, w, h);
+
+        const cx = w / 2;
+        const cy = h / 2;
+        const radius = 95;
+        const stateColor = window.getCurrentThemeColor ? window.getCurrentThemeColor() : '#00e5ff';
+
+        // Outer subtle perimeter ring
+        ctx.strokeStyle = 'rgba(0, 229, 255, 0.12)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(cx, cy, radius * 1.3, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Pulsing audio waveform ring
+        ctx.beginPath();
+        ctx.lineWidth = 1.8;
+        ctx.strokeStyle = stateColor;
+        ctx.shadowBlur = isSpeaking || isTransmitting ? 18 : 6;
+        ctx.shadowColor = stateColor;
+
+        const points = 120;
+        const energy = isSpeaking ? 0.38 : (isVoiceActive ? 0.22 : 0.08);
+
+        for (let i = 0; i <= points; i++) {
+          const angle = (i / points) * Math.PI * 2;
+          const wave = Math.sin(i * 0.4 + vizAngle) * energy + Math.cos(i * 0.22 - vizAngle * 1.6) * (energy * 0.6);
+          const r = radius + wave * 22;
+          const x = cx + Math.cos(angle) * r;
+          const y = cy + Math.sin(angle) * r;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        vizAngle += isSpeaking ? 0.14 : (isVoiceActive ? 0.08 : 0.03);
+      }
+      renderViz();
+    }
+
+    function warmSpeechVoices() {
+      if (!('speechSynthesis' in window)) return;
+      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+      window.speechSynthesis.getVoices();
+    }
+
+    // ── Mission Log ───────────────────────────────────────────
+    function logEntry(text, type = 'system') {
+      const log = document.getElementById('mission-log');
+      const div = document.createElement('div');
+      div.className = `log-entry log-${type}`;
+      div.innerHTML = text;
+      log.appendChild(div);
+      requestAnimationFrame(() => { log.scrollTop = log.scrollHeight; });
+      return div;
+    }
+
+    let isSpeaking = false;
+
+    // ── TTS ────────────────────────────────────────────────────
+    function speakOut(text) {
+      if (!ttsEnabled || !('speechSynthesis' in window)) return;
+      try {
+        window.speechSynthesis.cancel();
+        isSpeaking = true;
+        // Pause microphone while speaking to eliminate self-speech echo
+        if (recognition && isVoiceActive) {
+          try { recognition.abort(); } catch (_) {}
+        }
+        const utt = new SpeechSynthesisUtterance(text);
+        utt.rate = 1.05;
+        utt.pitch = 0.95;
+        const voices = window.speechSynthesis.getVoices();
+        const preferred = voices.find(v =>
+          v.lang.startsWith('en') && (
+            v.name.includes('Natural') ||
+            v.name.includes('Google') ||
+            v.name.includes('Microsoft') ||
+            v.name.includes('David')
+          )
+        );
+        if (preferred) utt.voice = preferred;
+        utt.onend = () => {
+          setTimeout(() => {
+            isSpeaking = false;
+            // Cleanly resume mic after room audio reverb has dissipated
+            if (isVoiceActive && recognition && !isTransmitting) {
+              try { recognition.start(); } catch (_) {}
+            }
+          }, 400);
+        };
+        utt.onerror = () => {
+          isSpeaking = false;
+          if (isVoiceActive && recognition && !isTransmitting) {
+            try { recognition.start(); } catch (_) {}
+          }
+        };
+        window.speechSynthesis.speak(utt);
+      } catch (e) {
+        console.warn('[TTS]', e);
+        isSpeaking = false;
+      }
+    }
+
+    let micEchoLockUntil = 0;
+    let lastSubmittedCmd = '';
+    let lastSubmittedAt = 0;
+    let lastSpokenAnswer = '';
+    let sttRestartTimer = null;
+
+    // ── Command Guide Modal Helpers ───────────────────────────
+    function toggleGuide() {
+      const modal = document.getElementById('guide-modal');
+      if (!modal) return;
+      const isVisible = modal.style.display === 'flex';
+      modal.style.display = isVisible ? 'none' : 'flex';
+    }
+    window.toggleGuide = toggleGuide;
+
+    function runChip(cmdText) {
+      const input = document.getElementById('cmd-input');
+      if (input) {
+        input.value = cmdText;
+        toggleGuide();
+        submitCommand();
+      }
+    }
+    window.runChip = runChip;
+
+    // ── Speech Recognition (microphone input only) ────────────
+    function initSpeechRecognition() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) return null;
+
+      const rec = new SR();
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.lang = 'en-US';
+
+      rec.onresult = (event) => {
+        if (isTransmitting || isSpeaking) return;
+        let interimText = '';
+        let finalText = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalText += event.results[i][0].transcript;
+          } else {
+            interimText += event.results[i][0].transcript;
+          }
+        }
+
+        const input = document.getElementById('cmd-input');
+        if (interimText && !finalText) {
+          input.value = interimText;
+        }
+
+        const trimmed = finalText.trim();
+        if (trimmed) {
+          input.value = trimmed;
+          // Pause recognition during network transmission to prevent double inputs
+          try { rec.abort(); } catch (_) {}
+          submitCommand();
+        }
+      };
+
+      rec.onerror = (event) => {
+        if (event.error === 'no-speech' || event.error === 'aborted') {
+          return; // Harmless silence or restart transition
+        }
+        console.warn('[STT error]', event.error);
+        if (event.error === 'not-allowed') {
+          alert('Microphone permission denied. Allow mic access in your browser.');
+          disableVoice();
+        }
+      };
+
+      rec.onend = () => {
+        if (isVoiceActive && !isSpeaking && !isTransmitting) {
+          clearTimeout(sttRestartTimer);
+          sttRestartTimer = setTimeout(() => {
+            if (isVoiceActive && !isSpeaking && !isTransmitting) {
+              try { rec.start(); } catch (_) {}
+            }
+          }, 300);
+        }
+      };
+
+      return rec;
+    }
+
+    function toggleVoice() {
+      isVoiceActive ? disableVoice() : enableVoice();
+    }
+
+    async function enableVoice() {
+      try {
+        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+          const audioConstraint = selectedAudioDeviceId && !/^\d+$/.test(selectedAudioDeviceId)
+            ? { audio: { deviceId: { exact: selectedAudioDeviceId } } }
+            : { audio: true };
+          await navigator.mediaDevices.getUserMedia(audioConstraint);
+        }
+      } catch (err) {
+        logEntry('Microphone access blocked or denied by browser.', 'error');
+        alert('Please allow microphone permissions in your browser address bar.');
+        return;
+      }
+      if (!recognition) recognition = initSpeechRecognition();
+      if (!recognition) {
+        logEntry('Browser does not support Web Speech API. Use Chrome, Edge, or enable Speech in Brave.', 'error');
+        alert('Voice input requires Chrome, Edge, or Brave with Speech Recognition enabled in settings.');
+        return;
+      }
+      try {
+        recognition.start();
+        isVoiceActive = true;
+        const btn = document.getElementById('btn-voice');
+        btn.innerText = 'MIC: LIVE';
+        btn.classList.add('active');
+        logEntry('Microphone activated. Listening for commands...', 'system');
+      } catch (e) {
+        console.error('[STT start failed]', e);
+      }
+    }
+
+    function disableVoice() {
+      isVoiceActive = false;
+      if (recognition) { try { recognition.stop(); } catch (_) {} }
+      const btn = document.getElementById('btn-voice');
+      btn.innerText = 'MIC: OFF';
+      btn.classList.remove('active');
+    }
+
+    // ── Voice Mute & Vision Control Functions ───────────────────
+    async function toggleJarvisVoiceMute() {
+      ttsEnabled = !ttsEnabled;
+      const btn = document.getElementById('btn-voice-mute');
+      try {
+        await fetch('/voice/toggle_mute', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: '{}'
+        });
+      } catch (_) {}
+      if (btn) {
+        if (ttsEnabled) {
+          btn.innerText = 'VOICE: ON';
+          btn.classList.remove('muted');
+          logEntry('Jarvis speech synthesis unmuted.', 'system');
+        } else {
+          btn.innerText = 'VOICE: MUTED';
+          btn.classList.add('muted');
+          try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch(_) {}
+          logEntry('Jarvis speech synthesis muted.', 'system');
+        }
+      }
+    }
+    window.toggleJarvisVoiceMute = toggleJarvisVoiceMute;
+
+    async function triggerVision() {
+      logEntry('&gt; look at my screen', 'user');
+      const thinkEl = logEntry('Analyzing screen perception...', 'thinking');
+      try {
+        const res = await fetch('/vision/analyze_screen', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ prompt: 'What is currently on my screen?' })
+        });
+        const data = await res.json();
+        try { thinkEl.remove(); } catch (_) {}
+        const perception = data.perception || data.message || 'Screen analyzed.';
+        logEntry(`<strong>[VISION]:</strong> ${escHtml(perception)}`, 'edith');
+        if (data.apps && data.apps.length > 0) {
+          logEntry(`&#10003; Open applications detected: ${escHtml(data.apps.join(', '))}`, 'system');
+        }
+        speakOut(perception);
+      } catch (err) {
+        try { thinkEl.remove(); } catch (_) {}
+        logEntry(`Vision perception error: ${escHtml(err.message)}`, 'error');
+      }
+    }
+    window.triggerVision = triggerVision;
+
+    async function loadAudioDevices() {
+      const select = document.getElementById('val-mic-select');
+      const badge = document.getElementById('val-mic-badge');
+      if (!select) return;
+
+      let backendDevices = [];
+      let activeBackendIdx = null;
+      try {
+        const res = await fetch('/audio/devices');
+        if (res.ok) {
+          const data = await res.json();
+          backendDevices = data.devices || [];
+          activeBackendIdx = data.active_index;
+        }
+      } catch (_) {}
+
+      let browserDevices = [];
+      if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+        try {
+          const allDevs = await navigator.mediaDevices.enumerateDevices();
+          browserDevices = allDevs.filter(d => d.kind === 'audioinput');
+        } catch (_) {}
+      }
+
+      select.innerHTML = '';
+      let bluetoothFound = false;
+
+      if (browserDevices.length > 0 && browserDevices[0].label) {
+        browserDevices.forEach((d, i) => {
+          const opt = document.createElement('option');
+          opt.value = d.deviceId;
+          const isBt = /headset|bluetooth|buds|pods|hands-free/i.test(d.label);
+          opt.textContent = (isBt ? '🎧 [BT] ' : '🎤 ') + (d.label || `Mic ${i+1}`);
+          if (isBt) {
+            bluetoothFound = true;
+            opt.selected = true;
+            selectedAudioDeviceId = d.deviceId;
+          }
+          select.appendChild(opt);
+        });
+      } else if (backendDevices.length > 0) {
+        backendDevices.forEach(d => {
+          const opt = document.createElement('option');
+          opt.value = String(d.index);
+          opt.textContent = (d.is_bluetooth ? '🎧 [BT] ' : '🎤 ') + d.name;
+          if (d.index === activeBackendIdx || (d.is_bluetooth && !bluetoothFound)) {
+            bluetoothFound = true;
+            opt.selected = true;
+          }
+          select.appendChild(opt);
+        });
+      } else {
+        const opt = document.createElement('option');
+        opt.value = '';
+        opt.textContent = 'SYSTEM MICROPHONE';
+        select.appendChild(opt);
+      }
+
+      if (badge) {
+        badge.textContent = bluetoothFound ? 'BLUETOOTH' : 'SYSTEM';
+        badge.className = bluetoothFound ? 't-val ok' : 't-val';
+      }
+    }
+    window.loadAudioDevices = loadAudioDevices;
+
+    async function switchMicDevice(val) {
+      if (!val) return;
+      selectedAudioDeviceId = val;
+      if (/^\d+$/.test(val)) {
+        try {
+          await fetch('/audio/select', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ device_index: parseInt(val, 10) })
+          });
+        } catch (_) {}
+      }
+      logEntry(`Audio input routed to: ${val}`, 'system');
+      if (isVoiceActive) {
+        disableVoice();
+        setTimeout(enableVoice, 300);
+      }
+    }
+    window.switchMicDevice = switchMicDevice;
+
+    // ── Submit command ─────────────────────────────────────────
+    async function submitCommand() {
+      if (isTransmitting) return;
+      const input = document.getElementById('cmd-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const cleanLower = text.toLowerCase().trim();
+      const now = Date.now();
+      // Drop duplicate submission of same command within 2500ms
+      if (cleanLower === lastSubmittedCmd && (now - lastSubmittedAt) < 2500) {
+        console.log('[Debounce: dropping duplicate command submission]', text);
+        input.value = '';
+        return;
+      }
+      lastSubmittedCmd = cleanLower;
+      lastSubmittedAt = now;
+
+      isTransmitting = true;
+      input.value = '';
+      micEchoLockUntil = Date.now() + 2000;
+
+      logEntry(`&gt; ${escHtml(text)}`, 'user');
+      const thinkEl = logEntry('Processing...', 'thinking');
+      document.getElementById('btn-submit').innerText = 'THINKING...';
+
+      // 15-second safety timer so UI never gets stuck in thinking state
+      const safetyTimeout = setTimeout(() => {
+        if (isTransmitting) {
+          isTransmitting = false;
+          try { thinkEl.remove(); } catch (_) {}
+          document.getElementById('btn-submit').innerText = 'TRANSMIT';
+          logEntry('Operation timed out. Ready for new input.', 'error');
+        }
+      }, 15000);
+
+      try {
+        const res = await fetch('/cmd', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: text })
+        });
+        const data = await res.json();
+
+        clearTimeout(safetyTimeout);
+        try { thinkEl.remove(); } catch (_) {}
+
+        const answer = data.result || data.message || data.output ||
+          (data.command ? `Command queued: ${data.command}` : 'Command received.');
+        const source = data.model === 'REFLEX_ENGINE'
+          ? 'reflex'
+          : (data.model ? 'edith' : 'edith');
+        const tag = data.model === 'REFLEX_ENGINE'
+          ? '[REFLEX]'
+          : (data.model ? `[${data.model}]` : '[EDITH]');
+
+        logEntry(`<strong>${tag}:</strong> ${escHtml(answer)}`, source);
+
+        if (data.tools_executed && data.tools_executed.length > 0) {
+          data.tools_executed.forEach(t => logEntry(`&#10003; ${escHtml(t)}`, 'system'));
+        }
+
+        // Immediately open URLs in foreground browser window
+        if (data.url) {
+          try {
+            window.open(data.url, '_blank');
+          } catch (e) {
+            console.error('Failed to open window', e);
+          }
+        }
+
+        // Calculate dynamic echo lockout based on answer word count
+        lastSpokenAnswer = answer.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
+        const wordCount = (answer || '').split(/\s+/).length;
+        const speechDurationMs = Math.max(3000, Math.round((wordCount / 2.5) * 1000) + 1500);
+        micEchoLockUntil = Date.now() + speechDurationMs;
+
+        // Clean, instantaneous speech synthesis via browser Web Speech API
+        speakOut(answer);
+
+      } catch (err) {
+        clearTimeout(safetyTimeout);
+        try { thinkEl.remove(); } catch (_) {}
+        logEntry(`Transmission error: ${escHtml(err.message)}`, 'error');
+      } finally {
+        isTransmitting = false;
+        document.getElementById('btn-submit').innerText = 'TRANSMIT';
+        if (isVoiceActive && !isSpeaking && recognition) {
+          setTimeout(() => {
+            if (isVoiceActive && !isSpeaking) {
+              try { recognition.start(); } catch (_) {}
+            }
+          }, 350);
+        }
+      }
+    }
+
+    // ── Emergency stop & resume ────────────────────────────────
+    async function toggleEmergencyStop() {
+      const btn = document.getElementById('btn-stop');
+      const isStopped = btn.classList.contains('active-stop');
+      try {
+        window.speechSynthesis && window.speechSynthesis.cancel();
+        if (!isStopped) {
+          disableVoice();
+          const res = await fetch('/emergency_stop', { method: 'POST' });
+          const data = await res.json();
+          setEmergencyStopUI(true);
+          logEntry('[EMERGENCY STOP ENGAGED: Actions paused]', 'error');
+        } else {
+          const res = await fetch('/emergency_resume', { method: 'POST' });
+          const data = await res.json();
+          setEmergencyStopUI(false);
+          logEntry('[SYSTEM RESUMED: Online and ready]', 'system');
+        }
+      } catch (e) {
+        console.error('[Emergency toggle failed]', e);
+      }
+    }
+
+    function setEmergencyStopUI(stopped) {
+      const btn = document.getElementById('btn-stop');
+      if (!btn) return;
+      if (stopped) {
+        btn.innerHTML = '&#x25B6; RESUME';
+        btn.classList.add('active-stop');
+        btn.style.borderColor = 'var(--green)';
+        btn.style.color = 'var(--green)';
+        btn.style.background = 'rgba(16, 185, 129, 0.18)';
+        btn.style.boxShadow = '0 0 16px rgba(16, 185, 129, 0.4)';
+      } else {
+        btn.innerHTML = '&#x2715; STOP';
+        btn.classList.remove('active-stop');
+        btn.style.borderColor = '';
+        btn.style.color = '';
+        btn.style.background = '';
+        btn.style.boxShadow = '';
+      }
+    }
+    window.setEmergencyStopUI = setEmergencyStopUI;
+
+    // ── Model switching ────────────────────────────────────────
+    async function loadAvailableModels() {
+      try {
+        const res = await fetch('/models');
+        if (!res.ok) return;
+        const data = await res.json();
+        const sel = document.getElementById('val-model');
+        if (!sel) return;
+        const list = Array.isArray(data.models) ? [...data.models] : [];
+        if (data.active_model && !list.includes(data.active_model)) {
+          list.unshift(data.active_model);
+        }
+        if (list.length > 0) {
+          sel.innerHTML = '';
+          list.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.innerText = m;
+            if (m === data.active_model) opt.selected = true;
+            sel.appendChild(opt);
+          });
+          if (data.active_model) sel.value = data.active_model;
+        }
+      } catch (e) {
+        console.warn('[Models load failed]', e);
+      }
+    }
+
+    async function switchModel(modelName) {
+      if (!modelName) return;
+      try {
+        const res = await fetch('/models/switch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model: modelName })
+        });
+        const data = await res.json();
+        if (data.success) {
+          const sel = document.getElementById('val-model');
+          if (sel) sel.value = data.active_model;
+          logEntry(`Primary AI switched to <strong>${escHtml(data.active_model)}</strong>`, 'system');
+          speakOut(`Switched to ${data.active_model}`);
+        }
+      } catch (e) {
+        console.error('[Model switch error]', e);
+      }
+    }
+
+    window.switchModel = switchModel;
+
+    // ── Keyboard shortcut ─────────────────────────────────────
+    document.getElementById('cmd-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') submitCommand();
+    });
+
+    // ── Util ──────────────────────────────────────────────────
+    function escHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+  </script>
+
+</body>
+</html>
