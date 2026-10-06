@@ -204,7 +204,10 @@
       const resp = await fetch(`${cleanUrl}/ping`, {
         method: "GET",
         signal: controller.signal,
-        headers: { "Accept": "application/json" },
+        headers: {
+          "Accept": "application/json",
+          "Bypass-Tunnel-Reminder": "true",
+        },
       });
       clearTimeout(timer);
       const dt = Math.round(performance.now() - t0);
@@ -334,7 +337,10 @@
     try {
       const resp = await fetch(targetUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Bypass-Tunnel-Reminder": "true",
+        },
         body: JSON.stringify(payload),
       });
 

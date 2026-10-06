@@ -99,7 +99,9 @@ class TunnelManager:
             if self._process and self._process.poll() is None:
                 self.stop_tunnel()
 
-            if provider == "pinggy":
+            if provider == "localtunnel":
+                return self._start_localtunnel(port)
+            elif provider == "pinggy":
                 return self._start_pinggy_tunnel(port)
             elif provider == "cloudflared":
                 return self._start_cloudflared_tunnel(port)
@@ -108,6 +110,42 @@ class TunnelManager:
             else:
                 logger.error("Unknown tunnel provider: %s", provider)
                 return None
+
+    def _start_localtunnel(self, port: int) -> Optional[str]:
+        """Start localtunnel via npx."""
+        try:
+            npx_bin = "npx.cmd" if os.name == "nt" else "npx"
+            p = subprocess.Popen(
+                [npx_bin, "--yes", "localtunnel", "--port", str(port)],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+            )
+            self._process = p
+            self._active_provider = "localtunnel"
+            url_found = None
+            start_time = time.time()
+            while time.time() - start_time < 12.0:
+                line = p.stdout.readline() if p.stdout else ""
+                if not line:
+                    if p.poll() is not None:
+                        break
+                    time.sleep(0.1)
+                    continue
+                match = re.search(r"https://[a-zA-Z0-9\.\-]+\.loca\.lt", line)
+                if match:
+                    url_found = match.group(0)
+                    break
+
+            if url_found:
+                self._active_url = url_found
+                logger.info("Localtunnel active at: %s", url_found)
+                return url_found
+            return None
+        except Exception as ex:
+            logger.error("Failed to start localtunnel: %s", ex)
+            return None
 
     def _start_pinggy_tunnel(self, port: int) -> Optional[str]:
         """Start zero-config SSH tunnel via Pinggy."""
