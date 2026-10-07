@@ -329,6 +329,11 @@ class RemoteInputDispatcher:
             y = float(params.get("y", 0.5))
             return {"success": MOUSE.move(x, y), "action": "mouse_move"}
 
+        elif action in ("relative_move", "mouse_relative", "camera_look"):
+            dx = int(params.get("dx", 0))
+            dy = int(params.get("dy", 0))
+            return {"success": MOUSE.move_relative(dx, dy), "action": "camera_look"}
+
         elif action in ("click", "left_click"):
             # Optional coordinate tap
             if "x" in params and "y" in params:

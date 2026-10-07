@@ -1,8 +1,8 @@
 {
-  "provider": "localtunnel",
+  "provider": "pinggy",
   "subdomain": "edith-jashu",
   "custom_url": null,
   "active_url": null,
   "healthy": false,
-  "updated_at": 1791400182.5165772
+  "updated_at": 1791417240.8308809
 }

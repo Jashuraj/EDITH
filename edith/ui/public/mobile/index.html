@@ -58,6 +58,16 @@
       </div>
     </header>
 
+    <!-- Quick Host Link & Subnet Scanner Bar -->
+    <div class="quick-host-bar" id="quick-host-bar">
+      <div class="quick-host-input-wrap">
+        <span class="host-icon">⚡</span>
+        <input type="text" id="quick-host-input" class="quick-host-input" placeholder="http://192.168.1.167:8794" autocomplete="off" autocapitalize="none">
+      </div>
+      <button class="quick-host-btn btn-connect" id="btn-quick-connect" title="Connect to Host">Link</button>
+      <button class="quick-host-btn btn-scan" id="btn-quick-scan" title="Auto Scan LAN Subnet">🔍 Scan</button>
+    </div>
+
     <!-- Center HUD Body -->
     <main class="hud-body">
       <!-- Reticle and Arc Reactor Core -->
@@ -89,6 +99,7 @@
       <div class="quick-actions-bar">
         <button class="chip-btn blue-chip" id="btn-open-remote">🖥️ Remote Desktop</button>
         <button class="chip-btn purple-chip" id="btn-open-gamepad">🎮 Game Controller</button>
+        <button class="chip-btn green-chip" id="btn-open-vnc">🌐 VNC Portal</button>
         <button class="chip-btn" id="btn-sync-clipboard">📋 Sync Clip</button>
         <button class="chip-btn" data-cmd="open steam">🎮 Steam</button>
         <button class="chip-btn" data-cmd="undo">↩ Undo</button>
@@ -178,7 +189,8 @@
 
     <!-- Screen Viewport & Touch Interaction Canvas -->
     <div class="remote-viewport" id="remote-viewport">
-      <img id="remote-screen-img" class="remote-screen-img" src="" alt="Windows Desktop Stream" draggable="false">
+      <canvas id="vnc-canvas" class="vnc-canvas"></canvas>
+      <img id="remote-screen-img" class="remote-screen-img" src="" alt="Windows Desktop Stream" draggable="false" style="display: none;">
       <div id="remote-virtual-cursor" class="remote-virtual-cursor" style="display: none;"></div>
       <div id="remote-touch-feedback" class="remote-touch-feedback"></div>
 
@@ -195,14 +207,20 @@
           </div>
         </div>
 
-        <!-- Center Shoulders & System Buttons -->
-        <div class="gamepad-center-bar">
-          <button class="game-btn game-shoulder" data-btn="LB">LB [Q]</button>
-          <button class="game-btn game-shoulder" data-btn="AIM">LT [Aim]</button>
-          <button class="game-btn game-center-special" data-btn="PAUSE">PAUSE [Esc]</button>
-          <button class="game-btn game-center-special" data-btn="SELECT">MAP [Tab]</button>
-          <button class="game-btn game-shoulder" data-btn="FIRE">RT [Fire]</button>
-          <button class="game-btn game-shoulder" data-btn="RB">RB [F]</button>
+        <!-- Center 3D Camera Look Trackpad & Shoulder Controls -->
+        <div class="gamepad-center-column">
+          <div class="gamepad-center-bar">
+            <button class="game-btn game-shoulder" data-btn="LB">LB [Q]</button>
+            <button class="game-btn game-shoulder" data-btn="AIM">LT [Aim]</button>
+            <button class="game-btn game-center-special" data-btn="PAUSE">PAUSE [Esc]</button>
+            <button class="game-btn game-center-special" data-btn="SELECT">MAP [Tab]</button>
+            <button class="game-btn game-shoulder" data-btn="FIRE">RT [Fire]</button>
+            <button class="game-btn game-shoulder" data-btn="RB">RB [F]</button>
+          </div>
+          <!-- 3D Camera Look Trackpad (Drag thumb here to rotate in-game camera) -->
+          <div class="game-look-trackpad" id="game-look-trackpad">
+            <span class="trackpad-text">🎯 3D CAMERA LOOK & AIM TRACKPAD</span>
+          </div>
         </div>
 
         <!-- Right Action Diamond (A, B, X, Y, Jump, Sprint, Fire, Aim) -->

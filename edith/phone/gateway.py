@@ -24,6 +24,7 @@ from edith.core.state_machine import STATE, SystemState
 from edith.phone.protocol import PHONE_PROTOCOL
 from edith.phone.tunnel import TUNNEL_MANAGER
 from edith.providers.router import ROUTER, TaskCategory
+from edith.tools.gamestream import GAMESTREAM_ENGINE
 from edith.tools.reflex import REFLEX
 from edith.tools.registry import REGISTRY
 from edith.tools.remote_input import REMOTE_INPUT
@@ -119,6 +120,20 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
             params = data.get("params", data)
             res = REMOTE_INPUT.dispatch(action, params)
             self._send_json(res)
+            return
+
+        # 3b. GameStream Launcher & Controller (Sunshine / Wolf / Moonlight)
+        if parsed.path == "/api/gamestream/launch":
+            game_id = str(data.get("game_id", "desktop"))
+            self._send_json(GAMESTREAM_ENGINE.launch_game(game_id))
+            return
+
+        if parsed.path == "/api/gamestream/stop":
+            self._send_json(GAMESTREAM_ENGINE.stop_game())
+            return
+
+        if parsed.path == "/api/gamestream/controller":
+            self._send_json(GAMESTREAM_ENGINE.dispatch_gamepad(data))
             return
 
         # 4. Bi-Directional Clipboard Sync
@@ -371,6 +386,15 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
                 "input_active": True,
                 "system": CONFIG.system_name,
             })
+            return
+
+        # 3b. GameStream Telemetry & Discovery (Sunshine / Wolf / Moonlight)
+        elif parsed.path == "/api/gamestream/status":
+            self._send_json(GAMESTREAM_ENGINE.get_status())
+            return
+
+        elif parsed.path == "/api/gamestream/games":
+            self._send_json({"games": GAMESTREAM_ENGINE.detect_games()})
             return
 
         # 4. Device Telemetry & Bi-directional Messages

@@ -79,6 +79,14 @@ class MouseController:
         self._last_move_time = time.perf_counter()
         return True
 
+    def move_relative(self, dx: int, dy: int) -> bool:
+        """Move cursor by relative pixel offsets dx and dy for 3D/FPS game look."""
+        if not self._u32:
+            return False
+        self._u32.mouse_event(MOUSEEVENTF_MOVE, int(dx), int(dy), 0, 0)
+        self._last_move_time = time.perf_counter()
+        return True
+
     def left_click(self) -> bool:
         """Simulate primary left mouse button click instantaneously."""
         if not self._u32:

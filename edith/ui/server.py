@@ -24,6 +24,7 @@ from edith.core.state_machine import STATE, SystemState
 from edith.providers.router import ROUTER, TaskCategory
 from edith.phone.protocol import PHONE_PROTOCOL
 from edith.phone.tunnel import TUNNEL_MANAGER
+from edith.tools.gamestream import GAMESTREAM_ENGINE
 from edith.tools.mouse_controller import MOUSE
 from edith.tools.reflex import REFLEX
 from edith.tools.registry import REGISTRY
@@ -293,6 +294,25 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                 "system": CONFIG.system_name,
             })
 
+        # VNC Web Portal Route
+        elif parsed.path in ("/vnc", "/vnc/"):
+            vnc_file = UI_DIR / "vnc" / "index.html"
+            if vnc_file.exists():
+                content = vnc_file.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(content)))
+                self.end_headers()
+                self.wfile.write(content)
+                return
+
+        # GameStream Telemetry & Discovery (Sunshine / Wolf / Moonlight)
+        elif parsed.path == "/api/gamestream/status":
+            self._send_json(GAMESTREAM_ENGINE.get_status())
+
+        elif parsed.path == "/api/gamestream/games":
+            self._send_json({"games": GAMESTREAM_ENGINE.detect_games()})
+
         # Connected Devices Telemetry
         elif parsed.path == "/api/phone/devices":
             self._send_json({"devices": PHONE_PROTOCOL.get_paired_devices()})
@@ -506,6 +526,17 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             if not res.get("success") and action in ("volume", "desktop"):
                 res = MOUSE.handle_gesture_action(action, params)
             self._send_json(res)
+
+        # GameStream Launcher & Controller (Sunshine / Wolf / Moonlight)
+        elif parsed.path == "/api/gamestream/launch":
+            game_id = str(data.get("game_id", "desktop"))
+            self._send_json(GAMESTREAM_ENGINE.launch_game(game_id))
+
+        elif parsed.path == "/api/gamestream/stop":
+            self._send_json(GAMESTREAM_ENGINE.stop_game())
+
+        elif parsed.path == "/api/gamestream/controller":
+            self._send_json(GAMESTREAM_ENGINE.dispatch_gamepad(data))
 
         # Bi-Directional Clipboard Sync
         elif parsed.path == "/api/clipboard/sync":

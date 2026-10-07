@@ -109,6 +109,13 @@
     btnKbEnter: document.getElementById("btn-kb-enter"),
     btnCloseKb: document.getElementById("btn-close-kb"),
     remoteBottomBar: document.getElementById("remote-bottom-bar"),
+    vncCanvas: document.getElementById("vnc-canvas"),
+    gameLookTrackpad: document.getElementById("game-look-trackpad"),
+    quickHostBar: document.getElementById("quick-host-bar"),
+    quickHostInput: document.getElementById("quick-host-input"),
+    btnQuickConnect: document.getElementById("btn-quick-connect"),
+    btnQuickScan: document.getElementById("btn-quick-scan"),
+    btnOpenVnc: document.getElementById("btn-open-vnc"),
   };
 
   // ---------------- Service Worker Setup ----------------
@@ -684,8 +691,10 @@
     }
   }
 
+  let vncCtx = null;
+
   async function fetchStreamLoop() {
-    if (!remoteStreamActive || !dom.remoteScreenImg) return;
+    if (!remoteStreamActive || (!dom.remoteScreenImg && !dom.vncCanvas)) return;
     if (isFetchingFrame) return;
     isFetchingFrame = true;
 
@@ -714,6 +723,48 @@
         return;
       }
 
+      // Fast GPU path via createImageBitmap & HTML5 Canvas
+      if (window.createImageBitmap && dom.vncCanvas) {
+        try {
+          const bitmap = await createImageBitmap(blob);
+          if (!remoteStreamActive) {
+            bitmap.close();
+            isFetchingFrame = false;
+            return;
+          }
+          if (dom.vncCanvas.width !== bitmap.width || dom.vncCanvas.height !== bitmap.height) {
+            dom.vncCanvas.width = bitmap.width;
+            dom.vncCanvas.height = bitmap.height;
+          }
+          if (!vncCtx) {
+            vncCtx = dom.vncCanvas.getContext("2d", { alpha: false, desynchronized: true });
+          }
+          vncCtx.drawImage(bitmap, 0, 0);
+          bitmap.close();
+
+          frameCount++;
+          const now = performance.now();
+          if (now - lastFpsCalcTime >= 1000) {
+            currentFps = Math.round((frameCount * 1000) / (now - lastFpsCalcTime));
+            frameCount = 0;
+            lastFpsCalcTime = now;
+            if (dom.remoteFpsTag) {
+              dom.remoteFpsTag.textContent = `${currentFps} FPS // ${remoteResolution.toUpperCase()}`;
+              dom.remoteFpsTag.style.color = currentFps >= 10 ? "#00e676" : "#ff9100";
+            }
+          }
+
+          isFetchingFrame = false;
+          if (remoteStreamActive) {
+            requestAnimationFrame(fetchStreamLoop);
+          }
+          return;
+        } catch (bmErr) {
+          console.warn("Bitmap decode notice:", bmErr);
+        }
+      }
+
+      // Fallback Image element swap path
       const newBlobUrl = URL.createObjectURL(blob);
       const nextImg = new Image();
       nextImg.onload = () => {
@@ -724,6 +775,7 @@
         }
         if (dom.remoteScreenImg) {
           dom.remoteScreenImg.src = newBlobUrl;
+          dom.remoteScreenImg.style.display = "block";
         }
         if (currentBlobUrl) {
           URL.revokeObjectURL(currentBlobUrl);
@@ -930,7 +982,10 @@
     let twoFingerStartY = 0;
 
     function getNormalizedCoords(clientX, clientY) {
-      let rect = dom.remoteScreenImg ? dom.remoteScreenImg.getBoundingClientRect() : null;
+      let rect = dom.vncCanvas ? dom.vncCanvas.getBoundingClientRect() : null;
+      if (!rect || rect.width <= 10 || rect.height <= 10) {
+        rect = dom.remoteScreenImg ? dom.remoteScreenImg.getBoundingClientRect() : null;
+      }
       if (!rect || rect.width <= 10 || rect.height <= 10) {
         rect = dom.remoteViewport.getBoundingClientRect();
       }
@@ -1398,11 +1453,121 @@
     if (dom.btnRemoteRes) {
       dom.btnRemoteRes.addEventListener("click", toggleResolution);
     }
+    if (dom.btnQuickConnect) {
+      dom.btnQuickConnect.addEventListener("click", async () => {
+        const val = (dom.quickHostInput ? dom.quickHostInput.value : "").trim();
+        if (val) {
+          const clean = val.startsWith("http") ? val : `http://${val}`;
+          state.localUrl = clean;
+          localStorage.setItem("edith_mobile_local_url", clean);
+          if (dom.cfgLocalUrl) dom.cfgLocalUrl.value = clean;
+          logConsole("MANUAL HOST", `Testing host link: ${clean}`);
+          await resolveActiveEndpoint();
+        }
+      });
+    }
+    if (dom.btnQuickScan) {
+      dom.btnQuickScan.addEventListener("click", () => scanLocalSubnet());
+    }
+    if (dom.btnOpenVnc) {
+      dom.btnOpenVnc.addEventListener("click", () => {
+        const ep = (state.activeEndpoint || defaultLocalUrl).replace(/\/+$/, "");
+        window.open(`${ep}/vnc`, "_blank");
+      });
+    }
 
     initRemoteViewportEvents();
     initJoystickEvents();
     initGamepadButtonEvents();
     initRemoteKeyboardEvents();
+    initGameCameraTrackpad();
+  }
+
+  function initGameCameraTrackpad() {
+    if (!dom.gameLookTrackpad) return;
+    let isTracking = false;
+    let lastX = 0;
+    let lastY = 0;
+    let lastDispatch = 0;
+
+    dom.gameLookTrackpad.addEventListener("touchstart", (e) => {
+      if (e.touches.length > 0) {
+        isTracking = true;
+        lastX = e.touches[0].clientX;
+        lastY = e.touches[0].clientY;
+        triggerHaptic(10);
+      }
+    }, { passive: false });
+
+    dom.gameLookTrackpad.addEventListener("touchmove", (e) => {
+      if (!isTracking || e.touches.length === 0) return;
+      e.preventDefault();
+      const now = performance.now();
+      if (now - lastDispatch < 22) return;
+
+      const t = e.touches[0];
+      const dx = Math.round((t.clientX - lastX) * 1.5);
+      const dy = Math.round((t.clientY - lastY) * 1.5);
+      lastX = t.clientX;
+      lastY = t.clientY;
+      lastDispatch = now;
+
+      if (dx !== 0 || dy !== 0) {
+        sendRemoteInput("camera_look", { dx, dy });
+      }
+    }, { passive: false });
+
+    const endTrack = () => { isTracking = false; };
+    dom.gameLookTrackpad.addEventListener("touchend", endTrack);
+    dom.gameLookTrackpad.addEventListener("touchcancel", endTrack);
+  }
+
+  async function scanLocalSubnet(baseSubnet = "192.168.1", port = 8794) {
+    if (dom.btnQuickScan) {
+      dom.btnQuickScan.textContent = "Scanning...";
+      dom.btnQuickScan.style.color = "#ff9100";
+    }
+    logConsole("SCANNER", `Scanning LAN subnet ${baseSubnet}.0/24 for EDITH PC...`);
+    triggerHaptic(30);
+
+    const priorityIps = [167, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 2, 3, 4, 5, 10, 20, 50, 150];
+    const otherIps = Array.from({ length: 254 }, (_, i) => i + 1).filter(i => !priorityIps.includes(i));
+    const allIps = [...priorityIps, ...otherIps];
+
+    const batchSize = 12;
+    let foundUrl = null;
+
+    for (let i = 0; i < allIps.length; i += batchSize) {
+      const batch = allIps.slice(i, i + batchSize);
+      const promises = batch.map(async (hostNum) => {
+        const testUrl = `http://${baseSubnet}.${hostNum}:${port}`;
+        const res = await pingEndpoint(testUrl, 450);
+        if (res.ok) return testUrl;
+        return null;
+      });
+      const results = await Promise.all(promises);
+      foundUrl = results.find(Boolean);
+      if (foundUrl) break;
+    }
+
+    if (foundUrl) {
+      logConsole("SCANNER", `Discovered EDITH Host: ${foundUrl}!`);
+      state.localUrl = foundUrl;
+      localStorage.setItem("edith_mobile_local_url", foundUrl);
+      if (dom.cfgLocalUrl) dom.cfgLocalUrl.value = foundUrl;
+      if (dom.quickHostInput) dom.quickHostInput.value = foundUrl;
+      await resolveActiveEndpoint();
+      speakResponse("EDITH mainframe discovered and connected.");
+    } else {
+      logConsole("SCANNER", "No EDITH host detected on 192.168.1.x. Try entering host IP manually.");
+      alert("No EDITH host detected on 192.168.1.x.\\nPlease verify PC is on same Wi-Fi and EDITH is running.");
+    }
+
+    if (dom.btnQuickScan) {
+      dom.btnQuickScan.textContent = "🔍 Scan";
+      dom.btnQuickScan.style.color = "#00e676";
+    }
+    return foundUrl;
   }
 
   function openSettings() {
@@ -1520,9 +1685,11 @@
     initOscilloscopeCanvas();
     initEvents();
     updateTtsIcon();
+    if (dom.quickHostInput) dom.quickHostInput.value = state.localUrl;
 
     await fetchServerConfig();
     await resolveActiveEndpoint();
+    if (dom.quickHostInput) dom.quickHostInput.value = state.localUrl;
     await syncSystemMode();
 
     // Heartbeat connection maintenance and bi-directional message polling

@@ -144,7 +144,22 @@ def prepare_project_files() -> None:
     )
     (res_dir / "values" / "styles.xml").write_text(styles_xml, encoding="utf-8")
 
-    # 3. AndroidManifest.xml
+    # 3. Network Security Config (Permit cleartext LAN HTTP on Android 9-14)
+    (res_dir / "xml").mkdir(parents=True, exist_ok=True)
+    net_sec_xml = (
+        '<?xml version="1.0" encoding="utf-8"?>\n'
+        '<network-security-config>\n'
+        '    <base-config cleartextTrafficPermitted="true">\n'
+        '        <trust-anchors>\n'
+        '            <certificates src="system" />\n'
+        '            <certificates src="user" />\n'
+        '        </trust-anchors>\n'
+        '    </base-config>\n'
+        '</network-security-config>\n'
+    )
+    (res_dir / "xml" / "network_security_config.xml").write_text(net_sec_xml, encoding="utf-8")
+
+    # 4. AndroidManifest.xml
     manifest_xml = (
         '<?xml version="1.0" encoding="utf-8"?>\n'
         '<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n'
@@ -168,6 +183,7 @@ def prepare_project_files() -> None:
         '        android:roundIcon="@mipmap/ic_launcher"\n'
         '        android:hardwareAccelerated="true"\n'
         '        android:usesCleartextTraffic="true"\n'
+        '        android:networkSecurityConfig="@xml/network_security_config"\n'
         '        android:theme="@style/AppTheme">\n'
         '\n'
         '        <activity\n'
@@ -206,6 +222,8 @@ def prepare_project_files() -> None:
         'import android.webkit.WebViewClient;\n'
         'import android.webkit.SslErrorHandler;\n'
         'import android.net.http.SslError;\n'
+        'import android.util.Log;\n'
+        'import android.webkit.ConsoleMessage;\n'
         'import android.Manifest;\n'
         'import android.content.pm.PackageManager;\n\n'
         'public class MainActivity extends Activity {\n'
@@ -239,11 +257,20 @@ def prepare_project_files() -> None:
         '        }\n\n'
         '        webView.setWebViewClient(new WebViewClient() {\n'
         '            @Override\n'
+        '            public boolean shouldOverrideUrlLoading(WebView view, String url) {\n'
+        '                return false;\n'
+        '            }\n'
+        '            @Override\n'
         '            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {\n'
         '                handler.proceed();\n'
         '            }\n'
         '        });\n'
         '        webView.setWebChromeClient(new WebChromeClient() {\n'
+        '            @Override\n'
+        '            public boolean onConsoleMessage(ConsoleMessage cm) {\n'
+        '                Log.d("EDITH_APP", cm.message() + " -- Line " + cm.lineNumber());\n'
+        '                return true;\n'
+        '            }\n'
         '            @Override\n'
         '            public void onPermissionRequest(final PermissionRequest request) {\n'
         '                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {\n'

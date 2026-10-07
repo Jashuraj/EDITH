@@ -851,6 +851,116 @@ html, body {
   image-rendering: -webkit-optimize-contrast;
 }
 
+.vnc-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  border: 1px solid rgba(0, 229, 255, 0.2);
+  box-shadow: 0 0 25px rgba(0, 229, 255, 0.1);
+  image-rendering: -webkit-optimize-contrast;
+  display: block;
+}
+
+.quick-host-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: rgba(10, 16, 28, 0.9);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.2);
+  z-index: 10;
+}
+
+.quick-host-input-wrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(4, 8, 16, 0.9);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 6px;
+  padding: 4px 8px;
+}
+
+.host-icon {
+  font-size: 0.85rem;
+  color: var(--cyan-glow);
+}
+
+.quick-host-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #fff;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 0.78rem;
+}
+
+.quick-host-btn {
+  padding: 5px 10px;
+  font-size: 0.72rem;
+  font-family: 'Orbitron', sans-serif;
+  font-weight: 700;
+  border-radius: 6px;
+  cursor: pointer;
+  background: rgba(0, 229, 255, 0.15);
+  border: 1px solid var(--cyan-glow);
+  color: var(--cyan-glow);
+  transition: all 0.2s ease;
+}
+
+.quick-host-btn:active {
+  transform: scale(0.95);
+  background: var(--cyan-glow);
+  color: #000;
+}
+
+.quick-host-btn.btn-scan {
+  background: rgba(0, 230, 118, 0.15);
+  border-color: #00e676;
+  color: #00e676;
+}
+
+.chip-btn.green-chip {
+  border-color: #00e676;
+  color: #00e676;
+  background: rgba(0, 230, 118, 0.1);
+}
+
+.gamepad-center-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.game-look-trackpad {
+  width: 220px;
+  height: 80px;
+  background: rgba(0, 229, 255, 0.05);
+  border: 1px dashed rgba(0, 229, 255, 0.35);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: none;
+  user-select: none;
+}
+
+.trackpad-text {
+  font-size: 0.62rem;
+  font-family: 'Share Tech Mono', monospace;
+  color: rgba(0, 229, 255, 0.6);
+  pointer-events: none;
+  letter-spacing: 0.5px;
+}
+
 .remote-virtual-cursor {
   position: absolute;
   width: 14px;

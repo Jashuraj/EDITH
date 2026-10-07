@@ -41,7 +41,7 @@ class TunnelManager:
         self._active_provider: Optional[str] = None
         self._process: Optional[subprocess.Popen] = None
         self._custom_url: Optional[str] = None
-        self._preferred_provider: str = "localtunnel"
+        self._preferred_provider: str = "pinggy" if shutil.which("ssh") else "localtunnel"
         self._subdomain: Optional[str] = "edith-jashu"
         self._active_port: int = 8794
         self._watchdog_thread: Optional[threading.Thread] = None
@@ -57,7 +57,7 @@ class TunnelManager:
                 data = json.loads(TUNNEL_CONFIG_FILE.read_text(encoding="utf-8"))
                 self._custom_url = data.get("custom_url")
                 if data.get("provider"):
-                    self._preferred_provider = data.get("provider", "localtunnel")
+                    self._preferred_provider = data.get("provider") or ("pinggy" if shutil.which("ssh") else "localtunnel")
                 if data.get("subdomain"):
                     self._subdomain = data.get("subdomain")
                 if self._custom_url:

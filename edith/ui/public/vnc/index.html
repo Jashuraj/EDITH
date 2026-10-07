@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>EDITH VNC // Open Remote Desktop & Gaming Portal</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #03050a;
+      --cyan: #00e5ff;
+      --green: #00e676;
+      --red: #ff1744;
+      --border: rgba(0, 229, 255, 0.25);
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: #fff;
+      font-family: 'Share Tech Mono', monospace;
+    }
+    .vnc-app {
+      display: flex;
+      flex-direction: column;
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+    /* Tactical VNC Header */
+    .vnc-header {
+      height: 44px;
+      background: rgba(8, 14, 26, 0.95);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      z-index: 100;
+    }
+    .vnc-brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: var(--cyan);
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 8px var(--green);
+    }
+    .vnc-metrics {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 0.72rem;
+      color: rgba(255, 255, 255, 0.7);
+    }
+    .vnc-tools {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .vnc-btn {
+      background: rgba(0, 229, 255, 0.1);
+      border: 1px solid var(--border);
+      color: var(--cyan);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.68rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .vnc-btn:active, .vnc-btn.active {
+      background: var(--cyan);
+      color: #000;
+    }
+    /* VNC Canvas Viewport */
+    .vnc-viewport {
+      flex: 1;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      overflow: hidden;
+      touch-action: none;
+    }
+    #vnc-canvas {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+      image-rendering: -webkit-optimize-contrast;
+      cursor: crosshair;
+    }
+    /* Virtual Cursor & Touch Ripple */
+    .vnc-cursor {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 10px var(--cyan);
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      z-index: 50;
+      display: none;
+    }
+    .vnc-ripple {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--green);
+      border-radius: 50%;
+      pointer-events: none;
+      transform: translate(-50%, -50%);
+      animation: rippleAnim 0.3s forwards ease-out;
+      z-index: 51;
+    }
+    @keyframes rippleAnim {
+      0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+    }
+    /* Hotkeys Bar */
+    .vnc-hotkeys-bar {
+      height: 38px;
+      background: rgba(8, 14, 26, 0.95);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      overflow-x: auto;
+      z-index: 100;
+    }
+    .hk-btn {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #ddd;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .hk-btn:active {
+      background: var(--cyan);
+      color: #000;
+    }
+    /* Gamepad Overlay */
+    .vnc-gamepad-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 16px;
+      z-index: 80;
+    }
+    .stick-base {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      background: rgba(0, 229, 255, 0.06);
+      border: 2px solid rgba(0, 229, 255, 0.3);
+      position: relative;
+      pointer-events: auto;
+      touch-action: none;
+    }
+    .stick-nub {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: var(--cyan);
+      box-shadow: 0 0 15px var(--cyan);
+      position: absolute;
+      top: 45px;
+      left: 45px;
+      pointer-events: none;
+    }
+    .gamepad-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      align-items: flex-end;
+      pointer-events: auto;
+    }
+    .action-diamond {
+      display: grid;
+      grid-template-columns: repeat(3, 46px);
+      grid-template-rows: repeat(3, 46px);
+      gap: 4px;
+    }
+    .action-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      background: rgba(0, 229, 255, 0.15);
+      border: 2px solid var(--cyan);
+      color: #fff;
+      font-family: 'Orbitron', sans-serif;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      touch-action: none;
+    }
+    .action-btn:active {
+      background: var(--cyan);
+      color: #000;
+    }
+    .btn-y { grid-column: 2; grid-row: 1; }
+    .btn-x { grid-column: 1; grid-row: 2; }
+    .btn-b { grid-column: 3; grid-row: 2; }
+    .btn-a { grid-column: 2; grid-row: 3; }
+    /* Camera Trackpad */
+    .camera-trackpad {
+      width: 180px;
+      height: 80px;
+      background: rgba(0, 229, 255, 0.05);
+      border: 1px dashed rgba(0, 229, 255, 0.3);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.65rem;
+      color: rgba(0, 229, 255, 0.7);
+      pointer-events: auto;
+      touch-action: none;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="vnc-app">
+    <!-- Header -->
+    <header class="vnc-header">
+      <div class="vnc-brand">
+        <span class="status-dot" id="status-dot"></span>
+        <span>EDITH VNC PRO</span>
+      </div>
+      <div class="vnc-metrics">
+        <span id="fps-metric">-- FPS</span>
+        <span id="res-metric">720p HD</span>
+      </div>
+      <div class="vnc-tools">
+        <button class="vnc-btn" id="btn-res" title="Toggle Resolution">📺 720p</button>
+        <button class="vnc-btn" id="btn-gamepad" title="Toggle Gamepad">🎮 Game</button>
+        <button class="vnc-btn" id="btn-fullscreen" title="Fullscreen">⛶ Full</button>
+      </div>
+    </header>
+
+    <!-- Canvas Viewport -->
+    <main class="vnc-viewport" id="vnc-viewport">
+      <canvas id="vnc-canvas"></canvas>
+      <div class="vnc-cursor" id="vnc-cursor"></div>
+      <div id="vnc-ripple-container"></div>
+
+      <!-- Virtual Gamepad Overlay -->
+      <div class="vnc-gamepad-overlay" id="gamepad-overlay" style="display: none;">
+        <!-- Left Stick -->
+        <div class="stick-base" id="stick-base">
+          <div class="stick-nub" id="stick-nub"></div>
+        </div>
+
+        <!-- Right Controls -->
+        <div class="gamepad-actions">
+          <div class="camera-trackpad" id="camera-trackpad">🎯 3D CAMERA LOOK</div>
+          <div class="action-diamond">
+            <button class="action-btn btn-y" data-btn="Y">Y</button>
+            <button class="action-btn btn-x" data-btn="X">X</button>
+            <button class="action-btn btn-b" data-btn="B">B</button>
+            <button class="action-btn btn-a" data-btn="A">A</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Hotkeys Bar -->
+    <footer class="vnc-hotkeys-bar">
+      <button class="hk-btn" data-action="click">Left Click</button>
+      <button class="hk-btn" data-action="right_click">Right Click</button>
+      <button class="hk-btn" data-action="double_click">Double Click</button>
+      <button class="hk-btn" data-action="scroll_up">Scroll ▲</button>
+      <button class="hk-btn" data-action="scroll_down">Scroll ▼</button>
+      <button class="hk-btn" data-action="switch_window">Alt+Tab</button>
+      <button class="hk-btn" data-key="esc">Esc</button>
+      <button class="hk-btn" data-key="enter">Enter</button>
+      <button class="hk-btn" data-key="win">Win</button>
+    </footer>
+  </div>
+
+  <script>
+    // State
+    const origin = window.location.origin.startsWith("http") ? window.location.origin : "";
+    let resolution = "720p";
+    let isFetching = false;
+    let frameCount = 0;
+    let lastFpsTime = performance.now();
+    let gamepadActive = false;
+
+    // Elements
+    const canvas = document.getElementById("vnc-canvas");
+    const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
+    const viewport = document.getElementById("vnc-viewport");
+    const fpsMetric = document.getElementById("fps-metric");
+    const resMetric = document.getElementById("res-metric");
+    const btnRes = document.getElementById("btn-res");
+    const btnGamepad = document.getElementById("btn-gamepad");
+    const btnFullscreen = document.getElementById("btn-fullscreen");
+    const gamepadOverlay = document.getElementById("gamepad-overlay");
+
+    // Send Input Helper
+    async function sendInput(action, params = {}) {
+      try {
+        await fetch(`${origin}/api/remote/input`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Bypass-Tunnel-Reminder": "true" },
+          body: JSON.stringify({ action, params, device_id: "edith_vnc_web" }),
+        });
+      } catch (err) {
+        console.warn("Input notice:", err);
+      }
+    }
+
+    // High-Performance Frame Loop
+    async function streamLoop() {
+      if (isFetching) return;
+      isFetching = true;
+
+      const scale = resolution === "1080p" ? 1920 : 1280;
+      const quality = resolution === "1080p" ? 80 : 75;
+      const url = `${origin}/api/screen/capture?scale=${scale}&quality=${quality}&t=${Date.now()}`;
+
+      try {
+        const resp = await fetch(url, { headers: { "Bypass-Tunnel-Reminder": "true" }, cache: "no-store" });
+        if (!resp.ok) throw new Error("HTTP " + resp.status);
+        const blob = await resp.blob();
+
+        if (window.createImageBitmap) {
+          const bitmap = await createImageBitmap(blob);
+          if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
+            canvas.width = bitmap.width;
+            canvas.height = bitmap.height;
+          }
+          ctx.drawImage(bitmap, 0, 0);
+          bitmap.close();
+        }
+
+        frameCount++;
+        const now = performance.now();
+        if (now - lastFpsTime >= 1000) {
+          const fps = Math.round((frameCount * 1000) / (now - lastFpsTime));
+          frameCount = 0;
+          lastFpsTime = now;
+          fpsMetric.textContent = `${fps} FPS`;
+          fpsMetric.style.color = fps >= 12 ? "var(--green)" : "var(--cyan)";
+        }
+
+        isFetching = false;
+        requestAnimationFrame(streamLoop);
+      } catch (err) {
+        isFetching = false;
+        fpsMetric.textContent = "SYNC...";
+        setTimeout(streamLoop, 400);
+      }
+    }
+
+    // Touch Viewport Normalization
+    function getNormalizedCoords(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect || rect.width <= 10) return { x: 0.5, y: 0.5 };
+      const x = Math.max(0.0, Math.min(1.0, (clientX - rect.left) / rect.width));
+      const y = Math.max(0.0, Math.min(1.0, (clientY - rect.top) / rect.height));
+      return { x, y };
+    }
+
+    // Touch & Mouse Events on Canvas
+    let touchStartTime = 0;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let longPressTimer = null;
+
+    viewport.addEventListener("touchstart", (e) => {
+      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar")) return;
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        touchStartTime = Date.now();
+        touchStartX = t.clientX;
+        touchStartY = t.clientY;
+        const coords = getNormalizedCoords(t.clientX, t.clientY);
+
+        longPressTimer = setTimeout(() => {
+          sendInput("right_click", coords);
+          navigator.vibrate && navigator.vibrate(30);
+        }, 400);
+      }
+    }, { passive: true });
+
+    viewport.addEventListener("touchmove", (e) => {
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        const dist = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY);
+        if (dist > 10) clearTimeout(longPressTimer);
+        const coords = getNormalizedCoords(t.clientX, t.clientY);
+        sendInput("move", coords);
+      }
+    }, { passive: true });
+
+    viewport.addEventListener("touchend", (e) => {
+      clearTimeout(longPressTimer);
+      const dt = Date.now() - touchStartTime;
+      if (dt < 300) {
+        const coords = getNormalizedCoords(touchStartX, touchStartY);
+        sendInput("click", coords);
+      }
+    }, { passive: true });
+
+    // Resolution Toggle
+    btnRes.addEventListener("click", () => {
+      resolution = resolution === "720p" ? "1080p" : "720p";
+      btnRes.textContent = `📺 ${resolution}`;
+      resMetric.textContent = `${resolution.toUpperCase()} HD`;
+    });
+
+    // Gamepad Toggle
+    btnGamepad.addEventListener("click", () => {
+      gamepadActive = !gamepadActive;
+      gamepadOverlay.style.display = gamepadActive ? "flex" : "none";
+      btnGamepad.classList.toggle("active", gamepadActive);
+    });
+
+    // Fullscreen Toggle
+    btnFullscreen.addEventListener("click", () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    });
+
+    // Hotkey and Action Buttons
+    document.querySelectorAll(".hk-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const action = btn.dataset.action;
+        const key = btn.dataset.key;
+        if (action) sendInput(action);
+        if (key) sendInput("key_press", { key });
+      });
+    });
+
+    // Gamepad Action Diamond
+    document.querySelectorAll(".action-btn").forEach(btn => {
+      const buttonName = btn.dataset.btn;
+      btn.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        sendInput("game_button_down", { button: buttonName });
+      });
+      btn.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        sendInput("game_button_up", { button: buttonName });
+      });
+    });
+
+    // Virtual Joystick Logic
+    const stickBase = document.getElementById("stick-base");
+    const stickNub = document.getElementById("stick-nub");
+    let stickActive = false;
+
+    stickBase.addEventListener("touchstart", (e) => {
+      stickActive = true;
+    }, { passive: true });
+
+    stickBase.addEventListener("touchmove", (e) => {
+      if (!stickActive || e.touches.length === 0) return;
+      const t = e.touches[0];
+      const rect = stickBase.getBoundingClientRect();
+      const cx = rect.left + rect.width / 2;
+      const cy = rect.top + rect.height / 2;
+      const maxR = rect.width / 2 - 20;
+
+      let dx = t.clientX - cx;
+      let dy = t.clientY - cy;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > maxR) {
+        dx = (dx / dist) * maxR;
+        dy = (dy / dist) * maxR;
+      }
+
+      stickNub.style.transform = `translate(${dx}px, ${dy}px)`;
+      const normX = dx / maxR;
+      const normY = dy / maxR;
+      sendInput("joystick_move", { x: normX, y: normY });
+    }, { passive: true });
+
+    const endStick = () => {
+      stickActive = false;
+      stickNub.style.transform = "translate(0, 0)";
+      sendInput("joystick_release");
+    };
+    stickBase.addEventListener("touchend", endStick);
+    stickBase.addEventListener("touchcancel", endStick);
+
+    // 3D Camera Look Trackpad
+    const camPad = document.getElementById("camera-trackpad");
+    let camTracking = false;
+    let lastCamX = 0;
+    let lastCamY = 0;
+
+    camPad.addEventListener("touchstart", (e) => {
+      if (e.touches.length > 0) {
+        camTracking = true;
+        lastCamX = e.touches[0].clientX;
+        lastCamY = e.touches[0].clientY;
+      }
+    }, { passive: true });
+
+    camPad.addEventListener("touchmove", (e) => {
+      if (!camTracking || e.touches.length === 0) return;
+      const t = e.touches[0];
+      const dx = Math.round((t.clientX - lastCamX) * 1.6);
+      const dy = Math.round((t.clientY - lastCamY) * 1.6);
+      lastCamX = t.clientX;
+      lastCamY = t.clientY;
+      if (dx !== 0 || dy !== 0) {
+        sendInput("camera_look", { dx, dy });
+      }
+    }, { passive: true });
+
+    camPad.addEventListener("touchend", () => { camTracking = false; });
+    camPad.addEventListener("touchcancel", () => { camTracking = false; });
+
+    // Start stream on load
+    streamLoop();
+  </script>
+</body>
+</html>
