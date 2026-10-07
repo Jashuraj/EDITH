@@ -1228,3 +1228,156 @@ body.ar-active::after {
     padding: 16px;
   }
 }
+
+/* ============================================================
+   IN-HUD FLOATING / DOCKED MEDIA PLAYER
+   ============================================================ */
+.hud-media-dock {
+  position: fixed;
+  bottom: 84px;
+  right: 28px;
+  width: 360px;
+  height: 240px;
+  background: rgba(6, 12, 26, 0.92);
+  border: 1px solid var(--cyan);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.7), 0 0 20px rgba(0, 229, 255, 0.25);
+  display: flex;
+  flex-direction: column;
+  z-index: 999;
+  overflow: hidden;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.hud-media-dock.minimized {
+  height: 38px !important;
+  width: 260px !important;
+}
+
+.hud-media-dock.minimized .hud-media-content {
+  display: none !important;
+}
+
+.hud-media-header {
+  height: 36px;
+  background: rgba(0, 30, 60, 0.85);
+  border-bottom: 1px solid rgba(0, 229, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  user-select: none;
+}
+
+.hud-media-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cyan);
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hud-media-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.media-btn {
+  background: transparent;
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.media-btn:hover {
+  background: rgba(0, 229, 255, 0.2);
+  color: var(--cyan);
+  border-color: var(--cyan);
+}
+
+.media-btn.media-close:hover {
+  background: rgba(255, 23, 68, 0.3);
+  color: #ff1744;
+  border-color: #ff1744;
+}
+
+.hud-media-content {
+  flex: 1;
+  width: 100%;
+  height: calc(100% - 36px);
+  background: #000;
+}
+
+.hud-media-content iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* ============================================================
+   MANUAL MODE TOGGLE BUTTON & OS MOUSE CONTROL
+   ============================================================ */
+.btn-mode-toggle {
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid var(--cyan);
+  background: rgba(0, 229, 255, 0.08);
+  color: var(--cyan);
+  transition: all 0.25s ease;
+}
+
+.btn-mode-toggle.mode-online {
+  border-color: #00e676;
+  color: #00e676;
+  background: rgba(0, 230, 118, 0.12);
+  box-shadow: 0 0 10px rgba(0, 230, 118, 0.3);
+}
+
+.btn-mode-toggle.mode-offline {
+  border-color: #ffb700;
+  color: #ffb700;
+  background: rgba(255, 183, 0, 0.12);
+  box-shadow: 0 0 10px rgba(255, 183, 0, 0.3);
+}
+
+.btn-mode-toggle.mode-auto {
+  border-color: var(--cyan);
+  color: var(--cyan);
+  background: rgba(0, 229, 255, 0.1);
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.25);
+}
+
+.btn-mouse {
+  border-color: rgba(0, 229, 255, 0.4);
+}
+
+.btn-mouse.active {
+  border-color: var(--cyan-glow) !important;
+  color: var(--cyan-glow) !important;
+  background: rgba(0, 229, 255, 0.2) !important;
+  box-shadow: 0 0 14px var(--cyan-glow) !important;
+}
+
+#hand-cursor.right-clicking {
+  border-color: #ff0055 !important;
+  background: rgba(255, 0, 85, 0.3) !important;
+  transform: translate(-50%, -50%) scale(1.4) !important;
+}

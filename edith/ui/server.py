@@ -2,7 +2,8 @@
 
 Implements Sections 55, 56, 57 of the Engineering Constitution.
 Integrates live local LLM inference, Level 0 Reflex, Windows automation tools,
-audio synthesis endpoints, and dynamic hardware telemetry.
+audio synthesis endpoints, dynamic hardware telemetry, In-HUD media playback,
+and native Win32 gestural mouse control.
 """
 
 from __future__ import annotations
@@ -17,9 +18,11 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from edith.core.config import CONFIG
+from edith.core.logger import get_recent_logs
 from edith.core.security import SECURITY, EmergencyStopActiveError
 from edith.core.state_machine import STATE, SystemState
 from edith.providers.router import ROUTER, TaskCategory
+from edith.tools.mouse_controller import MOUSE
 from edith.tools.reflex import REFLEX
 from edith.tools.registry import REGISTRY
 from edith.tools.windows import WIN_TOOLS
@@ -49,7 +52,7 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
         self.send_response(200)
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, Bypass-Tunnel-Reminder")
         self.end_headers()
 
     def do_GET(self) -> None:
@@ -73,10 +76,30 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                 "system_name": CONFIG.system_name,
                 "creator": CONFIG.creator,
                 "primary_model": CONFIG.primary_local_model,
+                "manual_mode": CONFIG.manual_mode,
                 "is_online": dyn.get("online", False),
-                "runtime_status": "ONLINE (HYBRID AI)" if dyn.get("online", False) else "OFFLINE (LOCAL AI)",
+                "runtime_status": dyn.get("status_text", "ONLINE (HYBRID AI)"),
             })
             self._send_json(stats)
+
+        elif parsed.path == "/api/mode":
+            dyn = CONFIG.refresh_dynamic_stats()
+            self._send_json({
+                "manual_mode": CONFIG.manual_mode,
+                "offline_mode": CONFIG.offline_mode,
+                "is_online": dyn.get("online", False),
+                "status_text": dyn.get("status_text", ""),
+            })
+
+        elif parsed.path == "/api/logs":
+            q_lines = 150
+            if "lines=" in parsed.query:
+                try:
+                    q_lines = int(parsed.query.split("lines=")[1].split("&")[0])
+                except Exception:
+                    pass
+            content = get_recent_logs(lines=q_lines)
+            self._send_json({"logs": content, "count": len(content.splitlines())})
 
         elif parsed.path == "/models":
             try:
@@ -127,13 +150,14 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                 for idx, d in enumerate(devs):
                     if d.get("max_input_channels", 0) > 0:
                         name = d.get("name", "")
-                        is_bt = any(t in name.lower() for t in ["headset", "bluetooth", "buds", "pods", "hands-free", "bthhfenum"])
-                        inputs.append({
-                            "index": idx,
-                            "name": name,
-                            "is_bluetooth": is_bt,
-                            "channels": d.get("max_input_channels", 0),
-                        })
+                        is_bt = any(t in name.lower() for t in ["headset", "bluetooth", "buds", "pods", "hands-free"])
+                        if CLAP_DETECTOR._is_device_openable(idx):
+                            inputs.append({
+                                "index": idx,
+                                "name": name,
+                                "is_bluetooth": is_bt,
+                                "channels": d.get("max_input_channels", 0),
+                            })
                 active_dev = CLAP_DETECTOR.selected_device if CLAP_DETECTOR.selected_device is not None else CLAP_DETECTOR.get_preferred_input_device()
                 self._send_json({
                     "devices": inputs,
@@ -175,7 +199,13 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             from edith.phone.tunnel import TUNNEL_MANAGER
             self._send_json(TUNNEL_MANAGER.get_status())
 
-        elif parsed.path in ("/mobile", "/mobile/"):
+        # Clean redirect for /mobile to /mobile/ to preserve relative paths
+        elif parsed.path == "/mobile":
+            self.send_response(302)
+            self.send_header("Location", "/mobile/")
+            self.end_headers()
+            return
+        elif parsed.path == "/mobile/":
             self.path = "/mobile/index.html"
             super().do_GET()
         elif parsed.path == "/" or parsed.path == "/index.html":
@@ -211,13 +241,23 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                     if isinstance(res, dict):
                         res_text = res.get("message") or res.get("result") or str(res)
                         res_url = res.get("url")
+                        res_embed = res.get("embed_url")
+                        res_vid = res.get("video_id")
+                        res_opened = res.get("opened_on_host", False)
                     else:
                         res_text = str(res)
                         res_url = None
+                        res_embed = None
+                        res_vid = None
+                        res_opened = False
+
                     self._send_json({
                         "matched": True,
                         "result": res_text,
                         "url": res_url,
+                        "embed_url": res_embed,
+                        "video_id": res_vid,
+                        "opened_on_host": res_opened,
                         "model": "REFLEX_ENGINE",
                         "server_spoken": False,
                         "state": STATE.current_state.value,
@@ -249,7 +289,7 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                     return
 
             # 2. Local AI Tool-Calling and Reasoning
-            STATE.set_state_sync(SystemState.UNDERSTANDING, reason="Analyzing query via local model")
+            STATE.set_state_sync(SystemState.UNDERSTANDING, reason="Analyzing query via model router")
             try:
                 tool_keywords = [
                     "open", "launch", "run", "start", "close", "kill", "terminate",
@@ -279,13 +319,29 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
 
                 tool_outputs = []
                 action_url = None
+                action_embed_url = None
+                action_video_id = None
+                action_opened = False
+
                 if resp.tool_calls:
                     STATE.set_state_sync(SystemState.EXECUTING, reason="Executing agent tools")
                     for tc in resp.tool_calls:
                         try:
-                            out = REGISTRY.execute_tool(tc.name, tc.arguments)
-                            if isinstance(out, dict) and out.get("url"):
-                                action_url = out["url"]
+                            kwargs = dict(tc.arguments)
+                            # Pass open_browser=False for in-HUD media playback
+                            if tc.name == "search_youtube" and "open_browser" not in kwargs:
+                                kwargs["open_browser"] = False
+
+                            out = REGISTRY.execute_tool(tc.name, kwargs)
+                            if isinstance(out, dict):
+                                if out.get("url"):
+                                    action_url = out["url"]
+                                if out.get("embed_url"):
+                                    action_embed_url = out["embed_url"]
+                                if out.get("video_id"):
+                                    action_video_id = out["video_id"]
+                                if out.get("opened_on_host"):
+                                    action_opened = out["opened_on_host"]
                             out_display = out.get("message") if isinstance(out, dict) and out.get("message") else str(out)
                             tool_outputs.append(f"[{tc.name}]: {out_display}")
                         except Exception as te:
@@ -305,6 +361,9 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                     "matched": False,
                     "result": final_text,
                     "url": action_url,
+                    "embed_url": action_embed_url,
+                    "video_id": action_video_id,
+                    "opened_on_host": action_opened,
                     "model": resp.model,
                     "server_spoken": False,
                     "tools_executed": tool_outputs,
@@ -321,6 +380,23 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                     "server_spoken": False,
                     "state": "READY",
                 })
+
+        elif parsed.path == "/api/mouse":
+            action = data.get("action", "")
+            res = MOUSE.handle_gesture_action(action, data)
+            self._send_json(res)
+
+        elif parsed.path == "/api/mode":
+            mode = data.get("mode", "auto")
+            new_mode = CONFIG.set_manual_mode(mode)
+            dyn = CONFIG.refresh_dynamic_stats()
+            self._send_json({
+                "success": True,
+                "manual_mode": new_mode,
+                "offline_mode": CONFIG.offline_mode,
+                "is_online": dyn.get("online", False),
+                "status_text": dyn.get("status_text", ""),
+            })
 
         elif parsed.path == "/voice/speak":
             text = data.get("text", "")
@@ -415,7 +491,7 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
         self.send_header("Content-Length", str(len(raw)))
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, Bypass-Tunnel-Reminder")
         self.end_headers()
         self.wfile.write(raw)
 

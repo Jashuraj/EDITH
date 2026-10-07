@@ -132,6 +132,33 @@ class TestMobileAndTunnelSubsystems(unittest.TestCase):
             self.assertTrue(data["success"])
             self.assertEqual(data["state"], "READY")
 
+    def test_phone_root_serves_mobile_pwa(self):
+        req = urllib.request.Request("http://127.0.0.1:8895/")
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            content = res.read().decode("utf-8")
+            self.assertIn("E.D.I.T.H. Mobile", content)
+
+    def test_phone_gateway_mode_endpoint(self):
+        req = urllib.request.Request("http://127.0.0.1:8895/api/mode")
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            data = json.loads(res.read().decode("utf-8"))
+            self.assertIn("manual_mode", data)
+
+        body = json.dumps({"mode": "online"}).encode("utf-8")
+        req = urllib.request.Request("http://127.0.0.1:8895/api/mode", data=body, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            data = json.loads(res.read().decode("utf-8"))
+            self.assertEqual(data["manual_mode"], "online")
+
+        # Revert to auto
+        body = json.dumps({"mode": "auto"}).encode("utf-8")
+        req = urllib.request.Request("http://127.0.0.1:8895/api/mode", data=body, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+
 
 if __name__ == "__main__":
     unittest.main()

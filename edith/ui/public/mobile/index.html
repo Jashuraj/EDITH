@@ -34,6 +34,8 @@
         <span class="brand-title">E.D.I.T.H.<span class="brand-dot"></span></span>
       </div>
 
+      <button class="btn-mode-toggle mode-auto" id="btn-mode-toggle" title="Toggle System Mode: Auto / Online / Offline">AUTO</button>
+
       <div class="header-status-badge" id="btn-status-badge" title="Configure Connection">
         <span class="status-dot" id="status-dot"></span>
         <span id="status-text">SEARCHING...</span>
@@ -130,6 +132,21 @@
         </svg>
       </button>
     </footer>
+
+    <!-- Floating In-HUD Media Player Dock -->
+    <div id="hud-media-dock" class="hud-media-dock" style="display: none;">
+      <div class="hud-media-header">
+        <div class="hud-media-badge"><span class="status-dot" style="background:#ff1744; box-shadow:0 0 6px #ff1744;"></span>&nbsp;<span id="hud-media-title">MEDIA</span></div>
+        <div class="hud-media-actions">
+          <button class="media-btn" id="btn-media-popout" title="Open in browser window">↗</button>
+          <button class="media-btn" id="btn-media-min" title="Minimize player">_</button>
+          <button class="media-btn media-close" id="btn-media-close" title="Close player">&times;</button>
+        </div>
+      </div>
+      <div class="hud-media-content" id="hud-media-body">
+        <iframe id="hud-media-iframe" src="" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </div>
 
   </div>
 

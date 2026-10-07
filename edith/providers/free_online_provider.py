@@ -51,47 +51,51 @@ class FreeOnlineProvider(LLMProvider):
     def _query_pollinations(
         self,
         messages: List[Dict[str, str]],
-        timeout: float = 14.0,
+        timeout: float = 12.0,
     ) -> str:
-        """Query free anonymous Pollinations endpoint with openai-fast model."""
+        """Query free anonymous Pollinations endpoint with multi-tier fallback."""
         headers = {
             "Content-Type": "application/json",
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36",
         }
-        payload = {"messages": messages, "model": "openai-fast"}
+        last_user_msg = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
 
-        try:
-            data = json.dumps(payload).encode("utf-8")
-            req = urllib.request.Request(
-                "https://text.pollinations.ai/",
-                data=data,
-                headers=headers,
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=timeout) as res:
-                txt = res.read().decode("utf-8").strip()
-                if txt and not txt.startswith("Error:"):
-                    return txt
-        except Exception as e:
-            logger.debug("Pollinations primary query error (%s), trying simplified prompt", e)
+        # Tier 1: POST with openai-fast
+        for model in ("openai-fast", "openai"):
+            try:
+                payload = {"messages": messages, "model": model}
+                data = json.dumps(payload).encode("utf-8")
+                req = urllib.request.Request(
+                    "https://text.pollinations.ai/",
+                    data=data,
+                    headers=headers,
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=timeout) as res:
+                    txt = res.read().decode("utf-8").strip()
+                    if txt and not txt.startswith("Error:"):
+                        return txt
+            except Exception as e:
+                logger.debug("Pollinations POST %s error: %s", model, e)
 
-        # Retry with concise single-message prompt if augmented prompt timed out
-        try:
-            last_user_msg = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
-            retry_payload = {"messages": [{"role": "user", "content": last_user_msg}], "model": "openai-fast"}
-            retry_data = json.dumps(retry_payload).encode("utf-8")
-            req = urllib.request.Request(
-                "https://text.pollinations.ai/",
-                data=retry_data,
-                headers=headers,
-                method="POST",
-            )
-            with urllib.request.urlopen(req, timeout=10.0) as res:
-                txt = res.read().decode("utf-8").strip()
-                if txt and not txt.startswith("Error:"):
-                    return txt
-        except Exception as ge:
-            raise ProviderUnavailableError(f"Free online AI unreachable: {ge}")
+        # Tier 2: GET with direct user prompt
+        if last_user_msg:
+            try:
+                encoded = urllib.parse.quote(last_user_msg[:600])
+                get_url = f"https://text.pollinations.ai/{encoded}?model=openai"
+                get_req = urllib.request.Request(
+                    get_url,
+                    headers={"User-Agent": headers["User-Agent"]},
+                    method="GET",
+                )
+                with urllib.request.urlopen(get_req, timeout=9.0) as res:
+                    txt = res.read().decode("utf-8").strip()
+                    if txt and not txt.startswith("Error:"):
+                        return txt
+            except Exception as ge:
+                logger.debug("Pollinations GET fallback error: %s", ge)
+
+        raise ProviderUnavailableError("Free online AI unreachable or rate limited.")
 
     def _query_groq(
         self,

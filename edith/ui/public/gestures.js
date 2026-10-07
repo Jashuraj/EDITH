@@ -4,14 +4,21 @@
  * 
  * Features:
  * - MediaPipe Hand Landmarker with GPU + CPU fallback
- * - Pinch hysteresis (PINCH_ON=0.32, PINCH_OFF=0.45) for rock-solid grab stability
- * - Exponential Moving Average (EMA) smoothing for zero-jitter rotation
- * - Dual-hand pinch-to-zoom with distance tracking
- * - High-visibility cybernetic skeleton rendering on HUD video overlay
- * - Full-screen holographic laser cursor following index finger
+ * - Severe lag fix: zero canvas fillrate overhead when camera background is off
+ * - Full-Screen OS Mouse Control via native Win32 User32 C API:
+ *   • Smooth index finger cursor positioning across entire desktop with zero lag batching
+ *   • Index + Thumb pinch for Left Click / Drag-and-Drop / Double Click
+ *   • Middle finger + Thumb pinch for Right Click
+ *   • Two-finger vertical swipe for Mouse Wheel Scrolling
+ *   • Pinky + Thumb pinch for System Volume Control
+ *   • Five-finger downward swipe for Show Desktop / Window Minimize
+ *   • Horizontal palm wave for Alt+Tab / Switch Window
+ *   • Closed fist hold for Media Play / Pause toggle
+ * - High-visibility cybernetic skeleton rendering on HUD overlay
+ * - Seamless dual-mode: 3D Orb manipulation OR Full-Screen Desktop Mouse Control
  */
 
-// Global state
+// Global tracking state
 let videoElement = null;
 let overlayCanvas = null;
 let overlayCtx = null;
@@ -23,29 +30,61 @@ let cursorElement = null;
 let statusTag = null;
 let gesturesActive = false;
 let arBackgroundActive = false;
+let osMouseActive = false;
 let handLandmarker = null;
 let animationFrameId = null;
 let lastVideoTime = -1;
+let lastDetectTime = 0;
 
-// Ultron gesture tuning constants
+// Landmark indices
 const WRIST = 0;
 const THUMB_TIP = 4;
+const INDEX_MCP = 5;
 const INDEX_TIP = 8;
 const MIDDLE_MCP = 9;
+const MIDDLE_TIP = 12;
+const RING_MCP = 13;
+const RING_TIP = 16;
+const PINKY_MCP = 17;
+const PINKY_TIP = 20;
 
-const PINCH_ON = 0.38;   // Enter pinch below this relative distance
-const PINCH_OFF = 0.52;  // Exit pinch above this relative distance
+// Gesture tuning thresholds
+const PINCH_ON = 0.38;
+const PINCH_OFF = 0.52;
 const ROTATE_SPEED = 7.0;
 const ZOOM_SPEED = 35.0;
-const SMOOTHING = 0.88;  // Super-fluid 60FPS instant response without lag
+const SMOOTHING = 0.85;
 
 // Persistent tracking states per hand (indexed 0 and 1)
 const handStates = [
-  { isPinching: false, grabX: 0.5, grabY: 0.5, prevGrabX: null, prevGrabY: null },
-  { isPinching: false, grabX: 0.5, grabY: 0.5, prevGrabX: null, prevGrabY: null }
+  { isPinching: false, isMiddlePinching: false, isPinkyPinching: false, grabX: 0.5, grabY: 0.5, prevGrabX: null, prevGrabY: null },
+  { isPinching: false, isMiddlePinching: false, isPinkyPinching: false, grabX: 0.5, grabY: 0.5, prevGrabX: null, prevGrabY: null }
 ];
 
 let prevTwoHandDist = null;
+
+// OS Mouse state tracking
+let smoothMouseX = 0.5;
+let smoothMouseY = 0.5;
+let lastMouseSendTime = 0;
+let lastSentNormX = -1;
+let lastSentNormY = -1;
+let pinchStartTime = 0;
+let isDraggingMouse = false;
+let lastClickTime = 0;
+let lastScrollTime = 0;
+let lastRightClickTime = 0;
+let lastVolumeTime = 0;
+let lastDesktopTime = 0;
+let lastSwitchTime = 0;
+let lastMediaTime = 0;
+let prevScrollY = null;
+let prevSwipeX = null;
+let prevSwipeY = null;
+
+// Non-blocking in-flight HTTP request manager
+let isSendingMouse = false;
+let pendingMouseMove = null;
 
 // MediaPipe 21 Landmark skeleton connections
 const HAND_CONNECTIONS = [
@@ -76,7 +115,6 @@ async function initLandmarker() {
   };
 
   try {
-    // Attempt GPU acceleration
     handLandmarker = await HandLandmarker.createFromOptions(vision, {
       baseOptions: { ...baseConfig, delegate: "GPU" },
       runningMode: "VIDEO",
@@ -103,6 +141,74 @@ async function initLandmarker() {
 }
 
 /**
+ * Zero-latency non-blocking dispatcher with in-flight queue coalescing.
+ * Eliminates HTTP socket pileup and guarantees sub-frame responsiveness.
+ */
+async function sendMouseAction(action, params = {}) {
+  if (action === "move") {
+    pendingMouseMove = params;
+    if (isSendingMouse) return;
+    flushPendingMove();
+    return;
+  }
+
+  // Immediate discrete actions (click, scroll, key shortcuts)
+  try {
+    const payload = JSON.stringify({ action, ...params });
+    await fetch("/api/mouse", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: payload
+    });
+  } catch (_) {}
+}
+
+async function flushPendingMove() {
+  if (isSendingMouse || !pendingMouseMove) return;
+  const p = pendingMouseMove;
+  pendingMouseMove = null;
+  isSendingMouse = true;
+  try {
+    await fetch("/api/mouse", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "move", ...p })
+    });
+  } catch (_) {}
+  isSendingMouse = false;
+  if (pendingMouseMove) {
+    flushPendingMove();
+  }
+}
+
+/**
+ * Toggle Full-Screen OS Mouse Control.
+ */
+function toggleOsMouse() {
+  osMouseActive = !osMouseActive;
+  const btn = document.getElementById("btn-os-mouse");
+  if (btn) {
+    btn.innerText = osMouseActive ? "OS MOUSE: ON" : "OS MOUSE: OFF";
+    btn.classList.toggle("active", osMouseActive);
+    btn.style.color = osMouseActive ? "var(--cyan-glow)" : "";
+  }
+  if (statusTag) {
+    statusTag.innerText = osMouseActive
+      ? "OS MOUSE ONLINE: PINCH TO CLICK, 2-FINGERS SCROLL"
+      : "GESTURE MODE: CONTROLLING HOLOGRAPHIC ORB";
+  }
+  if (window.logEntry) {
+    window.logEntry(
+      osMouseActive
+        ? "Full-Screen OS Mouse Control engaged. Point index finger to navigate desktop."
+        : "OS Mouse Control disengaged. Returned to 3D Orb rotation.",
+      "system"
+    );
+  }
+}
+window.toggleOsMouse = toggleOsMouse;
+
+/**
  * Toggle webcam and gesture tracking pipeline.
  */
 async function toggleGestures() {
@@ -120,6 +226,7 @@ async function toggleGestures() {
     // Shutdown tracking
     gesturesActive = false;
     arBackgroundActive = false;
+    osMouseActive = false;
     if (animationFrameId) {
       cancelAnimationFrame(animationFrameId);
       animationFrameId = null;
@@ -127,6 +234,12 @@ async function toggleGestures() {
     btn.innerText = 'GESTURE: OFF';
     btn.style.color = '';
     btn.classList.remove('active');
+    const mouseBtn = document.getElementById('btn-os-mouse');
+    if (mouseBtn) {
+      mouseBtn.innerText = 'OS MOUSE: OFF';
+      mouseBtn.classList.remove('active');
+      mouseBtn.style.color = '';
+    }
     document.body.classList.remove('ar-active');
     webcamBox.style.display = 'none';
     if (arContainer) arContainer.style.display = 'none';
@@ -142,7 +255,10 @@ async function toggleGestures() {
       videoElement.srcObject.getTracks().forEach(t => t.stop());
       videoElement.srcObject = null;
     }
-    if (bgVideoElement) bgVideoElement.srcObject = null;
+    if (bgVideoElement) {
+      try { bgVideoElement.pause(); } catch (_) {}
+      bgVideoElement.srcObject = null;
+    }
     return;
   }
 
@@ -157,8 +273,8 @@ async function toggleGestures() {
 
     const stream = await navigator.mediaDevices.getUserMedia({
       video: {
-        width: { ideal: 1280 },
-        height: { ideal: 720 },
+        width: { ideal: 640 },
+        height: { ideal: 480 },
         facingMode: "user"
       },
       audio: false
@@ -167,7 +283,6 @@ async function toggleGestures() {
     videoElement.srcObject = stream;
     await videoElement.play();
 
-    // Setup background camera element in standby (OFF by default as requested by user)
     arBackgroundActive = false;
     if (arContainer) arContainer.style.display = 'none';
     document.body.classList.remove('ar-active');
@@ -179,16 +294,16 @@ async function toggleGestures() {
 
     overlayCanvas.width = videoElement.videoWidth || 640;
     overlayCanvas.height = videoElement.videoHeight || 480;
-    overlayCtx = overlayCanvas.getContext('2d');
+    overlayCtx = overlayCanvas.getContext('2d', { alpha: true });
 
     if (bgOverlayCanvas) {
       bgOverlayCanvas.width = window.innerWidth;
       bgOverlayCanvas.height = window.innerHeight;
-      bgOverlayCtx = bgOverlayCanvas.getContext('2d');
+      bgOverlayCtx = bgOverlayCanvas.getContext('2d', { alpha: true });
     }
 
     window.addEventListener('resize', () => {
-      if (bgOverlayCanvas) {
+      if (bgOverlayCanvas && arBackgroundActive) {
         bgOverlayCanvas.width = window.innerWidth;
         bgOverlayCanvas.height = window.innerHeight;
       }
@@ -199,6 +314,9 @@ async function toggleGestures() {
     btn.style.color = 'var(--amber)';
     btn.classList.add('active');
     statusTag.innerText = 'VISION ONLINE: PINCH TO INTERACT';
+
+    // Auto-enable OS mouse control mode
+    toggleOsMouse();
 
     // Reset tracking states
     handStates[0].prevGrabX = null;
@@ -218,7 +336,8 @@ async function toggleGestures() {
 }
 
 /**
- * Continuous frame rendering loop.
+ * Continuous high-performance frame rendering loop.
+ * Throttles inference to ~30 FPS to eliminate main thread lockup.
  */
 function renderGestureLoop() {
   if (!gesturesActive) return;
@@ -226,21 +345,24 @@ function renderGestureLoop() {
   try {
     const now = performance.now();
     if (videoElement && videoElement.readyState >= 2 && handLandmarker) {
-      if (videoElement.currentTime !== lastVideoTime) {
+      if (videoElement.currentTime !== lastVideoTime && (now - lastDetectTime >= 32)) {
         lastVideoTime = videoElement.currentTime;
+        lastDetectTime = now;
 
         const results = handLandmarker.detectForVideo(videoElement, now);
 
         if (overlayCtx && overlayCanvas) {
           overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
         }
-        if (bgOverlayCtx && bgOverlayCanvas) {
+
+        // Severe lag fix: Only clear and render background canvas if camera background is ON
+        if (arBackgroundActive && bgOverlayCtx && bgOverlayCanvas) {
           bgOverlayCtx.clearRect(0, 0, bgOverlayCanvas.width, bgOverlayCanvas.height);
         }
 
         if (results && results.landmarks && results.landmarks.length > 0) {
           drawCyberneticSkeleton(results.landmarks, overlayCtx, overlayCanvas);
-          if (bgOverlayCtx && bgOverlayCanvas) {
+          if (arBackgroundActive && bgOverlayCtx && bgOverlayCanvas) {
             drawCyberneticSkeleton(results.landmarks, bgOverlayCtx, bgOverlayCanvas);
           }
           processUltronGestures(results.landmarks);
@@ -252,6 +374,9 @@ function renderGestureLoop() {
           handStates[1].prevGrabX = null;
           handStates[1].prevGrabY = null;
           prevTwoHandDist = null;
+          prevScrollY = null;
+          prevSwipeX = null;
+          prevSwipeY = null;
           statusTag.innerText = 'LOOKING FOR HANDS...';
         }
       }
@@ -298,13 +423,12 @@ function drawCyberneticSkeleton(landmarksList, ctx, canvas) {
     ? getVideoMapping(canvas)
     : { scaleX: canvas.width, scaleY: canvas.height, offsetX: 0, offsetY: 0 };
 
-  ctx.shadowBlur = 0; // Disabled for maximum 60FPS rendering throughput
+  ctx.shadowBlur = 0;
 
   for (let hIdx = 0; hIdx < landmarksList.length; hIdx++) {
     const lm = landmarksList[hIdx];
     const isPinching = handStates[hIdx] ? handStates[hIdx].isPinching : false;
 
-    // Draw cybernetic bones
     ctx.lineWidth = isBg ? 2.5 : 2.0;
     ctx.strokeStyle = isPinching ? 'rgba(255, 183, 0, 0.95)' : 'rgba(0, 229, 255, 0.85)';
 
@@ -317,7 +441,6 @@ function drawCyberneticSkeleton(landmarksList, ctx, canvas) {
       ctx.stroke();
     }
 
-    // Draw joints
     for (let i = 0; i < lm.length; i++) {
       const p = lm[i];
       const jx = map.offsetX + p.x * map.scaleX;
@@ -333,7 +456,6 @@ function drawCyberneticSkeleton(landmarksList, ctx, canvas) {
       ctx.fill();
     }
 
-    // Draw glowing pinch ring if pinching
     if (isPinching) {
       const thumb = lm[THUMB_TIP];
       const index = lm[INDEX_TIP];
@@ -350,80 +472,42 @@ function drawCyberneticSkeleton(landmarksList, ctx, canvas) {
 }
 
 /**
- * Ultron Hysteresis & Smoothing Gesture Processor.
+ * Ultron Gesture Processor with Dual-Mode (Orb vs Full-Screen Desktop Mouse).
  */
 function processUltronGestures(landmarksList) {
   const numHands = Math.min(landmarksList.length, 2);
+  const now = performance.now();
 
-  // Update pinch state & smoothed coordinates for each hand
-  for (let i = 0; i < numHands; i++) {
-    const hand = landmarksList[i];
-    const wrist = hand[WRIST];
-    const middleMcp = hand[MIDDLE_MCP];
-    const thumb = hand[THUMB_TIP];
-    const index = hand[INDEX_TIP];
-
-    // Hand scale normalization
-    const handSpan = Math.hypot(wrist.x - middleMcp.x, wrist.y - middleMcp.y) || 0.2;
-    const rawPinchDist = Math.hypot(thumb.x - index.x, thumb.y - index.y) / handSpan;
-
-    // Hysteresis logic
-    const state = handStates[i];
-    if (state.isPinching) {
-      if (rawPinchDist > PINCH_OFF) {
-        state.isPinching = false;
-      }
-    } else {
-      if (rawPinchDist < PINCH_ON) {
-        state.isPinching = true;
-      }
-    }
-
-    // Mirrored coordinates for intuitive interaction
-    const rawMidX = 1.0 - ((thumb.x + index.x) / 2.0);
-    const rawMidY = (thumb.y + index.y) / 2.0;
-
-    // Exponential Moving Average (EMA) smoothing
-    state.grabX = state.grabX + (rawMidX - state.grabX) * SMOOTHING;
-    state.grabY = state.grabY + (rawMidY - state.grabY) * SMOOTHING;
-  }
-
-  // --- Two-Hand Mode: Dual Pinch Zoom ---
-  if (numHands >= 2 && handStates[0].isPinching && handStates[1].isPinching) {
-    const dist = Math.hypot(
-      handStates[0].grabX - handStates[1].grabX,
-      handStates[0].grabY - handStates[1].grabY
-    );
-
-    if (prevTwoHandDist !== null) {
-      const deltaDist = dist - prevTwoHandDist;
-      if (window.zoomOrb) {
-        window.zoomOrb(-deltaDist * ZOOM_SPEED);
-      }
-    }
-
-    prevTwoHandDist = dist;
-    handStates[0].prevGrabX = null;
-    handStates[0].prevGrabY = null;
-    handStates[1].prevGrabX = null;
-    handStates[1].prevGrabY = null;
-
-    if (cursorElement) cursorElement.style.display = 'none';
-    statusTag.innerText = 'DUAL PINCH: ZOOMING ORB';
-    return;
-  }
-
-  prevTwoHandDist = null;
-
-  // --- Single-Hand Mode: Hand 0 Interaction ---
+  // Primary hand analysis
   const primaryHand = landmarksList[0];
-  const primaryState = handStates[0];
+  const wrist = primaryHand[WRIST];
+  const thumb = primaryHand[THUMB_TIP];
+  const index = primaryHand[INDEX_TIP];
+  const middle = primaryHand[MIDDLE_TIP];
+  const ring = primaryHand[RING_TIP];
+  const pinky = primaryHand[PINKY_TIP];
+  const indexMcp = primaryHand[INDEX_MCP];
+  const middleMcp = primaryHand[MIDDLE_MCP];
+  const ringMcp = primaryHand[RING_MCP];
+  const pinkyMcp = primaryHand[PINKY_MCP];
 
-  // Full-screen holographic cursor follows index fingertip (with aspect-ratio compensation)
-  const indexPos = primaryHand[INDEX_TIP];
-  const map = getVideoMapping(bgOverlayCanvas || { width: window.innerWidth, height: window.innerHeight });
-  const screenX = map.offsetX + (1.0 - indexPos.x) * map.scaleX;
-  const screenY = map.offsetY + indexPos.y * map.scaleY;
+  // Scale normalization based on hand size
+  const handSpan = Math.hypot(wrist.x - middleMcp.x, wrist.y - middleMcp.y) || 0.2;
+  const pinchDist = Math.hypot(thumb.x - index.x, thumb.y - index.y) / handSpan;
+  const middlePinchDist = Math.hypot(thumb.x - middle.x, thumb.y - middle.y) / handSpan;
+  const pinkyPinchDist = Math.hypot(thumb.x - pinky.x, thumb.y - pinky.y) / handSpan;
+
+  // Normalized cursor coordinate with margin calibrated to comfortable hand zone
+  const rawTargetX = Math.min(1.0, Math.max(0.0, (1.0 - index.x - 0.15) / 0.70));
+  const rawTargetY = Math.min(1.0, Math.max(0.0, (index.y - 0.15) / 0.70));
+
+  // Exponential moving average smoothing
+  smoothMouseX = smoothMouseX + (rawTargetX - smoothMouseX) * SMOOTHING;
+  smoothMouseY = smoothMouseY + (rawTargetY - smoothMouseY) * SMOOTHING;
+
+  // Visual screen cursor on HUD
+  const screenX = smoothMouseX * window.innerWidth;
+  const screenY = smoothMouseY * window.innerHeight;
 
   if (cursorElement) {
     cursorElement.style.display = 'block';
@@ -431,32 +515,225 @@ function processUltronGestures(landmarksList) {
     cursorElement.style.top = `${screenY}px`;
   }
 
+  // Check pinch states with hysteresis
+  const primaryState = handStates[0];
+  const wasPinching = primaryState.isPinching;
+  if (primaryState.isPinching) {
+    if (pinchDist > PINCH_OFF) primaryState.isPinching = false;
+  } else {
+    if (pinchDist < PINCH_ON) primaryState.isPinching = true;
+  }
+
+  // Check middle finger right-click pinch
+  const isRightPinch = middlePinchDist < PINCH_ON && pinchDist >= PINCH_ON;
+
+  // Check pinky pinch for volume
+  const isPinkyPinch = pinkyPinchDist < PINCH_ON && pinchDist >= PINCH_ON;
+
+  // Two fingers pointing up (scroll mode): index & middle extended, ring & pinky folded
+  const isScrollGesture = (
+    index.y < indexMcp.y &&
+    middle.y < middleMcp.y &&
+    ring.y > middleMcp.y &&
+    pinky.y > pinkyMcp.y &&
+    Math.hypot(index.x - middle.x, index.y - middle.y) < 0.14 &&
+    pinchDist > PINCH_OFF
+  );
+
+  // Five fingers open wide (extended)
+  const isFiveFingersOpen = (
+    index.y < indexMcp.y &&
+    middle.y < middleMcp.y &&
+    ring.y < ringMcp.y &&
+    pinky.y < pinkyMcp.y
+  );
+
+  // Closed Fist: all 4 fingers folded below MCPs
+  const isClosedFist = (
+    index.y > indexMcp.y &&
+    middle.y > middleMcp.y &&
+    ring.y > ringMcp.y &&
+    pinky.y > pinkyMcp.y
+  );
+
+  // ==========================================
+  // MODE A: FULL SCREEN OS MOUSE CONTROL
+  // ==========================================
+  if (osMouseActive) {
+    // 1. Closed Fist Hold -> Toggle Media Play/Pause
+    if (isClosedFist && (now - lastMediaTime > 1000)) {
+      sendMouseAction("media_toggle");
+      lastMediaTime = now;
+      statusTag.innerText = "OS GESTURE: MEDIA PLAY / PAUSE ⏯️";
+      return;
+    }
+
+    // 2. Five-Finger Open Swipe Down -> Show Desktop (Win+D)
+    if (isFiveFingersOpen) {
+      if (prevSwipeY !== null && (wrist.y - prevSwipeY > 0.14) && (now - lastDesktopTime > 1200)) {
+        sendMouseAction("desktop");
+        lastDesktopTime = now;
+        prevSwipeY = null;
+        statusTag.innerText = "OS GESTURE: SHOW DESKTOP 🖥️";
+        return;
+      }
+      prevSwipeY = wrist.y;
+    } else {
+      prevSwipeY = null;
+    }
+
+    // 3. Horizontal Palm Wave -> Switch Window (Alt+Tab)
+    if (isFiveFingersOpen || (index.y < indexMcp.y && middle.y < middleMcp.y)) {
+      if (prevSwipeX !== null && Math.abs(wrist.x - prevSwipeX) > 0.18 && (now - lastSwitchTime > 900)) {
+        sendMouseAction("switch_window");
+        lastSwitchTime = now;
+        prevSwipeX = null;
+        statusTag.innerText = "OS GESTURE: SWITCH WINDOW (ALT+TAB) 🔀";
+        return;
+      }
+      prevSwipeX = wrist.x;
+    } else {
+      prevSwipeX = null;
+    }
+
+    // 4. Cursor Movement Dispatch
+    if (now - lastMouseSendTime > 25) { // ~40 Hz throttle
+      const deltaDist = Math.hypot(smoothMouseX - lastSentNormX, smoothMouseY - lastSentNormY);
+      if (deltaDist > 0.0025) {
+        sendMouseAction("move", { x: smoothMouseX, y: smoothMouseY });
+        lastSentNormX = smoothMouseX;
+        lastSentNormY = smoothMouseY;
+        lastMouseSendTime = now;
+      }
+    }
+
+    // 5. Right Click (Middle finger + Thumb pinch)
+    if (isRightPinch && (now - lastRightClickTime > 400)) {
+      sendMouseAction("right_click");
+      lastRightClickTime = now;
+      if (cursorElement) cursorElement.classList.add("right-clicking");
+      setTimeout(() => cursorElement && cursorElement.classList.remove("right-clicking"), 200);
+      statusTag.innerText = "OS MOUSE: RIGHT CLICK 🖱️";
+      return;
+    }
+
+    // 6. Two-Finger Scroll
+    if (isScrollGesture) {
+      if (prevScrollY !== null) {
+        const deltaY = index.y - prevScrollY;
+        if (now - lastScrollTime > 50) {
+          if (deltaY < -0.012) {
+            sendMouseAction("scroll", { delta: 1 }); // Scroll up
+            lastScrollTime = now;
+            statusTag.innerText = "OS MOUSE: SCROLL UP ↑";
+          } else if (deltaY > 0.012) {
+            sendMouseAction("scroll", { delta: -1 }); // Scroll down
+            lastScrollTime = now;
+            statusTag.innerText = "OS MOUSE: SCROLL DOWN ↓";
+          }
+        }
+      }
+      prevScrollY = index.y;
+      return;
+    } else {
+      prevScrollY = null;
+    }
+
+    // 7. Volume Control (Pinky + Thumb pinch)
+    if (isPinkyPinch && (now - lastVolumeTime > 220)) {
+      const volDelta = index.y < 0.45 ? 5 : -5;
+      sendMouseAction("volume", { delta: volDelta });
+      lastVolumeTime = now;
+      statusTag.innerText = volDelta > 0 ? "OS MOUSE: VOLUME UP 🔊" : "OS MOUSE: VOLUME DOWN 🔉";
+      return;
+    }
+
+    // 8. Left Click / Drag & Drop / Double Click
+    if (primaryState.isPinching) {
+      if (!wasPinching) {
+        // Pinch started
+        pinchStartTime = now;
+        isDraggingMouse = false;
+        if (cursorElement) cursorElement.classList.add("pinching");
+      } else {
+        // Pinch held > 260ms -> enter Drag & Drop mode
+        if (!isDraggingMouse && (now - pinchStartTime > 260)) {
+          isDraggingMouse = true;
+          sendMouseAction("drag_start");
+          statusTag.innerText = "OS MOUSE: DRAG & DROP ACTIVE ✊";
+        }
+      }
+    } else {
+      if (wasPinching) {
+        // Pinch released
+        if (cursorElement) cursorElement.classList.remove("pinching");
+        if (isDraggingMouse) {
+          sendMouseAction("drag_end");
+          isDraggingMouse = false;
+          statusTag.innerText = "OS MOUSE: RELEASED";
+        } else {
+          // Quick tap release (< 260ms) -> Click or Double Click
+          if (now - lastClickTime < 340) {
+            sendMouseAction("double_click");
+            lastClickTime = 0;
+            statusTag.innerText = "OS MOUSE: DOUBLE CLICK ⚡";
+          } else {
+            sendMouseAction("left_click");
+            lastClickTime = now;
+            statusTag.innerText = "OS MOUSE: LEFT CLICK 🎯";
+          }
+        }
+      } else {
+        statusTag.innerText = "OS MOUSE: INDEX POINTING";
+      }
+    }
+    return;
+  }
+
+  // ==========================================
+  // MODE B: HOLOGRAPHIC 3D ORB INTERACTION
+  // ==========================================
+  // Two-Hand Mode: Dual Pinch Zoom
+  if (numHands >= 2 && handStates[0].isPinching && handStates[1].isPinching) {
+    const dist = Math.hypot(
+      handStates[0].grabX - handStates[1].grabX,
+      handStates[0].grabY - handStates[1].grabY
+    );
+    if (prevTwoHandDist !== null) {
+      const deltaDist = dist - prevTwoHandDist;
+      if (window.zoomOrb) window.zoomOrb(-deltaDist * ZOOM_SPEED);
+    }
+    prevTwoHandDist = dist;
+    if (cursorElement) cursorElement.style.display = 'none';
+    statusTag.innerText = 'DUAL PINCH: ZOOMING ORB';
+    return;
+  }
+  prevTwoHandDist = null;
+
+  // Single-Hand Mode: Rotate Orb
   if (primaryState.isPinching) {
     window.isUserPinching = true;
     if (cursorElement) cursorElement.classList.add('pinching');
 
     if (primaryState.prevGrabX !== null && primaryState.prevGrabY !== null) {
-      const deltaX = (primaryState.grabX - primaryState.prevGrabX) * ROTATE_SPEED;
-      const deltaY = (primaryState.grabY - primaryState.prevGrabY) * ROTATE_SPEED;
-
-      if (window.rotateOrb) {
-        window.rotateOrb(deltaX, deltaY);
-      }
+      const deltaX = (smoothMouseX - primaryState.prevGrabX) * ROTATE_SPEED;
+      const deltaY = (smoothMouseY - primaryState.prevGrabY) * ROTATE_SPEED;
+      if (window.rotateOrb) window.rotateOrb(deltaX, deltaY);
     }
 
-    primaryState.prevGrabX = primaryState.grabX;
-    primaryState.prevGrabY = primaryState.grabY;
+    primaryState.prevGrabX = smoothMouseX;
+    primaryState.prevGrabY = smoothMouseY;
     statusTag.innerText = 'PINCH ACTIVE: ROTATING ORB';
   } else {
     window.isUserPinching = false;
     if (cursorElement) cursorElement.classList.remove('pinching');
     primaryState.prevGrabX = null;
     primaryState.prevGrabY = null;
-    statusTag.innerText = 'HAND DETECTED: PINCH TO ROTATE';
+    statusTag.innerText = 'GESTURE READY: PINCH ORB (OR TOGGLE OS MOUSE)';
   }
 }
 
-// Expose toggle function globally for DOM buttons
+// Global exports
 window.toggleGestures = toggleGestures;
 
 /**
@@ -489,13 +766,19 @@ async function toggleArBackground() {
       arBtn.classList.add('active');
     }
   } else {
+    if (bgVideoElement) {
+      try { bgVideoElement.pause(); } catch (_) {}
+    }
     if (arContainer) arContainer.style.display = 'none';
     document.body.classList.remove('ar-active');
     if (arBtn) {
       arBtn.innerText = 'CAM BG: OFF';
       arBtn.classList.remove('active');
     }
+    // Cleanly clear background canvas once when turned off
+    if (bgOverlayCtx && bgOverlayCanvas) {
+      bgOverlayCtx.clearRect(0, 0, bgOverlayCanvas.width, bgOverlayCanvas.height);
+    }
   }
 }
 window.toggleArBackground = toggleArBackground;
-

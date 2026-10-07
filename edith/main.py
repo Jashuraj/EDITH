@@ -11,9 +11,12 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import logging
 import sys
 import threading
 import time
+
+logger = logging.getLogger("edith.main")
 
 from edith.core.config import CONFIG
 from edith.core.doctor import DOCTOR
@@ -129,11 +132,10 @@ def serve_all(ui_port: int = 8794, phone_port: int = 8795) -> None:
         pass
 
     # Start Cloud Tunnel in background for global remote access
-    cloud_url = "https://edith-core-jashu.loca.lt"
     try:
         from edith.phone.tunnel import TUNNEL_MANAGER
         t_tun = threading.Thread(
-            target=lambda: TUNNEL_MANAGER.start_tunnel(provider="localtunnel", port=ui_port),
+            target=lambda: TUNNEL_MANAGER.start_tunnel(provider="pinggy", port=ui_port),
             daemon=True,
         )
         t_tun.start()
@@ -145,7 +147,7 @@ def serve_all(ui_port: int = 8794, phone_port: int = 8795) -> None:
     print(f"  • Holographic UI:    http://127.0.0.1:{ui_port} (LAN: http://{local_ip}:{ui_port})")
     print(f"  • Phone Gateway:     http://127.0.0.1:{phone_port} (LAN: http://{local_ip}:{phone_port})")
     print(f"  • Mobile App:        http://{local_ip}:{ui_port}/mobile")
-    print(f"  • Global Cloud Link: {cloud_url}")
+    print(f"  • Global Cloud Link: https://edith-core-jashu.loca.lt")
     if clap_active:
         print("  • Double-Clap Welcome: ACTIVE (Local SAPI Voice)")
     print("  Press Ctrl+C to terminate.")

@@ -42,7 +42,7 @@ class OllamaProvider(LLMProvider):
         """Ping Ollama API tags endpoint and auto-recover circuit breaker."""
         try:
             req = urllib.request.Request(f"{self.base_url}/api/tags", method="GET")
-            with urllib.request.urlopen(req, timeout=3.0) as res:
+            with urllib.request.urlopen(req, timeout=1.0) as res:
                 if res.status == 200:
                     self.circuit_breaker.record_success()
                     return True
@@ -51,14 +51,14 @@ class OllamaProvider(LLMProvider):
             return False
 
     async def list_models(self) -> List[str]:
-        """Fetch list of all installed Ollama model names."""
+        """Fetch list of all installed Ollama model names with fast timeout."""
         try:
             req = urllib.request.Request(f"{self.base_url}/api/tags", method="GET")
-            with urllib.request.urlopen(req, timeout=3.0) as res:
+            with urllib.request.urlopen(req, timeout=1.0) as res:
                 data = json.loads(res.read().decode("utf-8"))
                 return [m["name"] for m in data.get("models", [])]
         except Exception as e:
-            logger.error("Failed to list Ollama models: %s", e)
+            logger.debug("Ollama not responding on %s: %s", self.base_url, e)
             return []
 
     async def generate(

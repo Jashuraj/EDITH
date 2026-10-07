@@ -59,6 +59,13 @@
     cmdInput: document.getElementById("cmd-input"),
     btnSend: document.getElementById("btn-send"),
     btnMic: document.getElementById("btn-mic"),
+    btnModeToggle: document.getElementById("btn-mode-toggle"),
+    hudMediaDock: document.getElementById("hud-media-dock"),
+    hudMediaFrame: document.getElementById("hud-media-iframe"),
+    hudMediaTitle: document.getElementById("hud-media-title"),
+    btnMediaPopout: document.getElementById("btn-media-popout"),
+    btnMediaMin: document.getElementById("btn-media-min"),
+    btnMediaClose: document.getElementById("btn-media-close"),
     consoleChannel: document.getElementById("console-channel"),
     consolePing: document.getElementById("console-ping"),
     consoleOutput: document.getElementById("console-output"),
@@ -74,15 +81,20 @@
     });
   }
 
+  let mobileSpeechTimer = null;
+  window._mobileUtterance = null;
+
   // ---------------- Speech Synthesis & Audio ----------------
   function speakResponse(text) {
     if (!state.ttsEnabled || !window.speechSynthesis) return;
     try {
       window.speechSynthesis.cancel();
+      clearTimeout(mobileSpeechTimer);
       const clean = text.replace(/Action:\s*[\w_]+/gi, "").replace(/https?:\/\/\S+/g, "");
       if (!clean.trim()) return;
 
       const utterance = new SpeechSynthesisUtterance(clean);
+      window._mobileUtterance = utterance;
       utterance.rate = 1.05;
       utterance.pitch = 0.95;
 
@@ -90,15 +102,27 @@
         state.audioWaveLevel = 0.85;
       };
       utterance.onend = () => {
+        clearTimeout(mobileSpeechTimer);
         state.audioWaveLevel = 0.1;
+        window._mobileUtterance = null;
       };
       utterance.onerror = () => {
+        clearTimeout(mobileSpeechTimer);
         state.audioWaveLevel = 0.1;
+        window._mobileUtterance = null;
       };
+
+      const maxMs = Math.min(10000, Math.max(2500, clean.length * 75 + 1000));
+      mobileSpeechTimer = setTimeout(() => {
+        state.audioWaveLevel = 0.1;
+        window._mobileUtterance = null;
+      }, maxMs);
 
       window.speechSynthesis.speak(utterance);
     } catch (e) {
       console.warn("TTS error:", e);
+      state.audioWaveLevel = 0.1;
+      window._mobileUtterance = null;
     }
   }
 
@@ -376,8 +400,10 @@
       // Handle speech response
       speakResponse(outcome);
 
-      // Handle URL navigation (e.g., YouTube search match)
-      if (data.url && typeof data.url === "string") {
+      // Handle media playback or external navigation without duplicate tabs
+      if (data.embed_url) {
+        playInHudMedia(data.embed_url, outcome || "YouTube Media", data.url);
+      } else if (data.url && typeof data.url === "string" && !data.opened_on_host) {
         setTimeout(() => {
           window.open(data.url, "_blank");
         }, 600);
@@ -397,6 +423,77 @@
   function logConsole(channel, text) {
     dom.consoleChannel.textContent = `CHANNEL: ${channel}`;
     dom.consoleOutput.textContent = text;
+  }
+
+  // ---------------- In-HUD Media Player ----------------
+  let activeMediaUrl = "";
+  function playInHudMedia(embedUrl, title, fullUrl) {
+    if (!dom.hudMediaDock || !dom.hudMediaFrame) return;
+    activeMediaUrl = fullUrl || embedUrl;
+    dom.hudMediaFrame.src = embedUrl;
+    if (dom.hudMediaTitle) {
+      dom.hudMediaTitle.textContent = `▶ ${(title || "MEDIA").slice(0, 24)}`;
+    }
+    dom.hudMediaDock.style.display = "flex";
+    dom.hudMediaDock.classList.remove("minimized");
+  }
+
+  function closeHudMedia() {
+    if (dom.hudMediaDock) dom.hudMediaDock.style.display = "none";
+    if (dom.hudMediaFrame) dom.hudMediaFrame.src = "";
+  }
+
+  function toggleMinimizeMedia() {
+    if (dom.hudMediaDock) dom.hudMediaDock.classList.toggle("minimized");
+  }
+
+  function popoutMedia() {
+    if (activeMediaUrl) {
+      window.open(activeMediaUrl, "_blank");
+      closeHudMedia();
+    }
+  }
+
+  // ---------------- System Mode Switcher ----------------
+  let currentSystemMode = "auto";
+  function updateSystemModeUI(mode) {
+    currentSystemMode = mode || "auto";
+    if (dom.btnModeToggle) {
+      dom.btnModeToggle.textContent = currentSystemMode.toUpperCase();
+      dom.btnModeToggle.className = `btn-mode-toggle mode-${currentSystemMode}`;
+    }
+  }
+
+  async function toggleSystemMode() {
+    const modes = ["auto", "online", "offline"];
+    const nextIdx = (modes.indexOf(currentSystemMode) + 1) % modes.length;
+    const targetMode = modes[nextIdx];
+    const ep = state.activeEndpoint || window.location.origin;
+    try {
+      const res = await fetch(`${ep.replace(/\/+$/, "")}/api/mode`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: targetMode }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        updateSystemModeUI(data.manual_mode || targetMode);
+        logConsole("SYSTEM MODE", `Mode changed: ${(data.manual_mode || targetMode).toUpperCase()}`);
+      }
+    } catch (e) {
+      console.warn("Mode toggle failed:", e);
+    }
+  }
+
+  async function syncSystemMode() {
+    const ep = state.activeEndpoint || window.location.origin;
+    try {
+      const res = await fetch(`${ep.replace(/\/+$/, "")}/api/mode`);
+      if (res.ok) {
+        const data = await res.json();
+        updateSystemModeUI(data.manual_mode);
+      }
+    } catch (_) {}
   }
 
   // ---------------- Canvas Visualizers ----------------
@@ -629,6 +726,22 @@
         alert(`Tunnel launch failed: ${err.message}. Please test while on local WiFi.`);
       }
     });
+
+    // In-HUD Media Player Listeners
+    if (dom.btnMediaPopout) {
+      dom.btnMediaPopout.addEventListener("click", popoutMedia);
+    }
+    if (dom.btnMediaMin) {
+      dom.btnMediaMin.addEventListener("click", toggleMinimizeMedia);
+    }
+    if (dom.btnMediaClose) {
+      dom.btnMediaClose.addEventListener("click", closeHudMedia);
+    }
+
+    // Header Mode Toggle
+    if (dom.btnModeToggle) {
+      dom.btnModeToggle.addEventListener("click", toggleSystemMode);
+    }
   }
 
   function openSettings() {
@@ -674,9 +787,13 @@
 
     await fetchServerConfig();
     await resolveActiveEndpoint();
+    await syncSystemMode();
 
     // Heartbeat connection maintenance every 5 seconds
-    setInterval(resolveActiveEndpoint, 5000);
+    setInterval(async () => {
+      await resolveActiveEndpoint();
+      await syncSystemMode();
+    }, 5000);
   }
 
   window.addEventListener("DOMContentLoaded", init);

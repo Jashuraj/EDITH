@@ -29,7 +29,7 @@ class ProviderUnavailableError(Exception):
 class CircuitBreaker:
     """Bounded retry and circuit breaker protecting against repeated failed calls."""
     failure_threshold: int = 3
-    cooldown_seconds: float = 60.0
+    cooldown_seconds: float = 10.0
     _consecutive_failures: int = 0
     _last_failure_time: float = 0.0
     _state: CircuitState = CircuitState.CLOSED
@@ -41,8 +41,13 @@ class CircuitBreaker:
                 self._state = CircuitState.HALF_OPEN
         return self._state
 
+    def reset(self) -> None:
+        """Explicitly restore circuit breaker to healthy CLOSED state."""
+        self._consecutive_failures = 0
+        self._state = CircuitState.CLOSED
+
     def record_success(self) -> None:
-        """Mark a successful execution."""
+        """Mark a successful execution and restore CLOSED state."""
         self._consecutive_failures = 0
         self._state = CircuitState.CLOSED
 
@@ -54,7 +59,7 @@ class CircuitBreaker:
 
         if self._consecutive_failures >= self.failure_threshold:
             self._state = CircuitState.OPEN
-            logger.error("Circuit breaker TRIPPED to OPEN. Subsequent calls will immediately fail.")
+            logger.warning("Circuit breaker OPEN (cooldown %.1fs). Auto-heals on next window.", self.cooldown_seconds)
 
     def can_execute(self) -> bool:
         """Check if calls to this provider are permitted."""

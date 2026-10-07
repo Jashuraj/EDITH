@@ -121,9 +121,10 @@ class SystemConfig:
     system_name: str = "EDITH"
     creator: str = "Jashwanth Raj"
     version: str = "1.0.0"
-    base_dir: Path = field(default_factory=lambda: Path("D:/EDITH final boss").resolve())
-    workspace_dir: Path = field(default_factory=lambda: Path("D:/EDITH final boss").resolve())
-    data_dir: Path = field(default_factory=lambda: Path("D:/EDITH final boss/edith/data").resolve())
+    base_dir: Path = field(default_factory=lambda: Path(__file__).resolve().parent.parent.parent)
+    workspace_dir: Path = field(default_factory=lambda: Path(__file__).resolve().parent.parent.parent)
+    data_dir: Path = field(default_factory=lambda: Path(__file__).resolve().parent.parent / "data")
+    manual_mode: str = "auto"  # "auto", "online", "offline"
     offline_mode: bool = False
     zero_credit_mode: bool = False
     privacy_mode: bool = False
@@ -146,6 +147,30 @@ class SystemConfig:
             self.ceilings.max_models_loaded = 1
             self.ceilings.max_concurrent_tasks = 2
             self.ceilings.vision_fps_cap = 10
+
+    def set_manual_mode(self, mode: str) -> str:
+        """Switch operating mode between auto, online, and offline."""
+        cleaned = (mode or "").strip().lower()
+        if cleaned not in ("auto", "online", "offline"):
+            cleaned = "auto"
+        self.manual_mode = cleaned
+        if cleaned == "offline":
+            self.offline_mode = True
+        elif cleaned == "online":
+            self.offline_mode = False
+        else:
+            self.offline_mode = not self.check_internet(timeout_seconds=0.6)
+        return self.manual_mode
+
+    def is_effectively_online(self) -> bool:
+        """Evaluate if system is allowed to make external cloud queries."""
+        if self.privacy_mode or self.zero_credit_mode or self.offline_mode:
+            return False
+        if self.manual_mode == "offline":
+            return False
+        if self.manual_mode == "online":
+            return True
+        return self.check_internet(timeout_seconds=0.6)
 
     @staticmethod
     def check_internet(timeout_seconds: float = 1.0) -> bool:
@@ -197,8 +222,18 @@ class SystemConfig:
         except Exception:
             pass
 
+        eff_online = self.is_effectively_online()
+        if self.manual_mode == "offline":
+            status_text = "OFFLINE (FORCED LOCAL)"
+        elif self.manual_mode == "online":
+            status_text = "ONLINE (FORCED CLOUD)" if eff_online else "ONLINE (DISCONNECTED)"
+        else:
+            status_text = "ONLINE (HYBRID AI)" if eff_online else "OFFLINE (LOCAL AI)"
+
         return {
-            "online": self.check_internet(),
+            "online": eff_online,
+            "manual_mode": self.manual_mode,
+            "status_text": status_text,
             "free_ram_gb": self.hardware.free_ram_gb,
             "total_ram_gb": self.hardware.total_ram_gb,
             "disk_free_gb": self.hardware.disk_free_gb,

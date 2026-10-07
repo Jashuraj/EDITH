@@ -1,7 +1,8 @@
 """Local Phone Gateway Server for Paired Mobile Clients.
 
 Implements Sections 69, 70, 71, 74 of the Engineering Constitution.
-Supports WiFi LAN and Cloud Internet remote access.
+Supports WiFi LAN and Cloud Internet remote access. Serves mobile PWA directly
+on port 8795 as well as bi-directional REST protocol.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import socket
 import time
 import urllib.parse
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from edith.core.config import CONFIG
@@ -28,6 +30,8 @@ from edith.voice.speaker import SPEAKER
 
 logger = logging.getLogger("edith.phone.gateway")
 
+MOBILE_DIR = Path(__file__).resolve().parent.parent / "ui" / "public" / "mobile"
+
 
 def get_local_ip() -> str:
     """Retrieve host machine local network IP."""
@@ -42,13 +46,16 @@ def get_local_ip() -> str:
 
 
 class PhoneGatewayHandler(SimpleHTTPRequestHandler):
-    """HTTP endpoint handler for paired phone devices."""
+    """HTTP endpoint handler for paired phone devices and mobile PWA assets."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory=str(MOBILE_DIR), **kwargs)
 
     def end_headers(self) -> None:
         """Inject cache and CORS headers."""
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, Bypass-Tunnel-Reminder")
         super().end_headers()
 
     def do_OPTIONS(self) -> None:
@@ -76,6 +83,19 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
                 "token": token,
                 "system": CONFIG.system_name,
                 "device_id": device_id,
+            })
+            return
+
+        if parsed.path == "/api/mode":
+            mode = data.get("mode", "auto")
+            new_mode = CONFIG.set_manual_mode(mode)
+            dyn = CONFIG.refresh_dynamic_stats()
+            self._send_json({
+                "success": True,
+                "manual_mode": new_mode,
+                "offline_mode": CONFIG.offline_mode,
+                "is_online": dyn.get("online", False),
+                "status_text": dyn.get("status_text", ""),
             })
             return
 
@@ -112,15 +132,21 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
                     if isinstance(res, dict):
                         res_text = res.get("message") or res.get("result") or str(res)
                         res_url = res.get("url")
+                        res_embed = res.get("embed_url")
+                        res_vid = res.get("video_id")
                     else:
                         res_text = str(res)
                         res_url = None
+                        res_embed = None
+                        res_vid = None
 
                     self._send_json({
                         "success": True,
                         "matched": True,
                         "result": res_text,
                         "url": res_url,
+                        "embed_url": res_embed,
+                        "video_id": res_vid,
                         "model": "REFLEX_ENGINE",
                         "queued": True,
                         "queue_length": queue_len,
@@ -177,10 +203,21 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
                 loop.close()
 
                 tool_outputs = []
+                action_url = None
+                action_embed = None
+                action_vid = None
+
                 if resp.tool_calls:
                     STATE.set_state_sync(SystemState.EXECUTING, reason="Executing phone tool calls")
                     for tc in resp.tool_calls:
-                        out = REGISTRY.execute_tool(tc.name, tc.arguments)
+                        kwargs = dict(tc.arguments)
+                        if tc.name == "search_youtube" and "open_browser" not in kwargs:
+                            kwargs["open_browser"] = False
+                        out = REGISTRY.execute_tool(tc.name, kwargs)
+                        if isinstance(out, dict):
+                            if out.get("url"): action_url = out["url"]
+                            if out.get("embed_url"): action_embed = out["embed_url"]
+                            if out.get("video_id"): action_vid = out["video_id"]
                         tool_outputs.append(f"{tc.name}: {out}")
 
                 STATE.set_state_sync(SystemState.READY, reason="Phone query complete")
@@ -192,6 +229,9 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
                     "success": True,
                     "matched": False,
                     "result": full_reply,
+                    "url": action_url,
+                    "embed_url": action_embed,
+                    "video_id": action_vid,
                     "model": resp.model,
                     "queued": True,
                     "queue_length": queue_len,
@@ -227,16 +267,30 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
             self._send_json({"status": "ok", "time": time.time(), "system": CONFIG.system_name})
         elif parsed.path == "/status":
             stats = WIN_TOOLS.get_system_stats()
+            dyn = CONFIG.refresh_dynamic_stats()
             stats["state"] = STATE.current_state.value
             stats["emergency_stopped"] = SECURITY.is_emergency_stopped
             stats["local_ip"] = get_local_ip()
             stats["cloud_url"] = TUNNEL_MANAGER.get_active_url()
             stats["active_model"] = CONFIG.primary_local_model
+            stats["manual_mode"] = CONFIG.manual_mode
+            stats["is_online"] = dyn.get("online", False)
             self._send_json(stats)
+        elif parsed.path == "/api/mode":
+            dyn = CONFIG.refresh_dynamic_stats()
+            self._send_json({
+                "manual_mode": CONFIG.manual_mode,
+                "offline_mode": CONFIG.offline_mode,
+                "is_online": dyn.get("online", False),
+                "status_text": dyn.get("status_text", ""),
+            })
         elif parsed.path == "/tunnel":
             self._send_json(TUNNEL_MANAGER.get_status())
+        elif parsed.path in ("/", "/index.html", "/mobile", "/mobile/"):
+            self.path = "/index.html"
+            super().do_GET()
         else:
-            self._send_json({"error": "Endpoint not found"}, status=404)
+            super().do_GET()
 
     def _send_json(self, payload: Dict[str, Any], status: int = 200) -> None:
         raw = json.dumps(payload).encode("utf-8")
@@ -252,6 +306,7 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
 
 def create_phone_gateway(port: int = 8795, host: str = "0.0.0.0") -> ThreadingHTTPServer:
     """Instantiate the phone communication gateway server."""
+    MOBILE_DIR.mkdir(parents=True, exist_ok=True)
     server = ThreadingHTTPServer((host, port), PhoneGatewayHandler)
     logger.info("EDITH Phone Gateway listening at http://%s:%d", host, port)
     return server

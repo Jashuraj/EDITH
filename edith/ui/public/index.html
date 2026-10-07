@@ -68,6 +68,7 @@
       </div>
 
       <div class="hud-header-right" style="display:flex; flex-direction:row; align-items:center; gap:14px; flex-shrink:0;">
+        <button class="btn-mode-toggle mode-auto" id="btn-mode-toggle" onclick="toggleSystemMode()" title="Toggle System Mode: Auto / Online / Offline">MODE: AUTO</button>
         <button class="action-btn btn-cmd-guide" id="btn-guide" onclick="toggleGuide()" style="display:inline-flex !important; visibility:visible !important; opacity:1 !important; flex-shrink:0 !important; cursor:pointer !important;">COMMAND GUIDE</button>
         <span class="dot-live" title="System Online"></span>
         <span class="creator-tag">CREATOR:&nbsp;<strong>JASHWANTH RAJ</strong></span>
@@ -178,9 +179,25 @@
         <button class="action-btn btn-voice-mute" id="btn-voice-mute" onclick="toggleJarvisVoiceMute()" title="Mute/Unmute Jarvis spoken voice responses">VOICE: ON</button>
         <button class="action-btn btn-vision" id="btn-vision" onclick="triggerVision()" title="EDITH screen perception analysis">SEE SCREEN</button>
         <button class="action-btn btn-gesture" id="btn-gestures" onclick="window.toggleGestures ? window.toggleGestures() : logEntry('Gestures module loading...', 'system')">GESTURE: OFF</button>
+        <button class="action-btn btn-mouse" id="btn-os-mouse" onclick="window.toggleOsMouse ? window.toggleOsMouse() : logEntry('OS Mouse requires gestures active', 'system')" title="Toggle Full-Screen OS Desktop Mouse Control">OS MOUSE: OFF</button>
         <button class="action-btn btn-emergency" id="btn-stop" onclick="toggleEmergencyStop()">&#x2715; STOP</button>
       </div>
     </footer>
+
+    <!-- ── In-HUD Floating Media Player Dock ── -->
+    <div id="hud-media-dock" class="hud-media-dock" style="display: none;">
+      <div class="hud-media-header">
+        <div class="hud-media-badge"><span class="dot-live" style="background:#ff0055;"></span>&nbsp;<span id="hud-media-title">HUD MEDIA PLAYER</span></div>
+        <div class="hud-media-actions">
+          <button class="media-btn" id="btn-media-popout" title="Open in browser window" onclick="popoutMedia()">↗ POP OUT</button>
+          <button class="media-btn" id="btn-media-min" title="Minimize player" onclick="toggleMinimizeMedia()">_ MIN</button>
+          <button class="media-btn media-close" title="Close player" onclick="closeHudMedia()">&times; CLOSE</button>
+        </div>
+      </div>
+      <div class="hud-media-content" id="hud-media-body">
+        <iframe id="hud-media-iframe" src="" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+      </div>
+    </div>
 
     <!-- ── OS Command Directory Modal ── -->
     <div id="guide-modal" class="guide-modal glass-card" style="display: none;">
@@ -294,6 +311,7 @@
       fetchWeather();
       initCodeStrip();
       initAudioVisualizer();
+      syncModeState();
       const savedTheme = localStorage.getItem('edith_theme') || 'default';
       setTheme(savedTheme);
     });
@@ -342,6 +360,89 @@
       try { localStorage.setItem('edith_theme', mode); } catch (_) {}
     }
     window.setTheme = setTheme;
+
+    // ── In-HUD Media Player Controller ───────────────────────
+    let activeMediaUrl = '';
+    function playInHudMedia(embedUrl, title, fullUrl) {
+      const dock = document.getElementById('hud-media-dock');
+      const frame = document.getElementById('hud-media-iframe');
+      const titleEl = document.getElementById('hud-media-title');
+      if (!dock || !frame) return;
+      activeMediaUrl = fullUrl || embedUrl;
+      frame.src = embedUrl;
+      if (titleEl) titleEl.textContent = `▶ ${title.slice(0, 32)}`;
+      dock.style.display = 'flex';
+      dock.classList.remove('minimized');
+      logEntry(`In-HUD Media Player streaming: ${escHtml(title)}`, 'system');
+    }
+    window.playInHudMedia = playInHudMedia;
+
+    function closeHudMedia() {
+      const dock = document.getElementById('hud-media-dock');
+      const frame = document.getElementById('hud-media-iframe');
+      if (dock) dock.style.display = 'none';
+      if (frame) frame.src = '';
+    }
+    window.closeHudMedia = closeHudMedia;
+
+    function toggleMinimizeMedia() {
+      const dock = document.getElementById('hud-media-dock');
+      if (dock) dock.classList.toggle('minimized');
+    }
+    window.toggleMinimizeMedia = toggleMinimizeMedia;
+
+    function popoutMedia() {
+      if (activeMediaUrl) {
+        window.open(activeMediaUrl, '_blank');
+        closeHudMedia();
+      }
+    }
+    window.popoutMedia = popoutMedia;
+
+    // ── Operating Mode Switcher (Auto / Online / Offline) ─────
+    let currentSystemMode = 'auto';
+    async function toggleSystemMode() {
+      const modes = ['auto', 'online', 'offline'];
+      const nextIdx = (modes.indexOf(currentSystemMode) + 1) % modes.length;
+      const targetMode = modes[nextIdx];
+      try {
+        const res = await fetch('/api/mode', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mode: targetMode })
+        });
+        const data = await res.json();
+        currentSystemMode = data.manual_mode || targetMode;
+        updateModeUI(currentSystemMode, data.status_text);
+        logEntry(`System mode switched: ${currentSystemMode.toUpperCase()} (${data.status_text || ''})`, 'system');
+      } catch (e) {
+        console.error('Mode toggle failed:', e);
+      }
+    }
+    window.toggleSystemMode = toggleSystemMode;
+
+    function updateModeUI(mode, statusText) {
+      currentSystemMode = mode || 'auto';
+      const btn = document.getElementById('btn-mode-toggle');
+      if (btn) {
+        btn.innerText = `MODE: ${currentSystemMode.toUpperCase()}`;
+        btn.className = `btn-mode-toggle mode-${currentSystemMode}`;
+      }
+      const stateEl = document.getElementById('header-state-text');
+      if (stateEl && statusText) {
+        stateEl.textContent = statusText;
+      }
+    }
+
+    async function syncModeState() {
+      try {
+        const res = await fetch('/api/mode');
+        if (res.ok) {
+          const data = await res.json();
+          updateModeUI(data.manual_mode, data.status_text);
+        }
+      } catch (_) {}
+    }
 
     // ── Workshop Operations Log (E.V Matrix) ─────────────────
     const WORKSHOP_OPS = [
@@ -459,18 +560,23 @@
     }
 
     let isSpeaking = false;
+    let speechSafetyTimer = null;
+    window._activeUtterance = null;
 
     // ── TTS ────────────────────────────────────────────────────
     function speakOut(text) {
       if (!ttsEnabled || !('speechSynthesis' in window)) return;
+      if (!text || !text.trim()) return;
       try {
         window.speechSynthesis.cancel();
+        clearTimeout(speechSafetyTimer);
         isSpeaking = true;
         // Pause microphone while speaking to eliminate self-speech echo
         if (recognition && isVoiceActive) {
           try { recognition.abort(); } catch (_) {}
         }
         const utt = new SpeechSynthesisUtterance(text);
+        window._activeUtterance = utt;
         utt.rate = 1.05;
         utt.pitch = 0.95;
         const voices = window.speechSynthesis.getVoices();
@@ -483,17 +589,34 @@
           )
         );
         if (preferred) utt.voice = preferred;
+
+        // Failsafe timer: guarantees isSpeaking = false even if browser GC drops onend
+        const maxSpeechMs = Math.min(10000, Math.max(2500, text.length * 75 + 1000));
+        speechSafetyTimer = setTimeout(() => {
+          if (isSpeaking) {
+            isSpeaking = false;
+            window._activeUtterance = null;
+            if (isVoiceActive && recognition && !isTransmitting) {
+              try { recognition.start(); } catch (_) {}
+            }
+          }
+        }, maxSpeechMs);
+
         utt.onend = () => {
+          clearTimeout(speechSafetyTimer);
           setTimeout(() => {
             isSpeaking = false;
+            window._activeUtterance = null;
             // Cleanly resume mic after room audio reverb has dissipated
             if (isVoiceActive && recognition && !isTransmitting) {
               try { recognition.start(); } catch (_) {}
             }
-          }, 400);
+          }, 350);
         };
         utt.onerror = () => {
+          clearTimeout(speechSafetyTimer);
           isSpeaking = false;
+          window._activeUtterance = null;
           if (isVoiceActive && recognition && !isTransmitting) {
             try { recognition.start(); } catch (_) {}
           }
@@ -501,7 +624,9 @@
         window.speechSynthesis.speak(utt);
       } catch (e) {
         console.warn('[TTS]', e);
+        clearTimeout(speechSafetyTimer);
         isSpeaking = false;
+        window._activeUtterance = null;
       }
     }
 
@@ -599,31 +724,44 @@
     async function enableVoice() {
       try {
         if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          const audioConstraint = selectedAudioDeviceId && !/^\d+$/.test(selectedAudioDeviceId)
-            ? { audio: { deviceId: { exact: selectedAudioDeviceId } } }
-            : { audio: true };
-          await navigator.mediaDevices.getUserMedia(audioConstraint);
+          try {
+            const audioConstraint = selectedAudioDeviceId && !/^\d+$/.test(selectedAudioDeviceId)
+              ? { audio: { deviceId: { exact: selectedAudioDeviceId } } }
+              : { audio: true };
+            await navigator.mediaDevices.getUserMedia(audioConstraint);
+          } catch (firstErr) {
+            console.warn('[Specific microphone constraint failed, falling back to audio: true]', firstErr);
+            try {
+              await navigator.mediaDevices.getUserMedia({ audio: true });
+            } catch (secErr) {
+              console.warn('[Microphone permission notice]', secErr);
+            }
+          }
         }
       } catch (err) {
-        logEntry('Microphone access blocked or denied by browser.', 'error');
-        alert('Please allow microphone permissions in your browser address bar.');
-        return;
+        console.warn('Microphone permission check warning:', err);
       }
+
       if (!recognition) recognition = initSpeechRecognition();
       if (!recognition) {
-        logEntry('Browser does not support Web Speech API. Use Chrome, Edge, or enable Speech in Brave.', 'error');
-        alert('Voice input requires Chrome, Edge, or Brave with Speech Recognition enabled in settings.');
+        logEntry('Browser does not support Web Speech API. Use Chrome, Edge, or enable Speech in Brave settings.', 'error');
+        alert('Voice input requires Web Speech API. Use Chrome, Edge, or Brave with Speech Services enabled.');
         return;
       }
       try {
         recognition.start();
         isVoiceActive = true;
         const btn = document.getElementById('btn-voice');
-        btn.innerText = 'MIC: LIVE';
-        btn.classList.add('active');
+        if (btn) {
+          btn.innerText = 'MIC: LIVE';
+          btn.classList.add('active');
+        }
         logEntry('Microphone activated. Listening for commands...', 'system');
       } catch (e) {
         console.error('[STT start failed]', e);
+        if (e.name !== 'InvalidStateError') {
+          logEntry(`Mic note: ${e.message}`, 'error');
+        }
       }
     }
 
@@ -779,8 +917,8 @@
 
       const cleanLower = text.toLowerCase().trim();
       const now = Date.now();
-      // Drop duplicate submission of same command within 2500ms
-      if (cleanLower === lastSubmittedCmd && (now - lastSubmittedAt) < 2500) {
+      // Drop duplicate submission of same command or overlapping interim phrases within 2200ms
+      if ((cleanLower === lastSubmittedCmd || (cleanLower.length > 4 && (lastSubmittedCmd.startsWith(cleanLower) || cleanLower.startsWith(lastSubmittedCmd)))) && (now - lastSubmittedAt) < 2200) {
         console.log('[Debounce: dropping duplicate command submission]', text);
         input.value = '';
         return;
@@ -832,8 +970,10 @@
           data.tools_executed.forEach(t => logEntry(`&#10003; ${escHtml(t)}`, 'system'));
         }
 
-        // Immediately open URLs in foreground browser window
-        if (data.url) {
+        // Handle media playback or external navigation without duplicate tabs
+        if (data.embed_url) {
+          playInHudMedia(data.embed_url, answer || 'YouTube Media', data.url);
+        } else if (data.url && !data.opened_on_host) {
           try {
             window.open(data.url, '_blank');
           } catch (e) {

@@ -22,7 +22,7 @@ from edith.voice.speaker import SPEAKER
 logger = logging.getLogger("edith.voice.clap")
 
 # Audio detection constants (tuned for laptop microphone)
-SAMPLE_RATE = 44100
+DEFAULT_SAMPLE_RATE = 44100
 BLOCK_MS = 40
 SPIKE_RATIO = 6.5
 COOLDOWN_S = 1.2
@@ -59,17 +59,67 @@ class ClapDetector:
         )
 
     @staticmethod
-    def get_preferred_input_device() -> Optional[int]:
-        """Detect Bluetooth / Headset microphone or fall back to default input."""
+    def _get_working_samplerate(idx: Optional[int]) -> Optional[int]:
+        """Determine a functional input sample rate for the device."""
+        rates_to_try = [44100, 48000, 16000, 32000, 22050]
+        try:
+            if idx is not None:
+                info = sd.query_devices(idx)
+                def_rate = int(info.get("default_samplerate", 0))
+                if def_rate > 0 and def_rate not in rates_to_try:
+                    rates_to_try.insert(0, def_rate)
+                elif def_rate > 0:
+                    rates_to_try.remove(def_rate)
+                    rates_to_try.insert(0, def_rate)
+        except Exception:
+            pass
+
+        for rate in rates_to_try:
+            try:
+                sd.check_input_settings(device=idx, samplerate=rate, channels=1, dtype="float32")
+                return rate
+            except Exception:
+                continue
+        return None
+
+    @classmethod
+    def _is_device_openable(cls, idx: Optional[int]) -> bool:
+        """Verify device can actually be opened for audio input."""
+        return cls._get_working_samplerate(idx) is not None
+
+    @classmethod
+    def get_preferred_input_device(cls) -> Optional[int]:
+        """Detect working Bluetooth/headset mic or working default input."""
         try:
             devs = sd.query_devices()
+            # 1. Prefer functional Bluetooth / headset microphone
             for idx, d in enumerate(devs):
                 if d.get("max_input_channels", 0) > 0:
                     name = str(d.get("name", "")).lower()
-                    if any(term in name for term in ["headset", "bluetooth", "buds", "pods", "hands-free", "bthhfenum"]):
-                        logger.info("Auto-selected Bluetooth headset microphone [%d]: %s", idx, d.get("name"))
+                    if any(term in name for term in ["headset", "bluetooth", "buds", "pods", "hands-free"]):
+                        if cls._is_device_openable(idx):
+                            logger.info("Auto-selected openable Bluetooth headset microphone [%d]: %s", idx, d.get("name"))
+                            return idx
+
+            # 2. Prefer working system default input
+            try:
+                def_idx = sd.default.device[0]
+                if def_idx is not None and def_idx >= 0 and cls._is_device_openable(def_idx):
+                    return def_idx
+            except Exception:
+                pass
+
+            # 3. Fallback to any functional input device (WASAPI / DirectSound / Realtek / MME)
+            for idx, d in enumerate(devs):
+                if d.get("max_input_channels", 0) > 0:
+                    if cls._is_device_openable(idx):
                         return idx
-            return sd.default.device[0]
+
+            # 4. Check if default None works
+            if cls._is_device_openable(None):
+                return None
+
+            return None
         except Exception as e:
             logger.debug("Failed querying audio devices: %s", e)
             return None
@@ -130,63 +180,79 @@ class ClapDetector:
             return "Welcome sequence error."
 
     def _listen_loop(self) -> None:
-        """Core audio stream processing loop."""
-        blocksize = int(SAMPLE_RATE * BLOCK_MS / 1000)
+        """Core audio stream processing loop with continuous host error resilience."""
         noise_floor = MIN_RMS
         last_spike_time = 0.0
         last_double_time = 0.0
         armed_for_second = False
 
-        try:
-            dev_idx = self.selected_device if self.selected_device is not None else self.get_preferred_input_device()
-            with sd.InputStream(
-                device=dev_idx,
-                samplerate=SAMPLE_RATE,
-                channels=1,
-                dtype="float32",
-                blocksize=blocksize,
-            ) as stream:
-                while not self._stop_event.is_set():
-                    data, overflowed = stream.read(blocksize)
-                    rms = _calc_rms(data)
-                    now = time.monotonic()
+        while not self._stop_event.is_set():
+            try:
+                dev_idx = self.selected_device if self.selected_device is not None else self.get_preferred_input_device()
+                sample_rate = self._get_working_samplerate(dev_idx)
+                if sample_rate is None and self._is_device_openable(None):
+                    dev_idx = None
+                    sample_rate = self._get_working_samplerate(None)
 
-                    # Dynamic noise floor tracking
-                    if rms < noise_floor * QUIET_GATE_MULT:
-                        noise_floor = NOISE_FLOOR_ALPHA * noise_floor + (1.0 - NOISE_FLOOR_ALPHA) * rms
+                if sample_rate is None:
+                    # No functional input driver found, enter silent wait
+                    logger.debug("No active microphone driver detected. Standby for device connection.")
+                    if self._stop_event.wait(timeout=5.0):
+                        break
+                    continue
 
-                    threshold = max(MIN_RMS, noise_floor * SPIKE_RATIO)
-                    is_spike = rms > threshold
+                blocksize = max(256, int(sample_rate * BLOCK_MS / 1000))
+                with sd.InputStream(
+                    device=dev_idx,
+                    samplerate=sample_rate,
+                    channels=1,
+                    dtype="float32",
+                    blocksize=blocksize,
+                ) as stream:
+                    logger.info("Clap detector active on device [%s] at %dHz", dev_idx, sample_rate)
+                    while not self._stop_event.is_set():
+                        data, overflowed = stream.read(blocksize)
+                        rms = _calc_rms(data)
+                        now = time.monotonic()
 
-                    # Debounce check
-                    if now < last_double_time + COOLDOWN_S:
-                        continue
+                        # Dynamic noise floor tracking
+                        if rms < noise_floor * QUIET_GATE_MULT:
+                            noise_floor = NOISE_FLOOR_ALPHA * noise_floor + (1.0 - NOISE_FLOOR_ALPHA) * rms
 
-                    if is_spike:
-                        if armed_for_second:
-                            gap = now - last_spike_time
-                            if MIN_DOUBLE_GAP_S <= gap <= MAX_DOUBLE_GAP_S:
-                                # Double clap detected!
-                                logger.info("DOUBLE CLAP DETECTED! (gap=%.3fs, rms=%.4f)", gap, rms)
-                                last_double_time = now
-                                armed_for_second = False
-                                self.trigger_welcome()
-                                continue
-                            elif gap > MAX_DOUBLE_GAP_S:
-                                # First clap timed out; reset with this as new first clap
+                        threshold = max(MIN_RMS, noise_floor * SPIKE_RATIO)
+                        is_spike = rms > threshold
+
+                        # Debounce check
+                        if now < last_double_time + COOLDOWN_S:
+                            continue
+
+                        if is_spike:
+                            if armed_for_second:
+                                gap = now - last_spike_time
+                                if MIN_DOUBLE_GAP_S <= gap <= MAX_DOUBLE_GAP_S:
+                                    # Double clap detected!
+                                    logger.info("DOUBLE CLAP DETECTED! (gap=%.3fs, rms=%.4f)", gap, rms)
+                                    last_double_time = now
+                                    armed_for_second = False
+                                    self.trigger_welcome()
+                                    continue
+                                elif gap > MAX_DOUBLE_GAP_S:
+                                    # First clap timed out; reset with this as new first clap
+                                    last_spike_time = now
+                            else:
                                 last_spike_time = now
+                                armed_for_second = True
                         else:
-                            last_spike_time = now
-                            armed_for_second = True
-                    else:
-                        # Reset armed state if wait window passed
-                        if armed_for_second and (now - last_spike_time) > MAX_DOUBLE_GAP_S:
-                            armed_for_second = False
+                            # Reset armed state if wait window passed
+                            if armed_for_second and (now - last_spike_time) > MAX_DOUBLE_GAP_S:
+                                armed_for_second = False
 
-        except Exception as ex:
-            logger.warning("Clap detector audio stream exception: %s", ex)
-        finally:
-            self._running = False
+            except Exception as ex:
+                logger.debug("Clap detector audio host notice: %s. Standing by.", ex)
+                if self._stop_event.wait(timeout=4.0):
+                    break
+
+        self._running = False
 
 
 # Global clap detector singleton

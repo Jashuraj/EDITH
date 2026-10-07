@@ -94,22 +94,31 @@ class TunnelManager:
             return self._active_url
 
     def start_tunnel(self, provider: str = "pinggy", port: int = 8794) -> Optional[str]:
-        """Start a cloud tunnel process in the background."""
+        """Start a cloud tunnel process in the background with auto-fallback."""
         with self._lock:
             if self._process and self._process.poll() is None:
                 self.stop_tunnel()
 
+            url = None
             if provider == "localtunnel":
-                return self._start_localtunnel(port)
+                url = self._start_localtunnel(port)
             elif provider == "pinggy":
-                return self._start_pinggy_tunnel(port)
+                url = self._start_pinggy_tunnel(port)
             elif provider == "cloudflared":
-                return self._start_cloudflared_tunnel(port)
+                url = self._start_cloudflared_tunnel(port)
             elif provider == "ngrok":
-                return self._start_ngrok_tunnel(port)
-            else:
-                logger.error("Unknown tunnel provider: %s", provider)
-                return None
+                url = self._start_ngrok_tunnel(port)
+
+            # Auto fallback: if requested failed, try alternate installed tool
+            if not url:
+                if provider != "pinggy" and shutil.which("ssh"):
+                    logger.info("Attempting fallback to Pinggy SSH tunnel...")
+                    url = self._start_pinggy_tunnel(port)
+                elif provider != "localtunnel" and shutil.which("npx"):
+                    logger.info("Attempting fallback to Localtunnel...")
+                    url = self._start_localtunnel(port)
+
+            return url
 
     def _start_localtunnel(self, port: int) -> Optional[str]:
         """Start localtunnel via npx."""

@@ -189,13 +189,25 @@ class WindowsTools:
         }
         if raw_name in website_map:
             target_url = website_map[raw_name]
-            self.open_url(target_url)
-            return {"success": True, "app": raw_name.capitalize(), "url": target_url, "message": f"Opened {raw_name.capitalize()} in browser."}
+            opened = self.open_url(target_url)
+            return {
+                "success": True,
+                "app": raw_name.capitalize(),
+                "url": target_url,
+                "opened_on_host": bool(opened),
+                "message": f"Opened {raw_name.capitalize()} in browser.",
+            }
 
         if raw_name.startswith(("http://", "https://", "www.")):
             url = raw_name if raw_name.startswith("http") else f"https://{raw_name}"
-            self.open_url(url)
-            return {"success": True, "app": "Browser", "url": url, "message": f"Opened {url}."}
+            opened = self.open_url(url)
+            return {
+                "success": True,
+                "app": "Browser",
+                "url": url,
+                "opened_on_host": bool(opened),
+                "message": f"Opened {url}.",
+            }
 
         # Candidate resolution paths
         local_app = os.environ.get("LOCALAPPDATA", "")
@@ -320,7 +332,7 @@ class WindowsTools:
             logger.error("Failed to launch %s: %s", raw_name, e)
             return {"success": False, "app": raw_name, "error": str(e)}
 
-    def search_youtube(self, query: str) -> Dict[str, Any]:
+    def search_youtube(self, query: str, open_browser: bool = False) -> Dict[str, Any]:
         """Search and play a video or topic directly on YouTube."""
         import re
         clean_q = (query or "").strip()
@@ -339,6 +351,7 @@ class WindowsTools:
 
         import urllib.parse
         target_url = f"https://www.youtube.com/results?search_query={urllib.parse.quote_plus(clean_q)}"
+        video_id = None
         logger.info("Resolving YouTube video query: %s", clean_q)
         try:
             import urllib.request
@@ -350,17 +363,28 @@ class WindowsTools:
                 html = resp.read().decode("utf-8", errors="ignore")
                 m = re.search(r'"videoId":"([\w-]{11})"', html)
                 if m:
-                    target_url = f"https://www.youtube.com/watch?v={m.group(1)}"
+                    video_id = m.group(1)
+                    target_url = f"https://www.youtube.com/watch?v={video_id}"
                     logger.info("Direct YouTube video found: %s", target_url)
         except Exception as ex:
             logger.debug("Fast YouTube direct video resolver fallback: %s", ex)
 
-        self.open_url(target_url)
+        if video_id:
+            embed_url = f"https://www.youtube.com/embed/{video_id}?autoplay=1&enablejsapi=1"
+        else:
+            embed_url = f"https://www.youtube.com/embed?listType=search&list={urllib.parse.quote_plus(clean_q)}&autoplay=1"
+
+        opened = False
+        if open_browser:
+            opened = bool(self.open_url(target_url))
 
         return {
             "success": True,
             "query": clean_q,
             "url": target_url,
+            "video_id": video_id,
+            "embed_url": embed_url,
+            "opened_on_host": opened,
             "message": f"Playing '{display_title}' on YouTube.",
         }
 
@@ -370,11 +394,12 @@ class WindowsTools:
         import urllib.parse
         url = f"https://www.google.com/search?q={urllib.parse.quote_plus(clean_q)}"
         logger.info("Opening Google search: %s", clean_q)
-        self.open_url(url)
+        opened = bool(self.open_url(url))
         return {
             "success": True,
             "query": clean_q,
             "url": url,
+            "opened_on_host": opened,
             "message": f"Searching Google for '{clean_q}'.",
         }
 
