@@ -45,10 +45,13 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
         super().__init__(*args, directory=str(UI_DIR), **kwargs)
 
     def end_headers(self) -> None:
-        """Inject cache-busting headers for local assets."""
+        """Inject cache-busting and CORS headers for all responses."""
         self.send_header("Cache-Control", "no-cache, no-store, must-revalidate")
         self.send_header("Pragma", "no-cache")
         self.send_header("Expires", "0")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, Bypass-Tunnel-Reminder, X-Token")
         super().end_headers()
 
     def do_OPTIONS(self) -> None:
@@ -249,7 +252,7 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             query_params = urllib.parse.parse_qs(parsed.query)
             fps = int(query_params.get("fps", [20])[0])
             scale = int(query_params.get("scale", [1280])[0])
-            quality = int(query_params.get("quality", [60])[0])
+            quality = int(query_params.get("quality", [75])[0])
 
             self.send_response(200)
             self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
@@ -271,7 +274,7 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
         elif parsed.path == "/api/screen/capture":
             query_params = urllib.parse.parse_qs(parsed.query)
             scale = int(query_params.get("scale", [1280])[0])
-            quality = int(query_params.get("quality", [65])[0])
+            quality = int(query_params.get("quality", [75])[0])
             data = SCREEN_STREAMER.capture_jpeg_bytes(scale_width=scale, quality=quality)
             self.send_response(200)
             self.send_header("Content-Type", "image/jpeg")

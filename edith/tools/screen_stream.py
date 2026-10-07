@@ -50,12 +50,90 @@ class ScreenStreamer:
         except Exception as ex:
             logger.debug("Win32 desktop initialization notice: %s", ex)
 
+    def _capture_win32_gdi(self):
+        """Ultra-fast zero-latency Win32 GDI screen capture via ctypes."""
+        try:
+            import ctypes
+            import ctypes.wintypes
+            from PIL import Image
+
+            class BITMAPINFOHEADER(ctypes.Structure):
+                _fields_ = [
+                    ("biSize", ctypes.wintypes.DWORD),
+                    ("biWidth", ctypes.wintypes.LONG),
+                    ("biHeight", ctypes.wintypes.LONG),
+                    ("biPlanes", ctypes.wintypes.WORD),
+                    ("biBitCount", ctypes.wintypes.WORD),
+                    ("biCompression", ctypes.wintypes.DWORD),
+                    ("biSizeImage", ctypes.wintypes.DWORD),
+                    ("biXPelsPerMeter", ctypes.wintypes.LONG),
+                    ("biYPelsPerMeter", ctypes.wintypes.LONG),
+                    ("biClrUsed", ctypes.wintypes.DWORD),
+                    ("biClrImportant", ctypes.wintypes.DWORD),
+                ]
+
+            u32 = ctypes.windll.user32
+            gdi32 = ctypes.windll.gdi32
+
+            w = u32.GetSystemMetrics(0)
+            h = u32.GetSystemMetrics(1)
+            if w <= 0 or h <= 0:
+                return None
+
+            hdc_screen = u32.GetDC(0)
+            if not hdc_screen:
+                return None
+
+            hdc_mem = gdi32.CreateCompatibleDC(hdc_screen)
+            hbm = gdi32.CreateCompatibleBitmap(hdc_screen, w, h)
+            old_bm = gdi32.SelectObject(hdc_mem, hbm)
+
+            try:
+                # 0x00CC0020 is SRCCOPY
+                res = gdi32.BitBlt(hdc_mem, 0, 0, w, h, hdc_screen, 0, 0, 0x00CC0020)
+                if not res:
+                    return None
+
+                bmi = BITMAPINFOHEADER()
+                bmi.biSize = ctypes.sizeof(BITMAPINFOHEADER)
+                bmi.biWidth = w
+                bmi.biHeight = -h  # top-down DIB
+                bmi.biPlanes = 1
+                bmi.biBitCount = 32
+                bmi.biCompression = 0
+
+                buf = ctypes.create_string_buffer(w * h * 4)
+                lines = gdi32.GetDIBits(hdc_mem, hbm, 0, h, buf, ctypes.byref(bmi), 0)
+                if lines == 0:
+                    return None
+
+                im = Image.frombuffer("RGBA", (w, h), buf, "raw", "BGRA", 0, 1)
+                rgb = im.convert("RGB")
+                self._screen_size = (w, h)
+                return rgb
+            finally:
+                if old_bm:
+                    gdi32.SelectObject(hdc_mem, old_bm)
+                if hbm:
+                    gdi32.DeleteObject(hbm)
+                if hdc_mem:
+                    gdi32.DeleteDC(hdc_mem)
+                if hdc_screen:
+                    u32.ReleaseDC(0, hdc_screen)
+        except Exception as ex:
+            self._last_error = f"GDI capture exception: {ex}"
+            return None
+
     def capture_raw_image(self):
         """Capture the current display as a PIL Image."""
         if self._is_windows:
             self._init_win32_desktop()
+            # 1. Attempt ultra-fast Win32 GDI hardware capture
+            gdi_im = self._capture_win32_gdi()
+            if gdi_im is not None:
+                return gdi_im
 
-        # 1. Attempt primary screen grab via PIL ImageGrab
+        # 2. Secondary fallback via PIL ImageGrab
         try:
             from PIL import ImageGrab
             im = ImageGrab.grab(all_screens=False)
@@ -65,7 +143,7 @@ class ScreenStreamer:
         except Exception as ex:
             self._last_error = str(ex)
 
-        # 2. Render high-tech fallback HUD canvas if screen is inaccessible
+        # 3. Render high-tech fallback HUD canvas if screen is inaccessible
         return self._render_placeholder_frame()
 
     def _render_placeholder_frame(self):
@@ -102,7 +180,7 @@ class ScreenStreamer:
     def capture_jpeg_bytes(
         self,
         scale_width: Optional[int] = 1280,
-        quality: int = 60,
+        quality: int = 75,
     ) -> bytes:
         """Capture screen, optionally downsample, and encode into JPEG bytes."""
         with self._lock:
@@ -120,7 +198,7 @@ class ScreenStreamer:
                 im = im.resize((scale_width, target_height), Image.Resampling.BILINEAR)
 
             buf = io.BytesIO()
-            # Fast JPEG compression
+            # Fast JPEG compression (720p HD / 1080p FHD)
             im.save(buf, format="JPEG", quality=max(10, min(95, quality)), optimize=False)
             data = buf.getvalue()
 

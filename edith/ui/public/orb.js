@@ -148,6 +148,9 @@ function setupMouseControls() {
   }, { passive: true });
 }
 
+let baseOrbScale = 1.0;
+let targetOrbScale = 1.0;
+
 // Global hook for MediaPipe gesture rotation and zoom
 window.rotateOrb = function(deltaX, deltaY) {
   if (orbGroup) {
@@ -159,6 +162,26 @@ window.rotateOrb = function(deltaX, deltaY) {
 window.zoomOrb = function(deltaZ) {
   if (camera) {
     camera.position.z = Math.max(6, Math.min(35, camera.position.z + deltaZ));
+  }
+};
+
+window.scaleOrb = function(deltaScale) {
+  targetOrbScale = Math.max(0.3, Math.min(4.5, targetOrbScale + deltaScale));
+};
+
+window.setOrbScale = function(newScale) {
+  targetOrbScale = Math.max(0.3, Math.min(4.5, newScale));
+};
+
+window.getOrbScale = function() {
+  return Math.round(targetOrbScale * 100);
+};
+
+window.resetOrb = function() {
+  targetOrbScale = 1.0;
+  if (camera) camera.position.z = 18;
+  if (orbGroup) {
+    orbGroup.rotation.set(0, 0, 0);
   }
 };
 
@@ -188,9 +211,11 @@ function animate() {
   particleSphere.material.color = currentColor;
   innerRings.forEach(r => r.material.color = currentColor);
 
-  // Gentle breathing scale
-  const scale = 1.0 + Math.sin(time * 2) * 0.03;
-  orbGroup.scale.set(scale, scale, scale);
+  // Smooth scaling with gentle breathing animation
+  baseOrbScale += (targetOrbScale - baseOrbScale) * 0.14;
+  const breathe = 1.0 + Math.sin(time * 2) * 0.03;
+  const currentScale = baseOrbScale * breathe;
+  orbGroup.scale.set(currentScale, currentScale, currentScale);
 
   renderer.render(scene, camera);
 }

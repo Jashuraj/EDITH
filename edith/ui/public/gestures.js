@@ -311,12 +311,18 @@ async function toggleGestures() {
 
     gesturesActive = true;
     btn.innerText = 'GESTURE: ACTIVE';
-    btn.style.color = 'var(--amber)';
+    btn.style.color = 'var(--cyan-glow)';
     btn.classList.add('active');
-    statusTag.innerText = 'VISION ONLINE: PINCH TO INTERACT';
+    statusTag.innerText = 'VISION ONLINE: 1-HAND ROTATE, 2-HANDS SCALE ORB';
 
-    // Auto-enable OS mouse control mode
-    toggleOsMouse();
+    // Keep OS Mouse off by default so 3D Orb interaction is active
+    osMouseActive = false;
+    const mouseBtn = document.getElementById('btn-os-mouse');
+    if (mouseBtn) {
+      mouseBtn.innerText = 'OS MOUSE: OFF';
+      mouseBtn.classList.remove('active');
+      mouseBtn.style.color = '';
+    }
 
     // Reset tracking states
     handStates[0].prevGrabX = null;
@@ -425,12 +431,13 @@ function drawCyberneticSkeleton(landmarksList, ctx, canvas) {
 
   ctx.shadowBlur = 0;
 
+  // 1. Draw individual cybernetic hand skeletons
   for (let hIdx = 0; hIdx < landmarksList.length; hIdx++) {
     const lm = landmarksList[hIdx];
     const isPinching = handStates[hIdx] ? handStates[hIdx].isPinching : false;
 
     ctx.lineWidth = isBg ? 2.5 : 2.0;
-    ctx.strokeStyle = isPinching ? 'rgba(255, 183, 0, 0.95)' : 'rgba(0, 229, 255, 0.85)';
+    ctx.strokeStyle = isPinching ? 'rgba(255, 183, 0, 0.95)' : (hIdx === 0 ? 'rgba(0, 229, 255, 0.85)' : 'rgba(168, 85, 247, 0.85)');
 
     for (const [startIdx, endIdx] of HAND_CONNECTIONS) {
       const p1 = lm[startIdx];
@@ -447,7 +454,7 @@ function drawCyberneticSkeleton(landmarksList, ctx, canvas) {
       const jy = map.offsetY + p.y * map.scaleY;
       ctx.beginPath();
       if (i === THUMB_TIP || i === INDEX_TIP) {
-        ctx.fillStyle = isPinching ? '#ff0055' : '#00e5ff';
+        ctx.fillStyle = isPinching ? '#ff0055' : (hIdx === 0 ? '#00e5ff' : '#c084fc');
         ctx.arc(jx, jy, isBg ? 6 : 4, 0, 2 * Math.PI);
       } else {
         ctx.fillStyle = '#10b981';
@@ -469,43 +476,125 @@ function drawCyberneticSkeleton(landmarksList, ctx, canvas) {
       ctx.stroke();
     }
   }
+
+  // 2. Holographic energy laser bridge when 2 hands are detected
+  if (landmarksList.length >= 2) {
+    const lm0 = landmarksList[0];
+    const lm1 = landmarksList[1];
+    const p0 = lm0[INDEX_TIP];
+    const p1 = lm1[INDEX_TIP];
+    const x0 = map.offsetX + p0.x * map.scaleX;
+    const y0 = map.offsetY + p0.y * map.scaleY;
+    const x1 = map.offsetX + p1.x * map.scaleX;
+    const y1 = map.offsetY + p1.y * map.scaleY;
+
+    const bothPinching = handStates[0].isPinching && handStates[1].isPinching;
+
+    ctx.save();
+    ctx.strokeStyle = bothPinching ? 'rgba(255, 0, 85, 0.90)' : 'rgba(0, 229, 255, 0.45)';
+    ctx.lineWidth = bothPinching ? 3.5 : 1.5;
+    ctx.setLineDash([8, 6]);
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.stroke();
+
+    // Central energy convergence node
+    const mx = (x0 + x1) / 2;
+    const my = (y0 + y1) / 2;
+    ctx.setLineDash([]);
+    ctx.fillStyle = bothPinching ? '#ff0055' : '#00e5ff';
+    ctx.beginPath();
+    ctx.arc(mx, my, bothPinching ? 8 : 4, 0, 2 * Math.PI);
+    ctx.fill();
+    ctx.restore();
+  }
 }
 
 /**
- * Ultron Gesture Processor with Dual-Mode (Orb vs Full-Screen Desktop Mouse).
+ * Ultron Gesture Processor with Dual-Mode (Holographic Orb vs Full-Screen Desktop Mouse).
+ * Full two-hand support for dual-pinch maximize/minimize, pitch, and orb manipulation.
  */
 function processUltronGestures(landmarksList) {
   const numHands = Math.min(landmarksList.length, 2);
   const now = performance.now();
 
-  // Primary hand analysis
-  const primaryHand = landmarksList[0];
-  const wrist = primaryHand[WRIST];
-  const thumb = primaryHand[THUMB_TIP];
-  const index = primaryHand[INDEX_TIP];
-  const middle = primaryHand[MIDDLE_TIP];
-  const ring = primaryHand[RING_TIP];
-  const pinky = primaryHand[PINKY_TIP];
-  const indexMcp = primaryHand[INDEX_MCP];
-  const middleMcp = primaryHand[MIDDLE_MCP];
-  const ringMcp = primaryHand[RING_MCP];
-  const pinkyMcp = primaryHand[PINKY_MCP];
+  // Process metrics for ALL visible hands (Hand 0 and Hand 1)
+  const metrics = [];
+  for (let h = 0; h < numHands; h++) {
+    const hand = landmarksList[h];
+    const wrist = hand[WRIST];
+    const thumb = hand[THUMB_TIP];
+    const index = hand[INDEX_TIP];
+    const middle = hand[MIDDLE_TIP];
+    const ring = hand[RING_TIP];
+    const pinky = hand[PINKY_TIP];
+    const indexMcp = hand[INDEX_MCP];
+    const middleMcp = hand[MIDDLE_MCP];
+    const ringMcp = hand[RING_MCP];
+    const pinkyMcp = hand[PINKY_MCP];
 
-  // Scale normalization based on hand size
-  const handSpan = Math.hypot(wrist.x - middleMcp.x, wrist.y - middleMcp.y) || 0.2;
-  const pinchDist = Math.hypot(thumb.x - index.x, thumb.y - index.y) / handSpan;
-  const middlePinchDist = Math.hypot(thumb.x - middle.x, thumb.y - middle.y) / handSpan;
-  const pinkyPinchDist = Math.hypot(thumb.x - pinky.x, thumb.y - pinky.y) / handSpan;
+    const handSpan = Math.hypot(wrist.x - middleMcp.x, wrist.y - middleMcp.y) || 0.2;
+    const pinchDist = Math.hypot(thumb.x - index.x, thumb.y - index.y) / handSpan;
+    const middlePinchDist = Math.hypot(thumb.x - middle.x, thumb.y - middle.y) / handSpan;
+    const pinkyPinchDist = Math.hypot(thumb.x - pinky.x, thumb.y - pinky.y) / handSpan;
 
-  // Normalized cursor coordinate with margin calibrated to comfortable hand zone
-  const rawTargetX = Math.min(1.0, Math.max(0.0, (1.0 - index.x - 0.15) / 0.70));
-  const rawTargetY = Math.min(1.0, Math.max(0.0, (index.y - 0.15) / 0.70));
+    // Hysteresis pinch tracking
+    const state = handStates[h];
+    if (state.isPinching) {
+      if (pinchDist > PINCH_OFF) state.isPinching = false;
+    } else {
+      if (pinchDist < PINCH_ON) state.isPinching = true;
+    }
 
-  // Exponential moving average smoothing
+    state.isMiddlePinching = middlePinchDist < PINCH_ON && pinchDist >= PINCH_ON;
+    state.isPinkyPinching = pinkyPinchDist < PINCH_ON && pinchDist >= PINCH_ON;
+
+    // Mirrored normalized coordinates for natural human interaction
+    state.grabX = 1.0 - index.x;
+    state.grabY = index.y;
+    state.palmX = 1.0 - (wrist.x + middleMcp.x) / 2;
+    state.palmY = (wrist.y + middleMcp.y) / 2;
+
+    const isFiveFingersOpen = (
+      index.y < indexMcp.y &&
+      middle.y < middleMcp.y &&
+      ring.y < ringMcp.y &&
+      pinky.y < pinkyMcp.y
+    );
+
+    const isClosedFist = (
+      index.y > indexMcp.y &&
+      middle.y > middleMcp.y &&
+      ring.y > ringMcp.y &&
+      pinky.y > pinkyMcp.y
+    );
+
+    metrics.push({
+      hand, wrist, thumb, index, middle, ring, pinky,
+      indexMcp, middleMcp, ringMcp, pinkyMcp,
+      handSpan, pinchDist, middlePinchDist, pinkyPinchDist,
+      isFiveFingersOpen, isClosedFist
+    });
+  }
+
+  // Clear states for missing hands
+  for (let h = numHands; h < 2; h++) {
+    handStates[h].isPinching = false;
+    handStates[h].isMiddlePinching = false;
+    handStates[h].isPinkyPinching = false;
+    handStates[h].prevGrabX = null;
+    handStates[h].prevGrabY = null;
+  }
+
+  // Primary cursor coordinates
+  const primaryMetric = metrics[0];
+  const rawTargetX = Math.min(1.0, Math.max(0.0, (1.0 - primaryMetric.index.x - 0.15) / 0.70));
+  const rawTargetY = Math.min(1.0, Math.max(0.0, (primaryMetric.index.y - 0.15) / 0.70));
+
   smoothMouseX = smoothMouseX + (rawTargetX - smoothMouseX) * SMOOTHING;
   smoothMouseY = smoothMouseY + (rawTargetY - smoothMouseY) * SMOOTHING;
 
-  // Visual screen cursor on HUD
   const screenX = smoothMouseX * window.innerWidth;
   const screenY = smoothMouseY * window.innerHeight;
 
@@ -515,53 +604,33 @@ function processUltronGestures(landmarksList) {
     cursorElement.style.top = `${screenY}px`;
   }
 
-  // Check pinch states with hysteresis
-  const primaryState = handStates[0];
-  const wasPinching = primaryState.isPinching;
-  if (primaryState.isPinching) {
-    if (pinchDist > PINCH_OFF) primaryState.isPinching = false;
-  } else {
-    if (pinchDist < PINCH_ON) primaryState.isPinching = true;
-  }
-
-  // Check middle finger right-click pinch
-  const isRightPinch = middlePinchDist < PINCH_ON && pinchDist >= PINCH_ON;
-
-  // Check pinky pinch for volume
-  const isPinkyPinch = pinkyPinchDist < PINCH_ON && pinchDist >= PINCH_ON;
-
-  // Two fingers pointing up (scroll mode): index & middle extended, ring & pinky folded
-  const isScrollGesture = (
-    index.y < indexMcp.y &&
-    middle.y < middleMcp.y &&
-    ring.y > middleMcp.y &&
-    pinky.y > pinkyMcp.y &&
-    Math.hypot(index.x - middle.x, index.y - middle.y) < 0.14 &&
-    pinchDist > PINCH_OFF
-  );
-
-  // Five fingers open wide (extended)
-  const isFiveFingersOpen = (
-    index.y < indexMcp.y &&
-    middle.y < middleMcp.y &&
-    ring.y < ringMcp.y &&
-    pinky.y < pinkyMcp.y
-  );
-
-  // Closed Fist: all 4 fingers folded below MCPs
-  const isClosedFist = (
-    index.y > indexMcp.y &&
-    middle.y > middleMcp.y &&
-    ring.y > ringMcp.y &&
-    pinky.y > pinkyMcp.y
-  );
-
   // ==========================================
   // MODE A: FULL SCREEN OS MOUSE CONTROL
   // ==========================================
   if (osMouseActive) {
+    const primaryState = handStates[0];
+    const wasPinching = primaryState.isPinching;
+
+    // Dual-hand pinch in OS mode -> zoom desktop screen
+    if (numHands >= 2 && handStates[0].isPinching && handStates[1].isPinching) {
+      const dist = Math.hypot(
+        handStates[0].grabX - handStates[1].grabX,
+        handStates[0].grabY - handStates[1].grabY
+      );
+      if (prevTwoHandDist !== null) {
+        const delta = dist - prevTwoHandDist;
+        if (Math.abs(delta) > 0.015 && (now - lastScrollTime > 120)) {
+          sendMouseAction("scroll", { delta: delta > 0 ? 1 : -1 });
+          lastScrollTime = now;
+        }
+      }
+      prevTwoHandDist = dist;
+      statusTag.innerText = "OS MOUSE: DUAL PINCH ZOOM 🔍";
+      return;
+    }
+
     // 1. Closed Fist Hold -> Toggle Media Play/Pause
-    if (isClosedFist && (now - lastMediaTime > 1000)) {
+    if (primaryMetric.isClosedFist && (now - lastMediaTime > 1000)) {
       sendMouseAction("media_toggle");
       lastMediaTime = now;
       statusTag.innerText = "OS GESTURE: MEDIA PLAY / PAUSE ⏯️";
@@ -569,35 +638,35 @@ function processUltronGestures(landmarksList) {
     }
 
     // 2. Five-Finger Open Swipe Down -> Show Desktop (Win+D)
-    if (isFiveFingersOpen) {
-      if (prevSwipeY !== null && (wrist.y - prevSwipeY > 0.14) && (now - lastDesktopTime > 1200)) {
+    if (primaryMetric.isFiveFingersOpen) {
+      if (prevSwipeY !== null && (primaryMetric.wrist.y - prevSwipeY > 0.14) && (now - lastDesktopTime > 1200)) {
         sendMouseAction("desktop");
         lastDesktopTime = now;
         prevSwipeY = null;
         statusTag.innerText = "OS GESTURE: SHOW DESKTOP 🖥️";
         return;
       }
-      prevSwipeY = wrist.y;
+      prevSwipeY = primaryMetric.wrist.y;
     } else {
       prevSwipeY = null;
     }
 
     // 3. Horizontal Palm Wave -> Switch Window (Alt+Tab)
-    if (isFiveFingersOpen || (index.y < indexMcp.y && middle.y < middleMcp.y)) {
-      if (prevSwipeX !== null && Math.abs(wrist.x - prevSwipeX) > 0.18 && (now - lastSwitchTime > 900)) {
+    if (primaryMetric.isFiveFingersOpen || (primaryMetric.index.y < primaryMetric.indexMcp.y && primaryMetric.middle.y < primaryMetric.middleMcp.y)) {
+      if (prevSwipeX !== null && Math.abs(primaryMetric.wrist.x - prevSwipeX) > 0.18 && (now - lastSwitchTime > 900)) {
         sendMouseAction("switch_window");
         lastSwitchTime = now;
         prevSwipeX = null;
         statusTag.innerText = "OS GESTURE: SWITCH WINDOW (ALT+TAB) 🔀";
         return;
       }
-      prevSwipeX = wrist.x;
+      prevSwipeX = primaryMetric.wrist.x;
     } else {
       prevSwipeX = null;
     }
 
     // 4. Cursor Movement Dispatch
-    if (now - lastMouseSendTime > 25) { // ~40 Hz throttle
+    if (now - lastMouseSendTime > 25) {
       const deltaDist = Math.hypot(smoothMouseX - lastSentNormX, smoothMouseY - lastSentNormY);
       if (deltaDist > 0.0025) {
         sendMouseAction("move", { x: smoothMouseX, y: smoothMouseY });
@@ -608,7 +677,7 @@ function processUltronGestures(landmarksList) {
     }
 
     // 5. Right Click (Middle finger + Thumb pinch)
-    if (isRightPinch && (now - lastRightClickTime > 400)) {
+    if (primaryState.isMiddlePinching && (now - lastRightClickTime > 400)) {
       sendMouseAction("right_click");
       lastRightClickTime = now;
       if (cursorElement) cursorElement.classList.add("right-clicking");
@@ -618,30 +687,39 @@ function processUltronGestures(landmarksList) {
     }
 
     // 6. Two-Finger Scroll
+    const isScrollGesture = (
+      primaryMetric.index.y < primaryMetric.indexMcp.y &&
+      primaryMetric.middle.y < primaryMetric.middleMcp.y &&
+      primaryMetric.ring.y > primaryMetric.middleMcp.y &&
+      primaryMetric.pinky.y > primaryMetric.pinkyMcp.y &&
+      Math.hypot(primaryMetric.index.x - primaryMetric.middle.x, primaryMetric.index.y - primaryMetric.middle.y) < 0.14 &&
+      primaryMetric.pinchDist > PINCH_OFF
+    );
+
     if (isScrollGesture) {
       if (prevScrollY !== null) {
-        const deltaY = index.y - prevScrollY;
+        const deltaY = primaryMetric.index.y - prevScrollY;
         if (now - lastScrollTime > 50) {
           if (deltaY < -0.012) {
-            sendMouseAction("scroll", { delta: 1 }); // Scroll up
+            sendMouseAction("scroll", { delta: 1 });
             lastScrollTime = now;
             statusTag.innerText = "OS MOUSE: SCROLL UP ↑";
           } else if (deltaY > 0.012) {
-            sendMouseAction("scroll", { delta: -1 }); // Scroll down
+            sendMouseAction("scroll", { delta: -1 });
             lastScrollTime = now;
             statusTag.innerText = "OS MOUSE: SCROLL DOWN ↓";
           }
         }
       }
-      prevScrollY = index.y;
+      prevScrollY = primaryMetric.index.y;
       return;
     } else {
       prevScrollY = null;
     }
 
     // 7. Volume Control (Pinky + Thumb pinch)
-    if (isPinkyPinch && (now - lastVolumeTime > 220)) {
-      const volDelta = index.y < 0.45 ? 5 : -5;
+    if (primaryState.isPinkyPinching && (now - lastVolumeTime > 220)) {
+      const volDelta = primaryMetric.index.y < 0.45 ? 5 : -5;
       sendMouseAction("volume", { delta: volDelta });
       lastVolumeTime = now;
       statusTag.innerText = volDelta > 0 ? "OS MOUSE: VOLUME UP 🔊" : "OS MOUSE: VOLUME DOWN 🔉";
@@ -651,12 +729,10 @@ function processUltronGestures(landmarksList) {
     // 8. Left Click / Drag & Drop / Double Click
     if (primaryState.isPinching) {
       if (!wasPinching) {
-        // Pinch started
         pinchStartTime = now;
         isDraggingMouse = false;
         if (cursorElement) cursorElement.classList.add("pinching");
       } else {
-        // Pinch held > 260ms -> enter Drag & Drop mode
         if (!isDraggingMouse && (now - pinchStartTime > 260)) {
           isDraggingMouse = true;
           sendMouseAction("drag_start");
@@ -665,14 +741,12 @@ function processUltronGestures(landmarksList) {
       }
     } else {
       if (wasPinching) {
-        // Pinch released
         if (cursorElement) cursorElement.classList.remove("pinching");
         if (isDraggingMouse) {
           sendMouseAction("drag_end");
           isDraggingMouse = false;
           statusTag.innerText = "OS MOUSE: RELEASED";
         } else {
-          // Quick tap release (< 260ms) -> Click or Double Click
           if (now - lastClickTime < 340) {
             sendMouseAction("double_click");
             lastClickTime = 0;
@@ -691,45 +765,130 @@ function processUltronGestures(landmarksList) {
   }
 
   // ==========================================
-  // MODE B: HOLOGRAPHIC 3D ORB INTERACTION
+  // MODE B: HOLOGRAPHIC 3D ORB INTERACTION (DEFAULT)
   // ==========================================
-  // Two-Hand Mode: Dual Pinch Zoom
+
+  // ----------------------------------------------------
+  // TWO-HAND GESTURE 1: DUAL PINCH TO MAXIMIZE / MINIMIZE ORB
+  // ----------------------------------------------------
   if (numHands >= 2 && handStates[0].isPinching && handStates[1].isPinching) {
-    const dist = Math.hypot(
+    window.isUserPinching = true;
+    const currentDist = Math.hypot(
       handStates[0].grabX - handStates[1].grabX,
       handStates[0].grabY - handStates[1].grabY
     );
+
     if (prevTwoHandDist !== null) {
-      const deltaDist = dist - prevTwoHandDist;
-      if (window.zoomOrb) window.zoomOrb(-deltaDist * ZOOM_SPEED);
+      const deltaDist = currentDist - prevTwoHandDist;
+      // Moving hands apart maximizes orb; pushing hands together minimizes orb
+      if (window.scaleOrb) {
+        window.scaleOrb(deltaDist * 4.8);
+      }
+      if (window.zoomOrb) {
+        window.zoomOrb(-deltaDist * 32.0);
+      }
     }
-    prevTwoHandDist = dist;
+    prevTwoHandDist = currentDist;
+
+    // Holographic tilt based on hand positioning
+    if (window.rotateOrb) {
+      const midY = (handStates[0].grabY + handStates[1].grabY) / 2;
+      window.rotateOrb(0, (midY - 0.5) * 0.06);
+    }
+
     if (cursorElement) cursorElement.style.display = 'none';
-    statusTag.innerText = 'DUAL PINCH: ZOOMING ORB';
+    const curScale = window.getOrbScale ? window.getOrbScale() : 100;
+    statusTag.innerText = `DUAL PINCH: ORB SCALE ${curScale}% 🌐`;
     return;
   }
+
+  // ----------------------------------------------------
+  // TWO-HAND GESTURE 2: TWO OPEN PALMS SPREAD (EXPAND / MAXIMIZE)
+  // ----------------------------------------------------
+  if (numHands >= 2 && metrics[0].isFiveFingersOpen && metrics[1].isFiveFingersOpen) {
+    const palmDist = Math.hypot(
+      handStates[0].palmX - handStates[1].palmX,
+      handStates[0].palmY - handStates[1].palmY
+    );
+    if (prevTwoHandDist !== null) {
+      const delta = palmDist - prevTwoHandDist;
+      if (Math.abs(delta) > 0.008 && window.scaleOrb) {
+        window.scaleOrb(delta * 3.2);
+      }
+    }
+    prevTwoHandDist = palmDist;
+    const curScale = window.getOrbScale ? window.getOrbScale() : 100;
+    statusTag.innerText = `OPEN PALMS SPREAD: ORB SCALE ${curScale}% 🌟`;
+    return;
+  }
+
+  // ----------------------------------------------------
+  // TWO-HAND GESTURE 3: TWO INDEX TIPS AIR TAP (RE-CENTER / RESET)
+  // ----------------------------------------------------
+  if (numHands >= 2) {
+    const indexTipDist = Math.hypot(
+      handStates[0].grabX - handStates[1].grabX,
+      handStates[0].grabY - handStates[1].grabY
+    );
+    if (indexTipDist < 0.06 && !handStates[0].isPinching && !handStates[1].isPinching) {
+      if (window.resetOrb) window.resetOrb();
+      statusTag.innerText = "DUAL INDEX TAP: ORB RE-CENTERED TO DEFAULT 🎯";
+      prevTwoHandDist = null;
+      return;
+    }
+  }
+
+  // ----------------------------------------------------
+  // TWO-HAND GESTURE 4: TWO CLOSED FISTS (CONTRACT / MINIMIZE)
+  // ----------------------------------------------------
+  if (numHands >= 2 && metrics[0].isClosedFist && metrics[1].isClosedFist) {
+    if (window.scaleOrb) window.scaleOrb(-0.025);
+    const curScale = window.getOrbScale ? window.getOrbScale() : 100;
+    statusTag.innerText = `TWO FISTS: CONTRACTING ORB (${curScale}%) ✊✊`;
+    prevTwoHandDist = null;
+    return;
+  }
+
+  // Reset two-hand distance tracker when no two-hand gesture is active
   prevTwoHandDist = null;
 
-  // Single-Hand Mode: Rotate Orb
-  if (primaryState.isPinching) {
+  // ----------------------------------------------------
+  // SINGLE-HAND GESTURE: ROTATE 3D ORB (HAND 0 OR HAND 1)
+  // ----------------------------------------------------
+  const activePinchingHandIdx = handStates[0].isPinching ? 0 : (numHands >= 2 && handStates[1].isPinching ? 1 : -1);
+
+  if (activePinchingHandIdx !== -1) {
     window.isUserPinching = true;
     if (cursorElement) cursorElement.classList.add('pinching');
 
-    if (primaryState.prevGrabX !== null && primaryState.prevGrabY !== null) {
-      const deltaX = (smoothMouseX - primaryState.prevGrabX) * ROTATE_SPEED;
-      const deltaY = (smoothMouseY - primaryState.prevGrabY) * ROTATE_SPEED;
+    const activeState = handStates[activePinchingHandIdx];
+    const posX = activeState.grabX;
+    const posY = activeState.grabY;
+
+    if (activeState.prevGrabX !== null && activeState.prevGrabY !== null) {
+      const deltaX = (posX - activeState.prevGrabX) * ROTATE_SPEED;
+      const deltaY = (posY - activeState.prevGrabY) * ROTATE_SPEED;
       if (window.rotateOrb) window.rotateOrb(deltaX, deltaY);
     }
 
-    primaryState.prevGrabX = smoothMouseX;
-    primaryState.prevGrabY = smoothMouseY;
-    statusTag.innerText = 'PINCH ACTIVE: ROTATING ORB';
+    activeState.prevGrabX = posX;
+    activeState.prevGrabY = posY;
+    statusTag.innerText = `HAND ${activePinchingHandIdx + 1} PINCH: ROTATING 3D ORB 🌀`;
   } else {
     window.isUserPinching = false;
     if (cursorElement) cursorElement.classList.remove('pinching');
-    primaryState.prevGrabX = null;
-    primaryState.prevGrabY = null;
-    statusTag.innerText = 'GESTURE READY: PINCH ORB (OR TOGGLE OS MOUSE)';
+    handStates[0].prevGrabX = null;
+    handStates[0].prevGrabY = null;
+    handStates[1].prevGrabX = null;
+    handStates[1].prevGrabY = null;
+
+    if (numHands >= 2) {
+      statusTag.innerText = "2 HANDS READY: PINCH BOTH TO SCALE/MAXIMIZE ORB 👐";
+    } else if (numHands === 1) {
+      statusTag.innerText = "1 HAND READY: PINCH TO ROTATE 3D ORB 🖐️";
+    } else {
+      statusTag.innerText = "LOOKING FOR HANDS... SHOW 1 OR 2 HANDS";
+    }
   }
 }
 

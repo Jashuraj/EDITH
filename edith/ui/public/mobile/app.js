@@ -97,6 +97,7 @@
     btnOpenKb: document.getElementById("btn-open-kb"),
     btnRemoteClip: document.getElementById("btn-remote-clip"),
     btnRemoteRefresh: document.getElementById("btn-remote-refresh"),
+    btnRemoteRes: document.getElementById("btn-remote-res"),
     remoteFpsTag: document.getElementById("remote-fps-tag"),
     remoteTitleText: document.getElementById("remote-title-text"),
     gamepadOverlay: document.getElementById("virtual-gamepad-overlay"),
@@ -659,6 +660,112 @@
   let remoteStreamRetryTimer = null;
   let lastJoystickDispatch = 0;
   let joystickActive = false;
+  let remoteResolution = localStorage.getItem("edith_remote_res") || "720p";
+  let currentBlobUrl = null;
+  let isFetchingFrame = false;
+  let frameCount = 0;
+  let lastFpsCalcTime = performance.now();
+  let currentFps = 0;
+
+  function updateResolutionButtonUI() {
+    if (dom.btnRemoteRes) {
+      dom.btnRemoteRes.textContent = remoteResolution === "1080p" ? "📺 1080p FHD" : "📺 720p HD";
+    }
+  }
+
+  function toggleResolution() {
+    remoteResolution = remoteResolution === "720p" ? "1080p" : "720p";
+    localStorage.setItem("edith_remote_res", remoteResolution);
+    updateResolutionButtonUI();
+    triggerHaptic(20);
+    if (dom.remoteFpsTag) {
+      dom.remoteFpsTag.textContent = `SWITCHING TO ${remoteResolution.toUpperCase()}...`;
+      dom.remoteFpsTag.style.color = "#00e5ff";
+    }
+  }
+
+  async function fetchStreamLoop() {
+    if (!remoteStreamActive || !dom.remoteScreenImg) return;
+    if (isFetchingFrame) return;
+    isFetchingFrame = true;
+
+    const ep = (state.activeEndpoint || defaultLocalUrl).replace(/\/+$/, "");
+    const scale = remoteResolution === "1080p" ? 1920 : 1280;
+    const quality = remoteResolution === "1080p" ? 80 : 75;
+    const streamUrl = `${ep}/api/screen/capture?scale=${scale}&quality=${quality}&token=${encodeURIComponent(state.token)}&t=${Date.now()}`;
+
+    try {
+      const resp = await fetch(streamUrl, {
+        method: "GET",
+        headers: {
+          "Bypass-Tunnel-Reminder": "true",
+          "X-Token": state.token || "",
+        },
+        cache: "no-store",
+      });
+
+      if (!resp.ok) {
+        throw new Error(`HTTP ${resp.status}`);
+      }
+
+      const blob = await resp.blob();
+      if (!remoteStreamActive) {
+        isFetchingFrame = false;
+        return;
+      }
+
+      const newBlobUrl = URL.createObjectURL(blob);
+      const nextImg = new Image();
+      nextImg.onload = () => {
+        if (!remoteStreamActive) {
+          URL.revokeObjectURL(newBlobUrl);
+          isFetchingFrame = false;
+          return;
+        }
+        if (dom.remoteScreenImg) {
+          dom.remoteScreenImg.src = newBlobUrl;
+        }
+        if (currentBlobUrl) {
+          URL.revokeObjectURL(currentBlobUrl);
+        }
+        currentBlobUrl = newBlobUrl;
+
+        frameCount++;
+        const now = performance.now();
+        if (now - lastFpsCalcTime >= 1000) {
+          currentFps = Math.round((frameCount * 1000) / (now - lastFpsCalcTime));
+          frameCount = 0;
+          lastFpsCalcTime = now;
+          if (dom.remoteFpsTag) {
+            dom.remoteFpsTag.textContent = `${currentFps} FPS // ${remoteResolution.toUpperCase()}`;
+            dom.remoteFpsTag.style.color = currentFps >= 10 ? "#00e676" : "#ff9100";
+          }
+        }
+
+        isFetchingFrame = false;
+        if (remoteStreamActive) {
+          requestAnimationFrame(fetchStreamLoop);
+        }
+      };
+
+      nextImg.onerror = () => {
+        URL.revokeObjectURL(newBlobUrl);
+        isFetchingFrame = false;
+        if (remoteStreamActive) {
+          setTimeout(fetchStreamLoop, 150);
+        }
+      };
+    } catch (ex) {
+      isFetchingFrame = false;
+      if (dom.remoteFpsTag && remoteStreamActive) {
+        dom.remoteFpsTag.textContent = "CONNECTING...";
+        dom.remoteFpsTag.style.color = "#ff9100";
+      }
+      if (remoteStreamActive) {
+        setTimeout(fetchStreamLoop, 600);
+      }
+    }
+  }
 
   async function sendRemoteInput(action, params = {}) {
     const ep = (state.activeEndpoint || defaultLocalUrl).replace(/\/+$/, "");
@@ -716,7 +823,13 @@
 
   function closeRemoteDesktop() {
     remoteStreamActive = false;
+    isFetchingFrame = false;
     clearTimeout(remoteStreamRetryTimer);
+
+    if (currentBlobUrl) {
+      URL.revokeObjectURL(currentBlobUrl);
+      currentBlobUrl = null;
+    }
 
     if (dom.remoteOverlay) {
       dom.remoteOverlay.style.display = "none";
@@ -738,25 +851,15 @@
 
   function startScreenStream() {
     if (!remoteStreamActive || !dom.remoteScreenImg) return;
-    const ep = (state.activeEndpoint || defaultLocalUrl).replace(/\/+$/, "");
-    const streamUrl = `${ep}/stream/screen?quality=60&scale=1280&token=${encodeURIComponent(state.token)}&t=${Date.now()}`;
-
-    dom.remoteScreenImg.src = streamUrl;
+    updateResolutionButtonUI();
     if (dom.remoteFpsTag) {
-      dom.remoteFpsTag.textContent = "CONNECTED";
-      dom.remoteFpsTag.style.color = "#00e676";
+      dom.remoteFpsTag.textContent = `LINKING // ${remoteResolution.toUpperCase()}`;
+      dom.remoteFpsTag.style.color = "#00e5ff";
     }
-
-    dom.remoteScreenImg.onerror = () => {
-      if (dom.remoteFpsTag) {
-        dom.remoteFpsTag.textContent = "RECONNECTING...";
-        dom.remoteFpsTag.style.color = "#ff9100";
-      }
-      clearTimeout(remoteStreamRetryTimer);
-      if (remoteStreamActive) {
-        remoteStreamRetryTimer = setTimeout(startScreenStream, 1500);
-      }
-    };
+    isFetchingFrame = false;
+    frameCount = 0;
+    lastFpsCalcTime = performance.now();
+    fetchStreamLoop();
   }
 
   function toggleGamepadView() {
@@ -827,7 +930,10 @@
     let twoFingerStartY = 0;
 
     function getNormalizedCoords(clientX, clientY) {
-      const rect = dom.remoteScreenImg.getBoundingClientRect();
+      let rect = dom.remoteScreenImg ? dom.remoteScreenImg.getBoundingClientRect() : null;
+      if (!rect || rect.width <= 10 || rect.height <= 10) {
+        rect = dom.remoteViewport.getBoundingClientRect();
+      }
       if (!rect || rect.width === 0 || rect.height === 0) {
         return { x: 0.5, y: 0.5 };
       }
@@ -1288,6 +1394,9 @@
     }
     if (dom.btnRemoteRefresh) {
       dom.btnRemoteRefresh.addEventListener("click", startScreenStream);
+    }
+    if (dom.btnRemoteRes) {
+      dom.btnRemoteRes.addEventListener("click", toggleResolution);
     }
 
     initRemoteViewportEvents();

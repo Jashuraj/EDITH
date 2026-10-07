@@ -332,7 +332,7 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
         if parsed.path in ("/stream/screen", "/stream/mjpeg"):
             fps = int(query_params.get("fps", [20])[0])
             scale = int(query_params.get("scale", [1280])[0])
-            quality = int(query_params.get("quality", [60])[0])
+            quality = int(query_params.get("quality", [75])[0])
 
             self.send_response(200)
             self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
@@ -353,7 +353,7 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
         # 2. Single Frame Snapshot Capture
         elif parsed.path == "/api/screen/capture":
             scale = int(query_params.get("scale", [1280])[0])
-            quality = int(query_params.get("quality", [65])[0])
+            quality = int(query_params.get("quality", [75])[0])
             data = SCREEN_STREAMER.capture_jpeg_bytes(scale_width=scale, quality=quality)
             self.send_response(200)
             self.send_header("Content-Type", "image/jpeg")
