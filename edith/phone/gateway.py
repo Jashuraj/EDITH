@@ -1,8 +1,9 @@
-"""Local Phone Gateway Server for Paired Mobile Clients.
+"""Local Phone Gateway Server for Paired Mobile Clients & Remote Desktop.
 
 Implements Sections 69, 70, 71, 74 of the Engineering Constitution.
 Supports WiFi LAN and Cloud Internet remote access. Serves mobile PWA directly
-on port 8795 as well as bi-directional REST protocol.
+on port 8795, real-time screen streaming, zero-latency touch/keyboard/joystick controls,
+and bi-directional PC <-> Mobile communication.
 """
 
 from __future__ import annotations
@@ -25,6 +26,8 @@ from edith.phone.tunnel import TUNNEL_MANAGER
 from edith.providers.router import ROUTER, TaskCategory
 from edith.tools.reflex import REFLEX
 from edith.tools.registry import REGISTRY
+from edith.tools.remote_input import REMOTE_INPUT
+from edith.tools.screen_stream import SCREEN_STREAMER
 from edith.tools.windows import WIN_TOOLS
 from edith.voice.speaker import SPEAKER
 
@@ -55,7 +58,7 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
         """Inject cache and CORS headers."""
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, Bypass-Tunnel-Reminder")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type, Authorization, Bypass-Tunnel-Reminder, X-Token")
         super().end_headers()
 
     def do_OPTIONS(self) -> None:
@@ -74,6 +77,7 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
             self._send_json({"error": "Malformed JSON payload."}, status=400)
             return
 
+        # 1. Device Pairing
         if parsed.path == "/pair":
             device_id = str(data.get("device_id", "phone_1")).strip() or "phone_1"
             device_name = str(data.get("device_name", "Android Phone")).strip() or "Android Phone"
@@ -86,6 +90,7 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
             })
             return
 
+        # 2. System Mode Switch
         if parsed.path == "/api/mode":
             mode = data.get("mode", "auto")
             new_mode = CONFIG.set_manual_mode(mode)
@@ -99,16 +104,64 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
             })
             return
 
-        # Authenticate operations when tokens are registered
+        # Authenticate operations when paired tokens exist
         device_id = str(data.get("device_id", "")).strip()
-        token = str(data.get("token", "")).strip()
-        
-        # If any paired devices exist, enforce token validation
+        token = str(data.get("token", "")).strip() or str(self.headers.get("X-Token", "")).strip()
+
         if PHONE_PROTOCOL._paired_devices:
             if not PHONE_PROTOCOL.verify_token(device_id, token):
                 self._send_json({"error": "Unauthorized device token."}, status=401)
                 return
 
+        # 3. Remote Input Dispatcher (Mouse, Keyboard, Joystick, Gamepad)
+        if parsed.path in ("/api/remote/input", "/api/mouse"):
+            action = data.get("action", "")
+            params = data.get("params", data)
+            res = REMOTE_INPUT.dispatch(action, params)
+            self._send_json(res)
+            return
+
+        # 4. Bi-Directional Clipboard Sync
+        if parsed.path == "/api/clipboard/sync":
+            text = str(data.get("text", ""))
+            sync_res = PHONE_PROTOCOL.sync_clipboard_from_phone(text, device_id or "mobile")
+            sync_res["laptop_clipboard"] = PHONE_PROTOCOL.get_current_clipboard()
+            self._send_json(sync_res)
+            return
+
+        # 5. PC Sends Command/Push Message to Connected Phone
+        if parsed.path == "/api/phone/send_command":
+            target_device_id = str(data.get("target_device_id", "edith_mobile_pwa")).strip()
+            msg = data.get("message", data)
+            PHONE_PROTOCOL.send_message_to_phone(target_device_id, msg)
+            self._send_json({"success": True, "target": target_device_id})
+            return
+
+        # 6. Tunnel Controls
+        if parsed.path in ("/api/tunnel", "/api/tunnel/start"):
+            action = str(data.get("action", "start")).strip().lower()
+            if action == "stop":
+                TUNNEL_MANAGER.stop_tunnel()
+                self._send_json({"success": True, "tunnel_url": None, "url": None})
+                return
+            elif action == "set_custom":
+                custom_url = str(data.get("url", "")).strip()
+                active_url = TUNNEL_MANAGER.set_custom_url(custom_url)
+                self._send_json({"success": True, "active_url": active_url, "tunnel_url": active_url, "url": active_url})
+                return
+            provider = str(data.get("provider", "localtunnel")).strip()
+            port = int(data.get("port", 8794))
+            url = TUNNEL_MANAGER.start_tunnel(provider=provider, port=port)
+            self._send_json({"success": bool(url), "url": url, "tunnel_url": url, "provider": provider})
+            return
+
+        if parsed.path == "/api/tunnel/custom":
+            custom_url = str(data.get("url", "")).strip()
+            active_url = TUNNEL_MANAGER.set_custom_url(custom_url)
+            self._send_json({"success": True, "active_url": active_url, "tunnel_url": active_url, "url": active_url})
+            return
+
+        # 7. Standard Command Execution
         if parsed.path == "/cmd":
             command = str(data.get("command", "")).strip()
             if not command:
@@ -122,7 +175,7 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
             # Record in protocol queue history
             queue_len = PHONE_PROTOCOL.queue_command(device_id or "direct_mobile", command, data.get("params"))
 
-            # 1. Level 0 Reflex Fast Path
+            # Level 0 Reflex Fast Path
             match = REFLEX.evaluate(command)
             if match:
                 try:
@@ -174,7 +227,7 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
                     })
                     return
 
-            # 2. Local AI Tool-calling and General Reasoning
+            # Local AI Reasoning
             STATE.set_state_sync(SystemState.UNDERSTANDING, reason=f"Phone query reasoning: {command}")
             try:
                 tool_keywords = [
@@ -263,8 +316,89 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
 
     def do_GET(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
-        if parsed.path in ("/ping", "/health"):
+        query_params = urllib.parse.parse_qs(parsed.query)
+
+        # Token authentication check for restricted endpoints
+        if PHONE_PROTOCOL._paired_devices:
+            token = query_params.get("token", [None])[0] or self.headers.get("X-Token")
+            device_id = query_params.get("device_id", [None])[0]
+            # Verify if accessing remote stream or controls
+            if parsed.path in ("/stream/screen", "/api/screen/capture", "/api/remote/status"):
+                if not PHONE_PROTOCOL.verify_token(device_id or "", token or ""):
+                    self._send_json({"error": "Unauthorized device token."}, status=401)
+                    return
+
+        # 1. Real-Time Screen Streaming (MJPEG)
+        if parsed.path in ("/stream/screen", "/stream/mjpeg"):
+            fps = int(query_params.get("fps", [20])[0])
+            scale = int(query_params.get("scale", [1280])[0])
+            quality = int(query_params.get("quality", [60])[0])
+
+            self.send_response(200)
+            self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
+            self.send_header("Cache-Control", "no-cache, private")
+            self.send_header("Pragma", "no-cache")
+            self.end_headers()
+
+            try:
+                for frame in SCREEN_STREAMER.generate_mjpeg_stream(fps=fps, scale_width=scale, quality=quality):
+                    self.wfile.write(frame)
+                    self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                logger.debug("Mobile screen stream client disconnected.")
+            except Exception as ex:
+                logger.error("Screen stream error: %s", ex)
+            return
+
+        # 2. Single Frame Snapshot Capture
+        elif parsed.path == "/api/screen/capture":
+            scale = int(query_params.get("scale", [1280])[0])
+            quality = int(query_params.get("quality", [65])[0])
+            data = SCREEN_STREAMER.capture_jpeg_bytes(scale_width=scale, quality=quality)
+            self.send_response(200)
+            self.send_header("Content-Type", "image/jpeg")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-cache, no-store")
+            self.end_headers()
+            self.wfile.write(data)
+            return
+
+        # 3. Remote Desktop & Streamer Status
+        elif parsed.path == "/api/remote/status":
+            stats = SCREEN_STREAMER.get_stats()
+            self._send_json({
+                "streamer": stats,
+                "input_active": True,
+                "system": CONFIG.system_name,
+            })
+            return
+
+        # 4. Device Telemetry & Bi-directional Messages
+        elif parsed.path == "/api/phone/devices":
+            self._send_json({"devices": PHONE_PROTOCOL.get_paired_devices()})
+            return
+
+        elif parsed.path == "/api/phone/messages":
+            dev_id = query_params.get("device_id", [""])[0] or "edith_mobile_pwa"
+            battery_str = query_params.get("battery", [None])[0]
+            conn = query_params.get("conn", [None])[0]
+            battery = int(float(battery_str)) if battery_str not in (None, "", "null") else None
+            PHONE_PROTOCOL.update_device_heartbeat(
+                dev_id,
+                battery_percent=battery,
+                connection_type=conn,
+            )
+            msgs = PHONE_PROTOCOL.poll_messages_for_phone(dev_id)
+            self._send_json({"messages": msgs, "count": len(msgs)})
+            return
+
+        elif parsed.path == "/api/clipboard":
+            self._send_json({"clipboard": PHONE_PROTOCOL.get_current_clipboard()})
+            return
+
+        elif parsed.path in ("/ping", "/health"):
             self._send_json({"status": "ok", "time": time.time(), "system": CONFIG.system_name})
+
         elif parsed.path == "/status":
             stats = WIN_TOOLS.get_system_stats()
             dyn = CONFIG.refresh_dynamic_stats()
@@ -276,6 +410,7 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
             stats["manual_mode"] = CONFIG.manual_mode
             stats["is_online"] = dyn.get("online", False)
             self._send_json(stats)
+
         elif parsed.path == "/api/mode":
             dyn = CONFIG.refresh_dynamic_stats()
             self._send_json({
@@ -284,11 +419,24 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
                 "is_online": dyn.get("online", False),
                 "status_text": dyn.get("status_text", ""),
             })
+
+        elif parsed.path == "/mobile/config":
+            self._send_json({
+                "system_name": CONFIG.system_name,
+                "local_ip": get_local_ip(),
+                "ui_port": 8794,
+                "phone_port": 8795,
+                "cloud_url": TUNNEL_MANAGER.get_active_url(),
+                "tunnel_status": TUNNEL_MANAGER.get_status(),
+            })
+
         elif parsed.path == "/tunnel":
             self._send_json(TUNNEL_MANAGER.get_status())
+
         elif parsed.path in ("/", "/index.html", "/mobile", "/mobile/"):
             self.path = "/index.html"
             super().do_GET()
+
         else:
             super().do_GET()
 

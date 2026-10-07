@@ -15,15 +15,27 @@
     TTS_ENABLED: "edith_mobile_tts_enabled",
   };
 
-  const DEFAULT_CLOUD_URL = "https://edith-core-jashu.loca.lt";
-  const defaultLocalUrl = window.location.origin.startsWith("http") && !window.location.origin.includes("loca.lt")
+  const DEFAULT_CLOUD_URL = "";
+  const isCloudOrigin = window.location.origin.includes("loca.lt") ||
+    window.location.origin.includes("trycloudflare.com") ||
+    window.location.origin.includes("pinggy");
+
+  const defaultLocalUrl = window.location.origin.startsWith("http") && !isCloudOrigin
     ? window.location.origin
     : "http://192.168.1.167:8794";
+
+  let savedCloud = localStorage.getItem(STORAGE_KEYS.CLOUD_URL) || "";
+  if (savedCloud.includes("edith-core-jashu.loca.lt")) {
+    savedCloud = ""; // Reset stale broken localtunnel default
+  }
+  if (!savedCloud && isCloudOrigin) {
+    savedCloud = window.location.origin;
+  }
 
   const state = {
     mode: localStorage.getItem(STORAGE_KEYS.MODE) || "auto", // auto, local, cloud
     localUrl: localStorage.getItem(STORAGE_KEYS.LOCAL_URL) || defaultLocalUrl,
-    cloudUrl: localStorage.getItem(STORAGE_KEYS.CLOUD_URL) || DEFAULT_CLOUD_URL,
+    cloudUrl: savedCloud,
     token: localStorage.getItem(STORAGE_KEYS.TOKEN) || "",
     ttsEnabled: localStorage.getItem(STORAGE_KEYS.TTS_ENABLED) !== "false",
     activeEndpoint: "",
@@ -70,6 +82,32 @@
     consolePing: document.getElementById("console-ping"),
     consoleOutput: document.getElementById("console-output"),
     chips: document.querySelectorAll(".chip-btn"),
+
+    // Remote Desktop & Gamepad HUD References
+    btnOpenRemote: document.getElementById("btn-open-remote"),
+    btnOpenGamepad: document.getElementById("btn-open-gamepad"),
+    btnSyncClipboard: document.getElementById("btn-sync-clipboard"),
+    remoteOverlay: document.getElementById("remote-desktop-overlay"),
+    remoteScreenImg: document.getElementById("remote-screen-img"),
+    remoteViewport: document.getElementById("remote-viewport"),
+    remoteCursor: document.getElementById("remote-virtual-cursor"),
+    remoteFeedback: document.getElementById("remote-touch-feedback"),
+    btnCloseRemote: document.getElementById("btn-close-remote"),
+    btnToggleGamepad: document.getElementById("btn-toggle-gamepad"),
+    btnOpenKb: document.getElementById("btn-open-kb"),
+    btnRemoteClip: document.getElementById("btn-remote-clip"),
+    btnRemoteRefresh: document.getElementById("btn-remote-refresh"),
+    remoteFpsTag: document.getElementById("remote-fps-tag"),
+    remoteTitleText: document.getElementById("remote-title-text"),
+    gamepadOverlay: document.getElementById("virtual-gamepad-overlay"),
+    stickBase: document.getElementById("gamepad-stick-base"),
+    stickNub: document.getElementById("gamepad-stick-nub"),
+    modalKb: document.getElementById("modal-remote-keyboard"),
+    kbTextInput: document.getElementById("kb-text-input"),
+    btnKbSendText: document.getElementById("btn-kb-send-text"),
+    btnKbEnter: document.getElementById("btn-kb-enter"),
+    btnCloseKb: document.getElementById("btn-close-kb"),
+    remoteBottomBar: document.getElementById("remote-bottom-bar"),
   };
 
   // ---------------- Service Worker Setup ----------------
@@ -612,6 +650,492 @@
     renderWave();
   }
 
+  // ==========================================================================
+  // REMOTE DESKTOP & VIRTUAL GAMEPAD ENGINE (RAT CLIENT)
+  // ==========================================================================
+
+  let remoteStreamActive = false;
+  let remoteGamepadMode = false;
+  let remoteStreamRetryTimer = null;
+  let lastJoystickDispatch = 0;
+  let joystickActive = false;
+
+  async function sendRemoteInput(action, params = {}) {
+    const ep = (state.activeEndpoint || defaultLocalUrl).replace(/\/+$/, "");
+    try {
+      const resp = await fetch(`${ep}/api/remote/input`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Bypass-Tunnel-Reminder": "true",
+          "X-Token": state.token,
+        },
+        body: JSON.stringify({
+          action,
+          params,
+          token: state.token || undefined,
+          device_id: "edith_mobile_pwa",
+        }),
+      });
+      return await resp.json();
+    } catch (ex) {
+      console.warn("Remote input dispatch notice:", ex);
+      return { success: false, error: ex.message };
+    }
+  }
+
+  function openRemoteDesktop(gameMode = false) {
+    remoteStreamActive = true;
+    remoteGamepadMode = Boolean(gameMode);
+
+    if (dom.remoteOverlay) {
+      dom.remoteOverlay.style.display = "flex";
+    }
+    if (dom.gamepadOverlay) {
+      dom.gamepadOverlay.style.display = remoteGamepadMode ? "flex" : "none";
+    }
+    if (dom.btnToggleGamepad) {
+      dom.btnToggleGamepad.textContent = remoteGamepadMode ? "🖱️ Touch Mouse" : "🎮 Gamepad";
+    }
+    if (dom.remoteTitleText) {
+      dom.remoteTitleText.textContent = remoteGamepadMode ? "EDITH CONTROLLER // GAME MODE" : "EDITH HOST VIEW // REMOTE RAT";
+    }
+
+    startScreenStream();
+    triggerHaptic(30);
+
+    try {
+      if (document.documentElement.requestFullscreen && remoteGamepadMode) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      }
+      if (screen.orientation && screen.orientation.lock && remoteGamepadMode) {
+        screen.orientation.lock("landscape").catch(() => {});
+      }
+    } catch (_) {}
+  }
+
+  function closeRemoteDesktop() {
+    remoteStreamActive = false;
+    clearTimeout(remoteStreamRetryTimer);
+
+    if (dom.remoteOverlay) {
+      dom.remoteOverlay.style.display = "none";
+    }
+    if (dom.remoteScreenImg) {
+      dom.remoteScreenImg.src = "";
+    }
+    sendRemoteInput("joystick_release");
+
+    try {
+      if (document.exitFullscreen && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+      if (screen.orientation && screen.orientation.unlock) {
+        screen.orientation.unlock();
+      }
+    } catch (_) {}
+  }
+
+  function startScreenStream() {
+    if (!remoteStreamActive || !dom.remoteScreenImg) return;
+    const ep = (state.activeEndpoint || defaultLocalUrl).replace(/\/+$/, "");
+    const streamUrl = `${ep}/stream/screen?quality=60&scale=1280&token=${encodeURIComponent(state.token)}&t=${Date.now()}`;
+
+    dom.remoteScreenImg.src = streamUrl;
+    if (dom.remoteFpsTag) {
+      dom.remoteFpsTag.textContent = "CONNECTED";
+      dom.remoteFpsTag.style.color = "#00e676";
+    }
+
+    dom.remoteScreenImg.onerror = () => {
+      if (dom.remoteFpsTag) {
+        dom.remoteFpsTag.textContent = "RECONNECTING...";
+        dom.remoteFpsTag.style.color = "#ff9100";
+      }
+      clearTimeout(remoteStreamRetryTimer);
+      if (remoteStreamActive) {
+        remoteStreamRetryTimer = setTimeout(startScreenStream, 1500);
+      }
+    };
+  }
+
+  function toggleGamepadView() {
+    remoteGamepadMode = !remoteGamepadMode;
+    if (dom.gamepadOverlay) {
+      dom.gamepadOverlay.style.display = remoteGamepadMode ? "flex" : "none";
+    }
+    if (dom.btnToggleGamepad) {
+      dom.btnToggleGamepad.textContent = remoteGamepadMode ? "🖱️ Touch Mouse" : "🎮 Gamepad";
+    }
+    if (dom.remoteTitleText) {
+      dom.remoteTitleText.textContent = remoteGamepadMode ? "EDITH CONTROLLER // GAME MODE" : "EDITH HOST VIEW // REMOTE RAT";
+    }
+    triggerHaptic(20);
+  }
+
+  // Bi-Directional Clipboard Sync
+  async function syncClipboardWithLaptop() {
+    triggerHaptic(25);
+    const ep = (state.activeEndpoint || defaultLocalUrl).replace(/\/+$/, "");
+    let textToSend = "";
+
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        textToSend = (await navigator.clipboard.readText()) || "";
+      }
+    } catch (_) {}
+
+    try {
+      const resp = await fetch(`${ep}/api/clipboard/sync`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Bypass-Tunnel-Reminder": "true",
+          "X-Token": state.token,
+        },
+        body: JSON.stringify({
+          text: textToSend,
+          device_id: "edith_mobile_pwa",
+          token: state.token || undefined,
+        }),
+      });
+      const data = await resp.json();
+
+      if (data.laptop_clipboard && navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(data.laptop_clipboard);
+        logConsole("CLIPBOARD", `Synced! Copied ${data.laptop_clipboard.length} chars from laptop.`);
+        alert(`Clipboard Synced!\nReceived from Laptop: "${data.laptop_clipboard.slice(0, 80)}..."`);
+      } else {
+        logConsole("CLIPBOARD", "Sent mobile clipboard to laptop.");
+        alert("Mobile clipboard synced to laptop.");
+      }
+    } catch (err) {
+      alert(`Clipboard sync notice: ${err.message}`);
+    }
+  }
+
+  // Touch Viewport Mouse Gestures
+  function initRemoteViewportEvents() {
+    if (!dom.remoteViewport || !dom.remoteScreenImg) return;
+
+    let touchStartTime = 0;
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let lastTapTime = 0;
+    let isLongPress = false;
+    let longPressTimer = null;
+    let twoFingerStartY = 0;
+
+    function getNormalizedCoords(clientX, clientY) {
+      const rect = dom.remoteScreenImg.getBoundingClientRect();
+      if (!rect || rect.width === 0 || rect.height === 0) {
+        return { x: 0.5, y: 0.5 };
+      }
+      const x = Math.max(0.0, Math.min(1.0, (clientX - rect.left) / rect.width));
+      const y = Math.max(0.0, Math.min(1.0, (clientY - rect.top) / rect.height));
+      return { x, y };
+    }
+
+    function showRipple(clientX, clientY) {
+      if (!dom.remoteFeedback) return;
+      dom.remoteFeedback.style.left = `${clientX}px`;
+      dom.remoteFeedback.style.top = `${clientY}px`;
+      dom.remoteFeedback.classList.remove("ripple");
+      void dom.remoteFeedback.offsetWidth;
+      dom.remoteFeedback.classList.add("ripple");
+    }
+
+    function updateVirtualCursor(clientX, clientY) {
+      if (!dom.remoteCursor) return;
+      dom.remoteCursor.style.display = "block";
+      dom.remoteCursor.style.left = `${clientX}px`;
+      dom.remoteCursor.style.top = `${clientY}px`;
+    }
+
+    dom.remoteViewport.addEventListener("touchstart", (e) => {
+      if (e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar")) {
+        return;
+      }
+
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        touchStartTime = Date.now();
+        touchStartX = t.clientX;
+        touchStartY = t.clientY;
+        isLongPress = false;
+
+        const coords = getNormalizedCoords(t.clientX, t.clientY);
+        updateVirtualCursor(t.clientX, t.clientY);
+
+        clearTimeout(longPressTimer);
+        longPressTimer = setTimeout(() => {
+          isLongPress = true;
+          triggerHaptic(40);
+          showRipple(t.clientX, t.clientY);
+          sendRemoteInput("right_click", coords);
+        }, 450);
+      } else if (e.touches.length === 2) {
+        clearTimeout(longPressTimer);
+        twoFingerStartY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+      }
+    }, { passive: false });
+
+    dom.remoteViewport.addEventListener("touchmove", (e) => {
+      if (e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar")) {
+        return;
+      }
+      e.preventDefault();
+
+      if (e.touches.length === 1) {
+        const t = e.touches[0];
+        const dist = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY);
+        if (dist > 10) {
+          clearTimeout(longPressTimer);
+        }
+
+        const coords = getNormalizedCoords(t.clientX, t.clientY);
+        updateVirtualCursor(t.clientX, t.clientY);
+        sendRemoteInput("mouse_move", coords);
+      } else if (e.touches.length === 2) {
+        clearTimeout(longPressTimer);
+        const currentTwoY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        const delta = currentTwoY - twoFingerStartY;
+        if (Math.abs(delta) > 15) {
+          sendRemoteInput("scroll", { delta: delta > 0 ? 2 : -2 });
+          twoFingerStartY = currentTwoY;
+        }
+      }
+    }, { passive: false });
+
+    dom.remoteViewport.addEventListener("touchend", (e) => {
+      clearTimeout(longPressTimer);
+      if (e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar")) {
+        return;
+      }
+
+      const elapsed = Date.now() - touchStartTime;
+      if (!isLongPress && elapsed < 350 && e.changedTouches.length === 1) {
+        const t = e.changedTouches[0];
+        const dist = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY);
+        if (dist < 15) {
+          const coords = getNormalizedCoords(t.clientX, t.clientY);
+          showRipple(t.clientX, t.clientY);
+
+          const now = Date.now();
+          if (now - lastTapTime < 300) {
+            sendRemoteInput("double_click", coords);
+            lastTapTime = 0;
+          } else {
+            sendRemoteInput("click", coords);
+            lastTapTime = now;
+          }
+        }
+      }
+    });
+
+    if (dom.remoteBottomBar) {
+      dom.remoteBottomBar.querySelectorAll(".remote-gesture-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          const action = chip.getAttribute("data-action");
+          triggerHaptic(15);
+          if (action === "scroll_up") {
+            sendRemoteInput("scroll", { delta: 3 });
+          } else if (action === "scroll_down") {
+            sendRemoteInput("scroll", { delta: -3 });
+          } else if (action === "switch_window") {
+            sendRemoteInput("switch_window");
+          } else {
+            sendRemoteInput(action);
+          }
+        });
+      });
+    }
+  }
+
+  // Virtual Joystick Touch & Pointer Controller
+  function initJoystickEvents() {
+    if (!dom.stickBase || !dom.stickNub) return;
+
+    const maxRadius = 45;
+    let activePointerId = null;
+
+    function handleStickMove(clientX, clientY) {
+      const rect = dom.stickBase.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+
+      let dx = clientX - centerX;
+      let dy = clientY - centerY;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > maxRadius) {
+        dx = (dx / dist) * maxRadius;
+        dy = (dy / dist) * maxRadius;
+      }
+
+      dom.stickNub.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+
+      const normX = dx / maxRadius;
+      const normY = dy / maxRadius;
+
+      const now = performance.now();
+      if (now - lastJoystickDispatch > 30) {
+        lastJoystickDispatch = now;
+        joystickActive = true;
+        sendRemoteInput("joystick", { x: normX, y: normY });
+      }
+    }
+
+    function resetStick() {
+      activePointerId = null;
+      dom.stickNub.style.transform = "translate(-50%, -50%)";
+      if (joystickActive) {
+        joystickActive = false;
+        sendRemoteInput("joystick_release");
+      }
+    }
+
+    if (window.PointerEvent) {
+      dom.stickBase.addEventListener("pointerdown", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        activePointerId = e.pointerId;
+        try { dom.stickBase.setPointerCapture(e.pointerId); } catch (_) {}
+        handleStickMove(e.clientX, e.clientY);
+      });
+
+      dom.stickBase.addEventListener("pointermove", (e) => {
+        if (activePointerId === null || e.pointerId !== activePointerId) return;
+        e.preventDefault();
+        e.stopPropagation();
+        handleStickMove(e.clientX, e.clientY);
+      });
+
+      const onPointerEnd = (e) => {
+        if (activePointerId !== null && e.pointerId === activePointerId) {
+          e.preventDefault();
+          e.stopPropagation();
+          try { dom.stickBase.releasePointerCapture(e.pointerId); } catch (_) {}
+          resetStick();
+        }
+      };
+
+      dom.stickBase.addEventListener("pointerup", onPointerEnd);
+      dom.stickBase.addEventListener("pointercancel", onPointerEnd);
+    } else {
+      dom.stickBase.addEventListener("touchstart", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const t = e.touches[0];
+        handleStickMove(t.clientX, t.clientY);
+      }, { passive: false });
+
+      dom.stickBase.addEventListener("touchmove", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const t = e.touches[0];
+        handleStickMove(t.clientX, t.clientY);
+      }, { passive: false });
+
+      dom.stickBase.addEventListener("touchend", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resetStick();
+      }, { passive: false });
+
+      dom.stickBase.addEventListener("touchcancel", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        resetStick();
+      }, { passive: false });
+    }
+  }
+
+  // Gamepad Action Buttons
+  function initGamepadButtonEvents() {
+    const buttons = document.querySelectorAll(".game-btn");
+    buttons.forEach((btn) => {
+      const btnCode = btn.getAttribute("data-btn");
+      if (!btnCode) return;
+
+      const press = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        btn.classList.add("pressed");
+        triggerHaptic(20);
+        sendRemoteInput("game_button", { button: btnCode, pressed: true });
+      };
+
+      const release = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        btn.classList.remove("pressed");
+        sendRemoteInput("game_button", { button: btnCode, pressed: false });
+      };
+
+      btn.addEventListener("touchstart", press, { passive: false });
+      btn.addEventListener("touchend", release, { passive: false });
+      btn.addEventListener("touchcancel", release, { passive: false });
+      btn.addEventListener("mousedown", press);
+      btn.addEventListener("mouseup", release);
+      btn.addEventListener("mouseleave", release);
+    });
+  }
+
+  // Remote Keyboard Modal Events
+  function initRemoteKeyboardEvents() {
+    if (!dom.modalKb) return;
+
+    if (dom.btnOpenKb) {
+      dom.btnOpenKb.addEventListener("click", () => {
+        dom.modalKb.style.display = "flex";
+        if (dom.kbTextInput) dom.kbTextInput.focus();
+      });
+    }
+
+    if (dom.btnCloseKb) {
+      dom.btnCloseKb.addEventListener("click", () => {
+        dom.modalKb.style.display = "none";
+      });
+    }
+
+    if (dom.btnKbSendText && dom.kbTextInput) {
+      const sendText = () => {
+        const txt = dom.kbTextInput.value;
+        if (txt) {
+          sendRemoteInput("type_text", { text: txt });
+          dom.kbTextInput.value = "";
+          triggerHaptic(15);
+        }
+      };
+      dom.btnKbSendText.addEventListener("click", sendText);
+      dom.kbTextInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") sendText();
+      });
+    }
+
+    if (dom.btnKbEnter) {
+      dom.btnKbEnter.addEventListener("click", () => {
+        triggerHaptic(15);
+        sendRemoteInput("key_press", { key: "enter" });
+      });
+    }
+
+    document.querySelectorAll(".kb-key-chip").forEach((chip) => {
+      chip.addEventListener("click", () => {
+        triggerHaptic(15);
+        const singleKey = chip.getAttribute("data-key");
+        const hotkeys = chip.getAttribute("data-hotkey");
+
+        if (singleKey) {
+          sendRemoteInput("key_press", { key: singleKey });
+        } else if (hotkeys) {
+          sendRemoteInput("hotkey", { keys: hotkeys.split(",") });
+        }
+      });
+    });
+  }
+
   // ---------------- Settings & UI Event Listeners ----------------
   function initEvents() {
     // Input Submissions
@@ -742,6 +1266,34 @@
     if (dom.btnModeToggle) {
       dom.btnModeToggle.addEventListener("click", toggleSystemMode);
     }
+
+    // Remote Desktop & Virtual Gamepad Listeners
+    if (dom.btnOpenRemote) {
+      dom.btnOpenRemote.addEventListener("click", () => openRemoteDesktop(false));
+    }
+    if (dom.btnOpenGamepad) {
+      dom.btnOpenGamepad.addEventListener("click", () => openRemoteDesktop(true));
+    }
+    if (dom.btnSyncClipboard) {
+      dom.btnSyncClipboard.addEventListener("click", syncClipboardWithLaptop);
+    }
+    if (dom.btnCloseRemote) {
+      dom.btnCloseRemote.addEventListener("click", closeRemoteDesktop);
+    }
+    if (dom.btnToggleGamepad) {
+      dom.btnToggleGamepad.addEventListener("click", toggleGamepadView);
+    }
+    if (dom.btnRemoteClip) {
+      dom.btnRemoteClip.addEventListener("click", syncClipboardWithLaptop);
+    }
+    if (dom.btnRemoteRefresh) {
+      dom.btnRemoteRefresh.addEventListener("click", startScreenStream);
+    }
+
+    initRemoteViewportEvents();
+    initJoystickEvents();
+    initGamepadButtonEvents();
+    initRemoteKeyboardEvents();
   }
 
   function openSettings() {
@@ -760,19 +1312,94 @@
     dom.modalSettings.classList.remove("open");
   }
 
-  // Auto-fetch server config if loaded from server
+  // Auto-fetch server config if loaded from server or disk
   async function fetchServerConfig() {
+    // 1. Try bundled server_config.json if running in native APK
     try {
-      const resp = await fetch(`${defaultLocalUrl}/mobile/config`);
-      if (resp.ok) {
-        const cfg = await resp.json();
-        if (cfg.cloud_url && !state.cloudUrl) {
-          state.cloudUrl = cfg.cloud_url;
+      const bResp = await fetch("./server_config.json");
+      if (bResp.ok) {
+        const bcfg = await bResp.json();
+        if (bcfg.cloud_url && !state.cloudUrl) {
+          state.cloudUrl = bcfg.cloud_url;
           localStorage.setItem(STORAGE_KEYS.CLOUD_URL, state.cloudUrl);
+          if (dom.cfgCloudUrl) dom.cfgCloudUrl.value = state.cloudUrl;
         }
-        if (cfg.local_ip && (!state.localUrl || state.localUrl.includes("127.0.0.1"))) {
-          state.localUrl = `http://${cfg.local_ip}:${cfg.ui_port || 8794}`;
+        if (bcfg.local_url && (!state.localUrl || state.localUrl.includes("127.0.0.1"))) {
+          state.localUrl = bcfg.local_url;
           localStorage.setItem(STORAGE_KEYS.LOCAL_URL, state.localUrl);
+          if (dom.cfgLocalUrl) dom.cfgLocalUrl.value = state.localUrl;
+        }
+      }
+    } catch (_) {}
+
+    // 2. Query running host endpoints for live dynamic config
+    const candidates = [state.activeEndpoint, state.localUrl, defaultLocalUrl, state.cloudUrl].filter(Boolean);
+    for (const ep of candidates) {
+      try {
+        const clean = ep.replace(/\/+$/, "");
+        const resp = await fetch(`${clean}/mobile/config`, {
+          headers: { "Bypass-Tunnel-Reminder": "true" },
+        });
+        if (resp.ok) {
+          const cfg = await resp.json();
+          if (cfg.cloud_url && state.cloudUrl !== cfg.cloud_url) {
+            state.cloudUrl = cfg.cloud_url;
+            localStorage.setItem(STORAGE_KEYS.CLOUD_URL, state.cloudUrl);
+            if (dom.cfgCloudUrl) dom.cfgCloudUrl.value = state.cloudUrl;
+          }
+          if (cfg.local_ip && (!state.localUrl || state.localUrl.includes("127.0.0.1"))) {
+            state.localUrl = `http://${cfg.local_ip}:${cfg.ui_port || 8794}`;
+            localStorage.setItem(STORAGE_KEYS.LOCAL_URL, state.localUrl);
+            if (dom.cfgLocalUrl) dom.cfgLocalUrl.value = state.localUrl;
+          }
+          break;
+        }
+      } catch (_) {}
+    }
+  }
+
+  // ---------------- Bi-Directional Message Polling & Telemetry ----------------
+  async function pollPhoneMessagesAndTelemetry() {
+    if (!state.activeEndpoint || !state.isOnline) return;
+
+    let batteryPercent = null;
+    try {
+      if (navigator.getBattery) {
+        const b = await navigator.getBattery();
+        batteryPercent = Math.round(b.level * 100);
+      }
+    } catch (_) {}
+
+    let connType = state.activeType || "UNKNOWN";
+    try {
+      if (navigator.connection && (navigator.connection.effectiveType || navigator.connection.type)) {
+        connType = `${state.activeType}:${navigator.connection.effectiveType || navigator.connection.type}`;
+      }
+    } catch (_) {}
+
+    const ep = state.activeEndpoint.replace(/\/+$/, "");
+    const query = new URLSearchParams({
+      device_id: "edith_mobile_pwa",
+      battery: batteryPercent !== null ? batteryPercent.toString() : "",
+      conn: connType,
+      token: state.token || "",
+    });
+
+    try {
+      const resp = await fetch(`${ep}/api/phone/messages?${query.toString()}`, {
+        headers: { "Bypass-Tunnel-Reminder": "true" },
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        const msgs = data.messages || [];
+        for (const m of msgs) {
+          const text = m.text || m.message || JSON.stringify(m);
+          logConsole("PC NOTIFICATION", text);
+          triggerHaptic(40);
+          speakResponse(`Notification from PC: ${text}`);
+          if (m.type === "alert") {
+            alert(`[EDITH LAPTOP MESSAGE]:\n${text}`);
+          }
         }
       }
     } catch (_) {}
@@ -789,11 +1416,13 @@
     await resolveActiveEndpoint();
     await syncSystemMode();
 
-    // Heartbeat connection maintenance every 5 seconds
+    // Heartbeat connection maintenance and bi-directional message polling
     setInterval(async () => {
+      await fetchServerConfig();
       await resolveActiveEndpoint();
       await syncSystemMode();
-    }, 5000);
+      await pollPhoneMessagesAndTelemetry();
+    }, 3500);
   }
 
   window.addEventListener("DOMContentLoaded", init);

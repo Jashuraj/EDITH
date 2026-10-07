@@ -133,22 +133,26 @@ def serve_all(ui_port: int = 8794, phone_port: int = 8795) -> None:
         pass
 
     # Start Cloud Tunnel in background for global remote access
-    try:
-        from edith.phone.tunnel import TUNNEL_MANAGER
-        t_tun = threading.Thread(
-            target=lambda: TUNNEL_MANAGER.start_tunnel(provider="pinggy", port=ui_port),
-            daemon=True,
-        )
-        t_tun.start()
-    except Exception:
-        pass
+    from edith.phone.tunnel import TUNNEL_MANAGER
+    def _run_tunnel():
+        try:
+            url = TUNNEL_MANAGER.start_tunnel(port=ui_port)
+            if url:
+                print(f"  >>> [GLOBAL CLOUD LINK ACTIVE]: {url}")
+        except Exception as ex:
+            logger.warning("Cloud tunnel initial connection notice: %s", ex)
+
+    t_tun = threading.Thread(target=_run_tunnel, daemon=True)
+    t_tun.start()
+
+    cloud_display = TUNNEL_MANAGER.get_active_url() or "Connecting in background..."
 
     print("=" * 65)
     print(f"  {CONFIG.system_name} SERVERS ACTIVE (0.0.0.0)")
     print(f"  • Holographic UI:    http://127.0.0.1:{ui_port} (LAN: http://{local_ip}:{ui_port})")
     print(f"  • Phone Gateway:     http://127.0.0.1:{phone_port} (LAN: http://{local_ip}:{phone_port})")
     print(f"  • Mobile App:        http://{local_ip}:{ui_port}/mobile")
-    print(f"  • Global Cloud Link: https://edith-core-jashu.loca.lt")
+    print(f"  • Global Cloud Link: {cloud_display}")
     if clap_active:
         print("  • Double-Clap Welcome: ACTIVE (Local SAPI Voice)")
     print("  Press Ctrl+C to terminate.")

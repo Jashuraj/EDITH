@@ -71,6 +71,36 @@ def prepare_project_files() -> None:
         shutil.rmtree(BUILD_DIR)
     BUILD_DIR.mkdir(parents=True, exist_ok=True)
 
+    # Pre-populate server_config.json for Android APK
+    try:
+        import socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        detected_ip = s.getsockname()[0]
+        s.close()
+    except Exception:
+        detected_ip = "127.0.0.1"
+
+    tunnel_url = None
+    try:
+        from edith.phone.tunnel import TUNNEL_MANAGER
+        tunnel_url = TUNNEL_MANAGER.get_active_url()
+    except Exception:
+        pass
+
+    import json
+    cfg_path = MOBILE_ASSETS / "server_config.json"
+    cfg_path.write_text(
+        json.dumps({
+            "local_ip": detected_ip,
+            "local_url": f"http://{detected_ip}:8794",
+            "cloud_url": tunnel_url,
+            "ui_port": 8794,
+            "phone_port": 8795
+        }, indent=2),
+        encoding="utf-8"
+    )
+
     res_dir = BUILD_DIR / "res"
     (res_dir / "values").mkdir(parents=True, exist_ok=True)
     (BUILD_DIR / "bin").mkdir(parents=True, exist_ok=True)
@@ -143,7 +173,7 @@ def prepare_project_files() -> None:
         '        <activity\n'
         '            android:name="com.edith.ai.MainActivity"\n'
         '            android:exported="true"\n'
-        '            android:screenOrientation="sensorPortrait"\n'
+        '            android:screenOrientation="fullSensor"\n'
         '            android:configChanges="orientation|screenSize|keyboardHidden"\n'
         '            android:windowSoftInputMode="adjustResize"\n'
         '            android:theme="@style/AppTheme">\n'

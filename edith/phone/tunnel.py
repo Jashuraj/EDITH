@@ -1,21 +1,29 @@
 """Global Internet Tunnel Manager for EDITH Remote Mobile Control.
 
-Enables secure remote access from anywhere in the world via:
-1. Pinggy SSH zero-config tunnel (using native Windows OpenSSH)
-2. Cloudflare Tunnel (cloudflared)
-3. Ngrok HTTP tunnel
-4. Custom user Cloud / VPS / DDNS endpoint
+Enables ultra-reliable remote access from anywhere in the world via:
+1. Localtunnel (with IPv4 127.0.0.1 binding and anti-503 dynamic subdomain auto-fallback)
+2. Pinggy SSH zero-config tunnel (native Windows OpenSSH with automatic URL capture)
+3. Cloudflare Quick Tunnel (cloudflared)
+4. Ngrok HTTP tunnel
+5. Custom user Cloud / VPS / DDNS endpoint
+
+Includes an automated watchdog keep-alive monitor that tests the public endpoint
+and auto-heals upon disconnect or 503 service interruption.
 """
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import threading
 import time
+import urllib.error
+import urllib.request
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -25,23 +33,33 @@ TUNNEL_CONFIG_FILE = Path(__file__).resolve().parent / "tunnel_config.json"
 
 
 class TunnelManager:
-    """Manages cloud tunnels for global remote mobile access."""
+    """Manages cloud tunnels for global remote mobile access with auto-healing watchdog."""
 
     def __init__(self) -> None:
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
         self._active_url: Optional[str] = None
         self._active_provider: Optional[str] = None
         self._process: Optional[subprocess.Popen] = None
         self._custom_url: Optional[str] = None
+        self._preferred_provider: str = "localtunnel"
+        self._subdomain: Optional[str] = "edith-jashu"
+        self._active_port: int = 8794
+        self._watchdog_thread: Optional[threading.Thread] = None
+        self._stop_watchdog = threading.Event()
+        self._last_health_check: float = 0.0
+        self._is_healthy: bool = False
         self._load_saved_config()
 
     def _load_saved_config(self) -> None:
         """Load stored tunnel configuration if available."""
         if TUNNEL_CONFIG_FILE.exists():
             try:
-                import json
                 data = json.loads(TUNNEL_CONFIG_FILE.read_text(encoding="utf-8"))
                 self._custom_url = data.get("custom_url")
+                if data.get("provider"):
+                    self._preferred_provider = data.get("provider", "localtunnel")
+                if data.get("subdomain"):
+                    self._subdomain = data.get("subdomain")
                 if self._custom_url:
                     self._active_url = self._custom_url
                     self._active_provider = "custom"
@@ -51,8 +69,14 @@ class TunnelManager:
     def _save_config(self) -> None:
         """Persist tunnel configuration."""
         try:
-            import json
-            data = {"custom_url": self._custom_url}
+            data = {
+                "provider": self._active_provider or self._preferred_provider,
+                "subdomain": self._subdomain,
+                "custom_url": self._custom_url,
+                "active_url": self._active_url,
+                "healthy": self._is_healthy,
+                "updated_at": time.time(),
+            }
             TUNNEL_CONFIG_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
         except Exception as e:
             logger.warning("Could not save tunnel config: %s", e)
@@ -71,10 +95,13 @@ class TunnelManager:
                 "url": self._active_url,
                 "provider": self._active_provider,
                 "is_process_alive": is_running,
+                "is_healthy": self._is_healthy,
                 "custom_url": self._custom_url,
+                "port": self._active_port,
                 "has_ssh": bool(shutil.which("ssh")),
                 "has_cloudflared": bool(shutil.which("cloudflared")),
                 "has_ngrok": bool(shutil.which("ngrok")),
+                "has_npx": bool(shutil.which("npx") or shutil.which("npx.cmd")),
             }
 
     def set_custom_url(self, url: str) -> Optional[str]:
@@ -87,74 +114,188 @@ class TunnelManager:
             if cleaned:
                 self._active_url = cleaned
                 self._active_provider = "custom"
+                self._is_healthy = True
             elif self._active_provider == "custom":
                 self._active_url = None
                 self._active_provider = None
+                self._is_healthy = False
             self._save_config()
             return self._active_url
 
-    def start_tunnel(self, provider: str = "pinggy", port: int = 8794) -> Optional[str]:
-        """Start a cloud tunnel process in the background with auto-fallback."""
+    def check_url_health(self, url: str, timeout: float = 3.5) -> bool:
+        """Verify that public URL responds without 503 / 502 error."""
+        if not url:
+            return False
+        clean = url.rstrip("/")
+        # Probe /ping first, then /health
+        for endpoint in ("/ping", "/health"):
+            try:
+                target = f"{clean}{endpoint}"
+                req = urllib.request.Request(
+                    target,
+                    headers={
+                        "User-Agent": "EDITH-Tunnel-Health/1.0",
+                        "Bypass-Tunnel-Reminder": "true",
+                        "bypass-tunnel-reminder": "true",
+                    },
+                )
+                with urllib.request.urlopen(req, timeout=timeout) as resp:
+                    if resp.status == 200:
+                        return True
+            except urllib.error.HTTPError as ex:
+                if ex.code in (502, 503, 504):
+                    logger.debug("Tunnel probe received HTTP %d for %s", ex.code, url)
+                    return False
+            except Exception as ex:
+                logger.debug("Tunnel health check probe exception for %s: %s", url, ex)
+        return False
+
+    def start_tunnel(
+        self,
+        provider: Optional[str] = None,
+        port: int = 8794,
+        subdomain: Optional[str] = None,
+    ) -> Optional[str]:
+        """Start a cloud tunnel process with anti-503 auto-fallback and health check."""
         with self._lock:
+            self._active_port = port
+            target_provider = provider or self._preferred_provider or "localtunnel"
+
+            if self._custom_url:
+                self._active_url = self._custom_url
+                self._active_provider = "custom"
+                self._is_healthy = True
+                self._ensure_watchdog()
+                return self._custom_url
+
             if self._process and self._process.poll() is None:
                 self.stop_tunnel()
 
-            url = None
-            if provider == "localtunnel":
-                url = self._start_localtunnel(port)
-            elif provider == "pinggy":
+            url: Optional[str] = None
+
+            if target_provider == "localtunnel":
+                url = self._start_localtunnel(port, subdomain=subdomain)
+            elif target_provider == "pinggy":
                 url = self._start_pinggy_tunnel(port)
-            elif provider == "cloudflared":
+            elif target_provider == "cloudflared":
                 url = self._start_cloudflared_tunnel(port)
-            elif provider == "ngrok":
+            elif target_provider == "ngrok":
                 url = self._start_ngrok_tunnel(port)
 
-            # Auto fallback: if requested failed, try alternate installed tool
+            # Auto-fallback: if requested provider failed, try alternate installed tools
             if not url:
-                if provider != "pinggy" and shutil.which("ssh"):
-                    logger.info("Attempting fallback to Pinggy SSH tunnel...")
+                if target_provider != "pinggy" and shutil.which("ssh"):
+                    logger.info("Attempting auto-fallback to Pinggy SSH tunnel...")
                     url = self._start_pinggy_tunnel(port)
-                elif provider != "localtunnel" and shutil.which("npx"):
-                    logger.info("Attempting fallback to Localtunnel...")
-                    url = self._start_localtunnel(port)
+                elif target_provider != "localtunnel" and (shutil.which("npx") or shutil.which("npx.cmd")):
+                    logger.info("Attempting auto-fallback to Localtunnel...")
+                    url = self._start_localtunnel(port, subdomain=None)
+                elif shutil.which("cloudflared"):
+                    logger.info("Attempting auto-fallback to Cloudflare Quick Tunnel...")
+                    url = self._start_cloudflared_tunnel(port)
+
+            if url:
+                self._active_url = url
+                self._is_healthy = True
+                self._save_config()
+                self._ensure_watchdog()
 
             return url
 
-    def _start_localtunnel(self, port: int) -> Optional[str]:
-        """Start localtunnel via npx."""
-        try:
-            npx_bin = "npx.cmd" if os.name == "nt" else "npx"
-            p = subprocess.Popen(
-                [npx_bin, "--yes", "localtunnel", "--port", str(port), "--subdomain", "edith-core-jashu"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-            )
-            self._process = p
-            self._active_provider = "localtunnel"
-            url_found = None
-            start_time = time.time()
-            while time.time() - start_time < 12.0:
-                line = p.stdout.readline() if p.stdout else ""
-                if not line:
-                    if p.poll() is not None:
-                        break
-                    time.sleep(0.1)
-                    continue
-                match = re.search(r"https://[a-zA-Z0-9\.\-]+\.loca\.lt", line)
-                if match:
-                    url_found = match.group(0)
-                    break
+    def _start_localtunnel(
+        self,
+        port: int,
+        subdomain: Optional[str] = None,
+    ) -> Optional[str]:
+        """Start localtunnel with --local-host 127.0.0.1 and anti-503 dynamic subdomain auto-fallback."""
+        npx_bin = "npx.cmd" if os.name == "nt" else "npx"
+        if not (shutil.which("npx") or shutil.which("npx.cmd")):
+            logger.error("npx binary not found for localtunnel.")
+            return None
 
-            if url_found:
-                self._active_url = url_found
-                logger.info("Localtunnel active at: %s", url_found)
-                return url_found
-            return None
-        except Exception as ex:
-            logger.error("Failed to start localtunnel: %s", ex)
-            return None
+        # Helper to launch a localtunnel process for a specific subdomain
+        def _launch_subdomain(sub: Optional[str]) -> tuple[Optional[subprocess.Popen], Optional[str]]:
+            cmd = [
+                npx_bin,
+                "--yes",
+                "localtunnel",
+                "--port", str(port),
+                "--local-host", "127.0.0.1",  # Explicit IPv4 binding prevents 503 IPv6 mismatch
+            ]
+            if sub:
+                cmd.extend(["--subdomain", sub])
+
+            try:
+                p = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
+                )
+                captured = None
+                start_time = time.time()
+                while time.time() - start_time < 10.0:
+                    line = p.stdout.readline() if p.stdout else ""
+                    if not line:
+                        if p.poll() is not None:
+                            break
+                        time.sleep(0.1)
+                        continue
+                    m = re.search(r"https://[a-zA-Z0-9\.\-]+\.loca\.lt", line)
+                    if m:
+                        captured = m.group(0)
+                        break
+                return p, captured
+            except Exception as ex:
+                logger.error("Localtunnel process launch error: %s", ex)
+                return None, None
+
+        # 1. Attempt with requested or configured subdomain
+        preferred = subdomain or self._subdomain
+        p, url = _launch_subdomain(preferred)
+
+        # 2. Probe health: if url is found but returns 503 or fails, fall back to dynamic subdomain
+        if p and url:
+            time.sleep(0.5)
+            if self.check_url_health(url):
+                self._process = p
+                self._active_provider = "localtunnel"
+                logger.info("Localtunnel active & verified at: %s", url)
+                return url
+            else:
+                logger.warning(
+                    "Localtunnel URL %s failed health probe (likely 503 collision). Auto-falling back to dynamic subdomain...",
+                    url,
+                )
+                try:
+                    p.terminate()
+                    p.wait(timeout=1.0)
+                except Exception:
+                    try:
+                        p.kill()
+                    except Exception:
+                        pass
+
+        # 3. Dynamic subdomain attempt (avoids stale 503 collisions on loca.lt)
+        dyn_sub = f"edith-{secrets.token_hex(4)}"
+        logger.info("Starting localtunnel with dynamic subdomain: %s", dyn_sub)
+        p_dyn, url_dyn = _launch_subdomain(dyn_sub)
+
+        if p_dyn and url_dyn:
+            time.sleep(0.5)
+            # Give it up to 2 seconds to stabilize
+            if self.check_url_health(url_dyn) or p_dyn.poll() is None:
+                self._process = p_dyn
+                self._active_provider = "localtunnel"
+                logger.info("Dynamic Localtunnel online at: %s", url_dyn)
+                return url_dyn
+            try:
+                p_dyn.terminate()
+            except Exception:
+                pass
+
+        return None
 
     def _start_pinggy_tunnel(self, port: int) -> Optional[str]:
         """Start zero-config SSH tunnel via Pinggy."""
@@ -164,11 +305,13 @@ class TunnelManager:
 
         cmd = [
             "ssh",
+            "-T",
             "-p", "443",
             "-R", f"0:localhost:{port}",
             "-o", "StrictHostKeyChecking=no",
-            "-o", "ServerAliveInterval=30",
-            "a.pinggy.io"
+            "-o", "ServerAliveInterval=20",
+            "-o", "ConnectTimeout=8",
+            "a.pinggy.io",
         ]
 
         try:
@@ -183,7 +326,6 @@ class TunnelManager:
             self._process = p
             self._active_provider = "pinggy"
 
-            # Parse public URL from Pinggy output (e.g. https://xxx.pinggy.link)
             url_found = None
             start_time = time.time()
             while time.time() - start_time < 8.0:
@@ -193,9 +335,16 @@ class TunnelManager:
                         break
                     time.sleep(0.1)
                     continue
-                match = re.search(r"https://[a-zA-Z0-9\.\-]+\.pinggy\.(?:link|io)", line)
-                if match:
-                    url_found = match.group(0)
+
+                matches = re.findall(
+                    r"https://[a-zA-Z0-9\.\-]+(?:free\.pinggy\.net|pinggy-free\.link|pinggy\.link|pinggy\.io)",
+                    line,
+                )
+                for m in matches:
+                    if "dashboard.pinggy.io" not in m:
+                        url_found = m
+                        break
+                if url_found:
                     break
 
             if url_found:
@@ -215,7 +364,7 @@ class TunnelManager:
             logger.error("cloudflared CLI not found on system.")
             return None
 
-        cmd = ["cloudflared", "tunnel", "--url", f"http://localhost:{port}"]
+        cmd = ["cloudflared", "tunnel", "--url", f"http://127.0.0.1:{port}"]
         try:
             p = subprocess.Popen(
                 cmd,
@@ -266,10 +415,7 @@ class TunnelManager:
             self._process = p
             self._active_provider = "ngrok"
 
-            # Query ngrok local api at http://127.0.0.1:4040/api/tunnels
             time.sleep(1.5)
-            import urllib.request
-            import json
             req = urllib.request.Request("http://127.0.0.1:4040/api/tunnels")
             with urllib.request.urlopen(req, timeout=3.0) as resp:
                 data = json.loads(resp.read().decode())
@@ -283,13 +429,58 @@ class TunnelManager:
             logger.error("Failed to start ngrok tunnel: %s", ex)
             return None
 
+    def _ensure_watchdog(self) -> None:
+        """Start background watchdog thread to auto-heal dropped or 503 tunnels."""
+        if self._watchdog_thread and self._watchdog_thread.is_alive():
+            return
+        self._stop_watchdog.clear()
+        self._watchdog_thread = threading.Thread(target=self._watchdog_loop, daemon=True)
+        self._watchdog_thread.start()
+
+    def _watchdog_loop(self) -> None:
+        """Periodically verify tunnel health and auto-heal on 503 or disconnect."""
+        logger.debug("Tunnel watchdog loop started.")
+        while not self._stop_watchdog.is_set():
+            time.sleep(20.0)
+            if self._stop_watchdog.is_set():
+                break
+
+            with self._lock:
+                provider = self._active_provider
+                port = self._active_port
+                url = self._active_url
+
+            if not url or provider == "custom":
+                continue
+
+            # Verify if process is still running
+            proc_dead = self._process is None or self._process.poll() is not None
+
+            # Check endpoint responsiveness (anti-503 probe)
+            is_ok = False if proc_dead else self.check_url_health(url)
+
+            with self._lock:
+                self._is_healthy = is_ok
+                self._last_health_check = time.time()
+
+            if not is_ok:
+                logger.warning(
+                    "Tunnel %s (%s) is unresponsive or returning 503. Auto-reconnecting...",
+                    url,
+                    provider,
+                )
+                self.stop_tunnel()
+                new_url = self.start_tunnel(provider=provider or "localtunnel", port=port)
+                if new_url:
+                    logger.info("Tunnel auto-healed. New active URL: %s", new_url)
+
     def stop_tunnel(self) -> None:
         """Terminate running cloud tunnel process."""
         with self._lock:
             if self._process:
                 try:
                     self._process.terminate()
-                    self._process.wait(timeout=2.0)
+                    self._process.wait(timeout=1.5)
                 except Exception:
                     try:
                         self._process.kill()
@@ -300,6 +491,8 @@ class TunnelManager:
             if self._active_provider != "custom":
                 self._active_url = None
                 self._active_provider = None
+                self._is_healthy = False
+            self._save_config()
             logger.info("Cloud tunnel stopped.")
 
 

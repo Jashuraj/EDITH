@@ -22,9 +22,13 @@ from edith.core.logger import get_recent_logs
 from edith.core.security import SECURITY, EmergencyStopActiveError
 from edith.core.state_machine import STATE, SystemState
 from edith.providers.router import ROUTER, TaskCategory
+from edith.phone.protocol import PHONE_PROTOCOL
+from edith.phone.tunnel import TUNNEL_MANAGER
 from edith.tools.mouse_controller import MOUSE
 from edith.tools.reflex import REFLEX
 from edith.tools.registry import REGISTRY
+from edith.tools.remote_input import REMOTE_INPUT
+from edith.tools.screen_stream import SCREEN_STREAMER
 from edith.tools.windows import WIN_TOOLS
 from edith.voice.speaker import SPEAKER
 
@@ -228,7 +232,6 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                 s.close()
             except Exception:
                 pass
-            from edith.phone.tunnel import TUNNEL_MANAGER
             self._send_json({
                 "system_name": CONFIG.system_name,
                 "local_ip": local_ip,
@@ -239,8 +242,76 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             })
 
         elif parsed.path == "/api/tunnel":
-            from edith.phone.tunnel import TUNNEL_MANAGER
             self._send_json(TUNNEL_MANAGER.get_status())
+
+        # Real-time Screen Streaming (MJPEG)
+        elif parsed.path in ("/stream/screen", "/stream/mjpeg"):
+            query_params = urllib.parse.parse_qs(parsed.query)
+            fps = int(query_params.get("fps", [20])[0])
+            scale = int(query_params.get("scale", [1280])[0])
+            quality = int(query_params.get("quality", [60])[0])
+
+            self.send_response(200)
+            self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
+            self.send_header("Cache-Control", "no-cache, private")
+            self.send_header("Pragma", "no-cache")
+            self.end_headers()
+
+            try:
+                for frame in SCREEN_STREAMER.generate_mjpeg_stream(fps=fps, scale_width=scale, quality=quality):
+                    self.wfile.write(frame)
+                    self.wfile.flush()
+            except (BrokenPipeError, ConnectionResetError):
+                logger.debug("Screen stream client disconnected.")
+            except Exception as ex:
+                logger.error("Screen stream error: %s", ex)
+            return
+
+        # Single Frame Snapshot Capture
+        elif parsed.path == "/api/screen/capture":
+            query_params = urllib.parse.parse_qs(parsed.query)
+            scale = int(query_params.get("scale", [1280])[0])
+            quality = int(query_params.get("quality", [65])[0])
+            data = SCREEN_STREAMER.capture_jpeg_bytes(scale_width=scale, quality=quality)
+            self.send_response(200)
+            self.send_header("Content-Type", "image/jpeg")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-cache, no-store")
+            self.end_headers()
+            self.wfile.write(data)
+            return
+
+        # Remote Desktop & Streamer Status
+        elif parsed.path == "/api/remote/status":
+            stats = SCREEN_STREAMER.get_stats()
+            self._send_json({
+                "streamer": stats,
+                "input_active": True,
+                "system": CONFIG.system_name,
+            })
+
+        # Connected Devices Telemetry
+        elif parsed.path == "/api/phone/devices":
+            self._send_json({"devices": PHONE_PROTOCOL.get_paired_devices()})
+
+        # Phone Polling Messages & Heartbeat Telemetry
+        elif parsed.path == "/api/phone/messages":
+            query_params = urllib.parse.parse_qs(parsed.query)
+            dev_id = query_params.get("device_id", [""])[0] or "edith_mobile_pwa"
+            battery_str = query_params.get("battery", [None])[0]
+            conn = query_params.get("conn", [None])[0]
+            battery = int(float(battery_str)) if battery_str not in (None, "", "null") else None
+            PHONE_PROTOCOL.update_device_heartbeat(
+                dev_id,
+                battery_percent=battery,
+                connection_type=conn,
+            )
+            msgs = PHONE_PROTOCOL.poll_messages_for_phone(dev_id)
+            self._send_json({"messages": msgs, "count": len(msgs)})
+
+        # Read Host Clipboard
+        elif parsed.path == "/api/clipboard":
+            self._send_json({"clipboard": PHONE_PROTOCOL.get_current_clipboard()})
 
         # Clean redirect for /mobile to /mobile/ to preserve relative paths
         elif parsed.path == "/mobile":
@@ -424,10 +495,41 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                     "state": "READY",
                 })
 
-        elif parsed.path == "/api/mouse":
+        # Universal Remote Input (Mouse, Keyboard, Joystick, Gamepad)
+        elif parsed.path in ("/api/remote/input", "/api/mouse"):
             action = data.get("action", "")
-            res = MOUSE.handle_gesture_action(action, data)
+            params = data.get("params", data)
+            res = REMOTE_INPUT.dispatch(action, params)
+            if not res.get("success") and action in ("volume", "desktop"):
+                res = MOUSE.handle_gesture_action(action, params)
             self._send_json(res)
+
+        # Bi-Directional Clipboard Sync
+        elif parsed.path == "/api/clipboard/sync":
+            text = str(data.get("text", ""))
+            device_id = str(data.get("device_id", "ui_host"))
+            res = PHONE_PROTOCOL.sync_clipboard_from_phone(text, device_id)
+            res["laptop_clipboard"] = PHONE_PROTOCOL.get_current_clipboard()
+            self._send_json(res)
+
+        # PC to Phone Command / Push
+        elif parsed.path == "/api/phone/send_command":
+            target_device_id = str(data.get("target_device_id", "edith_mobile_pwa")).strip()
+            msg = data.get("message", data)
+            PHONE_PROTOCOL.send_message_to_phone(target_device_id, msg)
+            self._send_json({"success": True, "target": target_device_id})
+
+        # Tunnel Control
+        elif parsed.path == "/api/tunnel/start":
+            provider = str(data.get("provider", "localtunnel")).strip()
+            port = int(data.get("port", 8794))
+            url = TUNNEL_MANAGER.start_tunnel(provider=provider, port=port)
+            self._send_json({"success": bool(url), "url": url, "tunnel_url": url, "provider": provider})
+
+        elif parsed.path == "/api/tunnel/custom":
+            custom_url = str(data.get("url", "")).strip()
+            active_url = TUNNEL_MANAGER.set_custom_url(custom_url)
+            self._send_json({"success": True, "active_url": active_url, "tunnel_url": active_url, "url": active_url})
 
         elif parsed.path == "/api/mode":
             mode = data.get("mode", "auto")

@@ -158,6 +158,21 @@
         <div class="log-entry log-system">Neural router connected to hybrid free AI / Ollama.</div>
         <div class="log-entry log-system">Ready for voice or text instructions.</div>
       </div>
+
+      <!-- Paired Mobile Devices & Cloud Link Gateway -->
+      <div class="section-label" style="margin-top:14px;">MOBILE &amp; CLOUD GATEWAY</div>
+      <div id="mobile-gateway-panel" class="mobile-gateway-panel" style="margin-top:6px; font-family:var(--font-mono); font-size:11px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="color:var(--text-dim);">CLOUD LINK:</span>
+          <span id="hud-cloud-url" style="color:var(--cyan); word-break:break-all; max-width:200px;">CONNECTING...</span>
+        </div>
+        <div style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;">
+          <button class="action-btn" style="padding:4px 8px; font-size:10px;" onclick="copyCloudLink()">COPY LINK</button>
+          <button class="action-btn" style="padding:4px 8px; font-size:10px;" onclick="syncHostClipboard()">SYNC CLIPBOARD</button>
+          <button class="action-btn" style="padding:4px 8px; font-size:10px;" onclick="pushMobileAlert()">NOTIFY PHONE</button>
+        </div>
+        <div id="hud-device-list" style="color:var(--text-dim); font-size:10px;">SCANNING MOBILE SESSIONS...</div>
+      </div>
     </aside>
 
     <!-- ── Bottom Console ── -->
@@ -1253,18 +1268,96 @@
       } catch (_) {}
     }
 
+    async function updateMobileAndTunnelStatus() {
+      try {
+        const [tunResp, devResp] = await Promise.all([
+          fetch('/api/tunnel').then(r => r.json()).catch(() => ({})),
+          fetch('/api/phone/devices').then(r => r.json()).catch(() => ({ devices: [] }))
+        ]);
+        const urlEl = document.getElementById('hud-cloud-url');
+        if (urlEl) {
+          if (tunResp.url) {
+            urlEl.textContent = tunResp.url;
+            urlEl.style.color = 'var(--cyan)';
+          } else {
+            urlEl.textContent = 'STANDBY (WI-FI ONLY)';
+            urlEl.style.color = 'var(--text-dim)';
+          }
+        }
+        const devListEl = document.getElementById('hud-device-list');
+        if (devListEl) {
+          const devs = devResp.devices || [];
+          if (devs.length === 0) {
+            devListEl.innerHTML = '<span style="color:var(--text-dim);">NO MOBILE DEVICES PAIRED</span>';
+          } else {
+            devListEl.innerHTML = devs.map(d => {
+              const batteryTxt = (d.battery_percent !== null && d.battery_percent !== undefined) ? ` [🔋 ${d.battery_percent}%]` : '';
+              const connTxt = (d.connection_type && d.connection_type !== 'UNKNOWN') ? ` [${escHtml(d.connection_type)}]` : '';
+              return `<div style="display:flex; justify-content:space-between; margin-top:3px; color:var(--text-bright);">
+                <span>📱 ${escHtml(d.device_name || d.device_id)}${batteryTxt}${connTxt}</span>
+                <span style="color:#00e676;">ONLINE</span>
+              </div>`;
+            }).join('');
+          }
+        }
+      } catch (_) {}
+    }
+
+    async function copyCloudLink() {
+      const urlEl = document.getElementById('hud-cloud-url');
+      if (urlEl && urlEl.textContent && !urlEl.textContent.includes('STANDBY') && !urlEl.textContent.includes('CONNECTING')) {
+        await navigator.clipboard.writeText(urlEl.textContent);
+        alert(`Copied Cloud Link:\n${urlEl.textContent}`);
+      } else {
+        alert('Cloud tunnel is initializing or inactive.');
+      }
+    }
+
+    async function syncHostClipboard() {
+      try {
+        const text = await navigator.clipboard.readText();
+        const resp = await fetch('/api/clipboard/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, device_id: 'ui_host' })
+        });
+        const data = await resp.json();
+        alert(`Host clipboard pushed to mobile devices (${(text || '').length} chars).`);
+      } catch (e) {
+        alert('Clipboard sync notice: ' + e.message);
+      }
+    }
+
+    async function pushMobileAlert() {
+      const msg = prompt('Enter message to send to connected phone:', 'Attention: Message from EDITH Laptop');
+      if (msg) {
+        try {
+          await fetch('/api/phone/send_command', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message: { type: 'alert', text: msg } })
+          });
+          alert('Notification dispatched to phone.');
+        } catch (e) {
+          alert('Notification dispatch failed: ' + e.message);
+        }
+      }
+    }
+
     // Start background telemetry and status polling loops
     setInterval(() => {
       checkClapStatus();
       checkUndo();
       checkConfirm();
       pollSystemMetrics();
+      updateMobileAndTunnelStatus();
     }, 2800);
     setTimeout(() => {
       checkClapStatus();
       checkUndo();
       checkConfirm();
       pollSystemMetrics();
+      updateMobileAndTunnelStatus();
     }, 1200);
 
     // ── Keyboard shortcut ─────────────────────────────────────

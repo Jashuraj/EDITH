@@ -87,6 +87,10 @@
 
       <!-- Quick Action Controls -->
       <div class="quick-actions-bar">
+        <button class="chip-btn blue-chip" id="btn-open-remote">🖥️ Remote Desktop</button>
+        <button class="chip-btn purple-chip" id="btn-open-gamepad">🎮 Game Controller</button>
+        <button class="chip-btn" id="btn-sync-clipboard">📋 Sync Clip</button>
+        <button class="chip-btn" data-cmd="open steam">🎮 Steam</button>
         <button class="chip-btn" data-cmd="undo">↩ Undo</button>
         <button class="chip-btn" data-cmd="enable clap">👏 Clap Welcome</button>
         <button class="chip-btn" data-cmd="open youtube">▶ YouTube</button>
@@ -153,7 +157,115 @@
 
   </div>
 
-  <!-- Settings & Connectivity Modal -->
+  <!-- Fullscreen Remote Desktop & Gamepad Layer -->
+  <div id="remote-desktop-overlay" class="remote-desktop-overlay" style="display: none;">
+    <!-- Top Tactical Control Bar -->
+    <div class="remote-top-bar">
+      <div class="remote-title-badge">
+        <span class="status-dot green-pulse" id="remote-status-dot"></span>
+        <span id="remote-title-text">EDITH HOST VIEW</span>
+        <span class="remote-fps-tag" id="remote-fps-tag">LIVE</span>
+      </div>
+      <div class="remote-bar-actions">
+        <button class="remote-bar-btn" id="btn-toggle-gamepad" title="Toggle Virtual Gamepad">🎮 Gamepad</button>
+        <button class="remote-bar-btn" id="btn-open-kb" title="Type Text to Laptop">⌨️ Type</button>
+        <button class="remote-bar-btn" id="btn-remote-clip" title="Sync Clipboard">📋 Clip</button>
+        <button class="remote-bar-btn" id="btn-remote-refresh" title="Reconnect Stream">🔄</button>
+        <button class="remote-bar-btn remote-btn-close" id="btn-close-remote" title="Exit Remote Desktop">✕</button>
+      </div>
+    </div>
+
+    <!-- Screen Viewport & Touch Interaction Canvas -->
+    <div class="remote-viewport" id="remote-viewport">
+      <img id="remote-screen-img" class="remote-screen-img" src="" alt="Windows Desktop Stream" draggable="false">
+      <div id="remote-virtual-cursor" class="remote-virtual-cursor" style="display: none;"></div>
+      <div id="remote-touch-feedback" class="remote-touch-feedback"></div>
+
+      <!-- Virtual Gamepad Overlay (Active in Game Mode or by toggle) -->
+      <div id="virtual-gamepad-overlay" class="virtual-gamepad-overlay" style="display: none;">
+        <!-- Left Analog Thumbstick -->
+        <div class="gamepad-stick-container" id="gamepad-stick-container">
+          <div class="gamepad-stick-base" id="gamepad-stick-base">
+            <div class="stick-label stick-label-up">W</div>
+            <div class="stick-label stick-label-left">A</div>
+            <div class="stick-label stick-label-right">D</div>
+            <div class="stick-label stick-label-down">S</div>
+            <div class="gamepad-stick-nub" id="gamepad-stick-nub"></div>
+          </div>
+        </div>
+
+        <!-- Center Shoulders & System Buttons -->
+        <div class="gamepad-center-bar">
+          <button class="game-btn game-shoulder" data-btn="LB">LB [Q]</button>
+          <button class="game-btn game-shoulder" data-btn="AIM">LT [Aim]</button>
+          <button class="game-btn game-center-special" data-btn="PAUSE">PAUSE [Esc]</button>
+          <button class="game-btn game-center-special" data-btn="SELECT">MAP [Tab]</button>
+          <button class="game-btn game-shoulder" data-btn="FIRE">RT [Fire]</button>
+          <button class="game-btn game-shoulder" data-btn="RB">RB [F]</button>
+        </div>
+
+        <!-- Right Action Diamond (A, B, X, Y, Jump, Sprint, Fire, Aim) -->
+        <div class="gamepad-actions-container">
+          <div class="game-diamond">
+            <button class="game-btn game-btn-y" data-btn="Y">Y<span class="game-sub">R</span></button>
+            <div class="game-mid-row">
+              <button class="game-btn game-btn-x" data-btn="X">X<span class="game-sub">E</span></button>
+              <button class="game-btn game-btn-b" data-btn="B">B<span class="game-sub">C</span></button>
+            </div>
+            <button class="game-btn game-btn-a" data-btn="A">A<span class="game-sub">Space</span></button>
+          </div>
+          <div class="game-extra-actions">
+            <button class="game-btn game-btn-fire" data-btn="FIRE">🔥 FIRE</button>
+            <button class="game-btn game-btn-aim" data-btn="AIM">🎯 AIM</button>
+            <button class="game-btn game-btn-sprint" data-btn="SPRINT">⚡ SPRINT</button>
+            <button class="game-btn game-btn-jump" data-btn="JUMP">⏫ JUMP</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Mobile Control Bar (Touch Mouse / Gesture Assist) -->
+    <div class="remote-bottom-bar" id="remote-bottom-bar">
+      <button class="remote-gesture-chip" data-action="click">Left Click</button>
+      <button class="remote-gesture-chip" data-action="right_click">Right Click</button>
+      <button class="remote-gesture-chip" data-action="double_click">Double Click</button>
+      <button class="remote-gesture-chip" data-action="scroll_up">Scroll ▲</button>
+      <button class="remote-gesture-chip" data-action="scroll_down">Scroll ▼</button>
+      <button class="remote-gesture-chip" data-action="switch_window">Alt+Tab</button>
+    </div>
+  </div>
+
+  <!-- Remote Keyboard Modal -->
+  <div class="modal-overlay" id="modal-remote-keyboard" style="display: none;">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span class="modal-title">HOST KEYBOARD INPUT</span>
+        <button class="btn-icon" id="btn-close-kb">✕</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Type Directly into Active Laptop Window</label>
+        <input type="text" id="kb-text-input" class="form-input" placeholder="Enter text to type..." autocomplete="off">
+      </div>
+      <div class="modal-actions" style="margin-bottom: 12px;">
+        <button class="btn-primary" id="btn-kb-send-text" style="flex: 1;">Send Text</button>
+        <button class="btn-secondary" id="btn-kb-enter">Enter ↵</button>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Quick Host Hotkeys</label>
+        <div class="kb-quick-keys">
+          <button class="kb-key-chip" data-key="backspace">Backspace</button>
+          <button class="kb-key-chip" data-key="escape">Esc</button>
+          <button class="kb-key-chip" data-key="tab">Tab</button>
+          <button class="kb-key-chip" data-key="space">Space</button>
+          <button class="kb-key-chip" data-hotkey="win,d">Win+D</button>
+          <button class="kb-key-chip" data-hotkey="alt,tab">Alt+Tab</button>
+          <button class="kb-key-chip" data-hotkey="ctrl,c">Ctrl+C</button>
+          <button class="kb-key-chip" data-hotkey="ctrl,v">Ctrl+V</button>
+          <button class="kb-key-chip" data-hotkey="ctrl,z">Ctrl+Z</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="modal-overlay" id="modal-settings">
     <div class="modal-card">
       <div class="modal-header">

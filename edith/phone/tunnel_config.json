@@ -1,3 +1,8 @@
 {
-  "custom_url": null
+  "provider": "localtunnel",
+  "subdomain": "edith-jashu",
+  "custom_url": null,
+  "active_url": null,
+  "healthy": false,
+  "updated_at": 1791394965.6936553
 }

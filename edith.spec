@@ -25,6 +25,8 @@ a = Analysis(
         'edith.providers.resolver',
         'edith.tools.system_optimizer',
         'edith.tools.mouse_controller',
+        'edith.tools.remote_input',
+        'edith.tools.screen_stream',
         'edith.voice.transcript_stream',
     ],
     hookspath=[],
