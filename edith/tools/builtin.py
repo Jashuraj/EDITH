@@ -240,3 +240,12 @@ def register_builtin_tools(registry) -> None:
         fn=lambda prompt="What do you see on my screen?", **kwargs: __import__("edith.tools.vision", fromlist=["VISION"]).VISION.analyze_screen(prompt or kwargs.get("text") or "What do you see on my screen?"),
         parameters_schema={"type": "object", "properties": {"prompt": {"type": "string"}}},
     )
+
+    # System Optimizer Pack
+    registry.register(
+        name="optimize_system",
+        description="Trim memory working set, flush Windows DNS cache, and purge temporary file cache",
+        action_pack="WINDOWS_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda **kwargs: __import__("edith.tools.system_optimizer", fromlist=["optimize_system"]).optimize_system(),
+    )

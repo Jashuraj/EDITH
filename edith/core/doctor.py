@@ -90,6 +90,25 @@ class EdithDoctor:
             details=f"Emergency Stop: {'ACTIVE' if SECURITY.is_emergency_stopped else 'Disengaged'} | Privacy: {'ON' if SECURITY.is_privacy_mode else 'OFF'}",
         ))
 
+        # 6. OmniRoute Gateway
+        try:
+            from edith.providers.omniroute_provider import OMNIROUTE_CONTROLLER
+            omni_status = OMNIROUTE_CONTROLLER.get_status()
+            if omni_status.get("online"):
+                items.append(HealthCheckItem(
+                    name="OmniRoute Gateway",
+                    status="OK",
+                    details=f"Gateway online on port {OMNIROUTE_CONTROLLER.port} ({omni_status.get('model_count')} models, {omni_status.get('latency_ms')}ms)",
+                ))
+            else:
+                items.append(HealthCheckItem(
+                    name="OmniRoute Gateway",
+                    status="INFO",
+                    details=f"Gateway standby on port {OMNIROUTE_CONTROLLER.port} (Fallback to Local/Reflex)",
+                ))
+        except Exception:
+            pass
+
         return items
 
 

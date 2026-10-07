@@ -17,11 +17,20 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
+from edith.core.asimov_guard import ASIMOV_GUARD
 from edith.core.config import CONFIG
 from edith.core.security import SECURITY
+from edith.core.security_sentinels import (
+    CREDENTIAL_GUARDIAN,
+    DEVICE_LOCK_SENTINEL,
+    DEVICE_POWER_SENTINEL,
+    FINANCIAL_GATEKEEPER,
+)
+from edith.core.single_question import enforce_single_question
 from edith.providers.base import LLMProvider, ModelResponse, ToolCall
 from edith.providers.free_online_provider import FREE_ONLINE
 from edith.providers.ollama_provider import OLLAMA
+from edith.providers.omniroute_provider import OMNIROUTE
 from edith.tools.reflex import REFLEX
 
 logger = logging.getLogger("edith.providers.router")
@@ -140,6 +149,14 @@ class DeterministicFallbackEngine:
             if any(term in low for term in ("show desktop", "minimize all", "clear desktop")):
                 tool_calls.append(ToolCall(name="window_action", arguments={"action": "show desktop"}))
                 return ModelResponse(content="Showing desktop.", tool_calls=tool_calls, model="OFFLINE_REFLEX", provider="local_reflex")
+            if any(term in low for term in ("optimize system", "clean temp", "flush dns", "trim ram", "free ram", "clean system", "clear cache")):
+                tool_calls.append(ToolCall(name="optimize_system", arguments={}))
+                return ModelResponse(
+                    content="Executing system optimization: trimming memory working set, flushing DNS cache, and clearing temporary storage.",
+                    tool_calls=tool_calls,
+                    model="OFFLINE_REFLEX",
+                    provider="local_reflex",
+                )
 
         # 3. Conversational & Knowledge Answering
         now_dt = datetime.datetime.now()
@@ -253,12 +270,13 @@ class DeterministicFallbackEngine:
 
 
 class ModelRouter:
-    """Intelligent model selection engine routing across cloud, local, and deterministic tiers."""
+    """Intelligent model selection engine routing across cloud, gateway, local, and deterministic tiers."""
 
     def __init__(self, local_provider: Optional[LLMProvider] = None, cloud_provider: Optional[LLMProvider] = None):
         self.local = local_provider or OLLAMA
         self.cloud = cloud_provider
         self.free_online = FREE_ONLINE
+        self.omniroute = OMNIROUTE
         self._internet_available: bool = True
 
     def set_internet_status(self, available: bool) -> None:
@@ -332,7 +350,85 @@ class ModelRouter:
         tools: Optional[List[Dict[str, Any]]] = None,
         system_prompt: str = "",
     ) -> ModelResponse:
-        """Route and execute generation across multi-tier ladder with zero-downtime fallback."""
+        """Route and execute generation across multi-tier ladder with security sentinels."""
+        # Sentinel Check 1: Asimov's Prime Directive & Safety Sentinel
+        is_safe, refusal = ASIMOV_GUARD.evaluate_safety(prompt)
+        if not is_safe:
+            return ModelResponse(
+                content=refusal,
+                model="ASIMOV_GUARD",
+                provider="security",
+                duration_ms=1.0,
+            )
+
+        # Sentinel Check 2: Device Power & Sleep Directive
+        is_sleep, sleep_msg = DEVICE_POWER_SENTINEL.evaluate_shutdown_directive(prompt)
+        if is_sleep:
+            return ModelResponse(
+                content=sleep_msg,
+                tool_calls=[ToolCall(name="power_action", arguments={"kind": "sleep"})],
+                model="POWER_SENTINEL",
+                provider="security",
+                duration_ms=1.0,
+            )
+
+        # Sentinel Check 3: Device Lock Directive
+        is_handled, unlocked, unlock_msg = DEVICE_LOCK_SENTINEL.evaluate_unlock_directive(prompt)
+        if is_handled:
+            return ModelResponse(
+                content=unlock_msg,
+                model="LOCK_SENTINEL",
+                provider="security",
+                duration_ms=1.0,
+            )
+
+        # Sentinel Check 4: Financial Gatekeeper
+        if FINANCIAL_GATEKEEPER.has_pending_authorization():
+            fin_eval = FINANCIAL_GATEKEEPER.evaluate_decision(prompt)
+            if fin_eval is not None:
+                _, fin_msg, _ = fin_eval
+                return ModelResponse(
+                    content=fin_msg,
+                    model="FINANCIAL_GATEKEEPER",
+                    provider="security",
+                    duration_ms=1.0,
+                )
+        else:
+            is_fin, _ = FINANCIAL_GATEKEEPER.detect_financial_task(prompt)
+            if is_fin:
+                fin_req = FINANCIAL_GATEKEEPER.create_authorization_request(prompt)
+                return ModelResponse(
+                    content=fin_req,
+                    model="FINANCIAL_GATEKEEPER",
+                    provider="security",
+                    duration_ms=1.0,
+                )
+
+        # Sentinel Check 5: Credential Guardian Exposure Check
+        if CREDENTIAL_GUARDIAN.has_pending_authorization():
+            cred_eval = CREDENTIAL_GUARDIAN.evaluate_decision(prompt)
+            if cred_eval is not None:
+                _, cred_msg, _ = cred_eval
+                return ModelResponse(
+                    content=cred_msg,
+                    model="CREDENTIAL_GUARDIAN",
+                    provider="security",
+                    duration_ms=1.0,
+                )
+        else:
+            is_exp, _ = CREDENTIAL_GUARDIAN.detect_unauthorized_exposure(prompt)
+            if is_exp:
+                cred_req = CREDENTIAL_GUARDIAN.create_authorization_request(prompt)
+                return ModelResponse(
+                    content=cred_req,
+                    model="CREDENTIAL_GUARDIAN",
+                    provider="security",
+                    duration_ms=1.0,
+                )
+
+        # Redact any private credentials in prompt before passing to models
+        clean_prompt = CREDENTIAL_GUARDIAN.redact(prompt)
+
         try:
             from edith.memory.local_store import MEMORY
             memories = MEMORY.get_memories()
@@ -342,53 +438,86 @@ class ModelRouter:
         except Exception:
             pass
 
-        decision = self.route(prompt, category=category, has_tools=bool(tools))
+        decision = self.route(clean_prompt, category=category, has_tools=bool(tools))
         logger.info("Routing prompt to [%s / %s]: %s", decision.provider, decision.model, decision.reason)
+
+        response: Optional[ModelResponse] = None
 
         # Tier 1: Free Online Cloud AI (if routed online)
         if decision.provider == "free_online" and self.free_online.circuit_breaker.can_execute():
             try:
                 if tools:
-                    return await self.free_online.generate_with_tools(
-                        prompt=prompt,
+                    response = await self.free_online.generate_with_tools(
+                        prompt=clean_prompt,
                         tools=tools,
                         system_prompt=system_prompt,
                         model_name=decision.model,
                     )
-                return await self.free_online.generate(
-                    prompt=prompt,
-                    system_prompt=system_prompt,
-                    model_name=decision.model,
-                )
+                else:
+                    response = await self.free_online.generate(
+                        prompt=clean_prompt,
+                        system_prompt=system_prompt,
+                        model_name=decision.model,
+                    )
             except Exception as ex:
-                logger.warning("Tier 1 (Free Online) failed (%s). Stepping down to Tier 2 Local.", ex)
+                logger.warning("Tier 1 (Free Online) failed (%s). Stepping down to Tier 1.5 OmniRoute.", ex)
+
+        # Tier 1.5: OmniRoute Multi-Provider Gateway
+        if response is None and self.omniroute.circuit_breaker.can_execute():
+            try:
+                is_omni_up = await self.omniroute.is_healthy()
+                if is_omni_up:
+                    if tools:
+                        response = await self.omniroute.generate_with_tools(
+                            prompt=clean_prompt,
+                            tools=tools,
+                            system_prompt=system_prompt,
+                            model_name=decision.model,
+                        )
+                    else:
+                        response = await self.omniroute.generate(
+                            prompt=clean_prompt,
+                            system_prompt=system_prompt,
+                            model_name=decision.model,
+                        )
+            except Exception as ex:
+                logger.debug("Tier 1.5 (OmniRoute) unavailable: %s", ex)
 
         # Tier 2: Local Ollama Model (Hermes 3B or configured model)
-        if self.local.circuit_breaker.can_execute():
+        if response is None and self.local.circuit_breaker.can_execute():
             # Fast health probe to avoid 15s freeze if Ollama daemon is offline
             is_healthy = await self.local.is_healthy()
             if is_healthy:
                 try:
                     if tools:
-                        return await self.local.generate_with_tools(
-                            prompt=prompt,
+                        response = await self.local.generate_with_tools(
+                            prompt=clean_prompt,
                             tools=tools,
                             system_prompt=system_prompt,
                             model_name=decision.model,
                         )
-                    return await self.local.generate(
-                        prompt=prompt,
-                        system_prompt=system_prompt,
-                        model_name=decision.model,
-                    )
+                    else:
+                        response = await self.local.generate(
+                            prompt=clean_prompt,
+                            system_prompt=system_prompt,
+                            model_name=decision.model,
+                        )
                 except Exception as ex:
                     logger.warning("Tier 2 (Local Ollama) failed: %s", ex)
             else:
                 logger.debug("Ollama daemon is currently not running on host.")
 
         # Tier 3: Zero-Defect Smart Deterministic NLP & Reflex Core
-        logger.info("Engaging Tier 3 Deterministic Core for prompt: '%s'", prompt)
-        return DeterministicFallbackEngine.answer(prompt, tools_enabled=bool(tools))
+        if response is None:
+            logger.info("Engaging Tier 3 Deterministic Core for prompt: '%s'", clean_prompt)
+            response = DeterministicFallbackEngine.answer(clean_prompt, tools_enabled=bool(tools))
+
+        # Enforce Credential Redaction and Single-Question Protocol on Response
+        if response and response.content:
+            response.content = CREDENTIAL_GUARDIAN.redact(response.content)
+            response.content = enforce_single_question(response.content)
+
+        return response
 
 
 # Global ModelRouter singleton
