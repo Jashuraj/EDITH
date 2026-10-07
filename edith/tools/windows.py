@@ -17,9 +17,12 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from edith.core.config import CONFIG
+from edith.core.confirm import CONFIRMATION_GATE
 from edith.core.security import RiskLevel, SECURITY
+from edith.core.undo import UNDO_MANAGER
 
 logger = logging.getLogger("edith.tools.windows")
+
 
 
 class WindowsTools:
@@ -485,9 +488,11 @@ class WindowsTools:
                 shell = win32com.client.Dispatch("Shell.Application")
                 if any(w in act for w in ["desktop", "minimize all", "minimize_all"]):
                     shell.MinimizeAll()
+                    UNDO_MANAGER.push("Show Desktop", lambda: self.window_action("restore")["message"])
                     return {"success": True, "message": "Minimized windows, showing desktop."}
                 elif any(w in act for w in ["restore", "undo"]):
                     shell.UndoMinimizeALL()
+                    UNDO_MANAGER.push("Restore Windows", lambda: self.window_action("desktop")["message"])
                     return {"success": True, "message": "Restored windows."}
                 return {"success": False, "message": f"Unknown window action '{act}'."}
             finally:
@@ -680,6 +685,17 @@ class WindowsTools:
                 for _ in range(times):
                     user32.keybd_event(vk, 0, 0, 0)
                     user32.keybd_event(vk, 0, 2, 0)
+
+            # Register reversible actions with UNDO_MANAGER
+            if k == "volume_up":
+                UNDO_MANAGER.push(f"Volume Up (+{amount * 2}%)", lambda: self.media_action("volume_down", amount=amount).get("message", "Volume reduced"))
+            elif k == "volume_down":
+                UNDO_MANAGER.push(f"Volume Down (-{amount * 2}%)", lambda: self.media_action("volume_up", amount=amount).get("message", "Volume increased"))
+            elif k in ("mute", "volume_mute"):
+                UNDO_MANAGER.push("Mute Audio", lambda: self.media_action("unmute").get("message", "Audio unmuted"))
+            elif k == "unmute":
+                UNDO_MANAGER.push("Unmute Audio", lambda: self.media_action("mute").get("message", "Audio muted"))
+
             return {"success": True, "action": k, "message": f"Media action '{k}' executed."}
         except Exception as ex:
             logger.error("Media action failed: %s", ex)
@@ -726,7 +742,7 @@ class WindowsTools:
             logger.error("Mouse action failed: %s", ex)
             return {"success": False, "error": str(ex)}
 
-    def power_action(self, kind: str) -> Dict[str, Any]:
+    def power_action(self, kind: str, confirmed: bool = False) -> Dict[str, Any]:
         """Execute Windows system power or workstation actions."""
         k = (kind or "").strip().lower().replace("-", "_").replace(" ", "_")
         logger.info("Power action triggered: %s", k)
@@ -738,17 +754,48 @@ class WindowsTools:
                     subprocess.Popen(["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"])
                 return {"success": True, "action": "sleep", "message": "System entering sleep mode."}
             elif k in ("cancel_shutdown", "abort_shutdown", "cancel"):
+                CONFIRMATION_GATE.clear()
                 if platform.system() == "Windows":
                     subprocess.run(["shutdown", "/a"], capture_output=True, check=False)
                 return {"success": True, "action": "cancel_shutdown", "message": "Scheduled shutdown canceled."}
             elif k in ("shutdown", "shut_down"):
-                if platform.system() == "Windows":
-                    subprocess.Popen(["shutdown", "/s", "/t", "60"])
-                return {"success": True, "action": "shutdown", "message": "Shutdown scheduled in 60s. Say 'cancel shutdown' to abort."}
+                if confirmed:
+                    if platform.system() == "Windows":
+                        subprocess.Popen(["shutdown", "/s", "/t", "60"])
+                    return {"success": True, "action": "shutdown", "message": "Shutdown scheduled in 60s. Say 'cancel shutdown' to abort."}
+
+                def do_shutdown():
+                    if platform.system() == "Windows":
+                        subprocess.Popen(["shutdown", "/s", "/t", "60"])
+                    return "Shutdown scheduled in 60s. Say 'cancel shutdown' to abort."
+
+                pending = CONFIRMATION_GATE.request("shutdown", "Shutdown Host System", "Shut down the host PC in 60 seconds", do_shutdown)
+                return {
+                    "success": True,
+                    "action": "shutdown",
+                    "confirmation_required": True,
+                    "confirmation_id": pending["id"],
+                    "message": pending["message"]
+                }
             elif k in ("restart", "reboot"):
-                if platform.system() == "Windows":
-                    subprocess.Popen(["shutdown", "/r", "/t", "60"])
-                return {"success": True, "action": "restart", "message": "Restart scheduled in 60s. Say 'cancel shutdown' to abort."}
+                if confirmed:
+                    if platform.system() == "Windows":
+                        subprocess.Popen(["shutdown", "/r", "/t", "60"])
+                    return {"success": True, "action": "restart", "message": "Restart scheduled in 60s. Say 'cancel shutdown' to abort."}
+
+                def do_reboot():
+                    if platform.system() == "Windows":
+                        subprocess.Popen(["shutdown", "/r", "/t", "60"])
+                    return "Restart scheduled in 60s. Say 'cancel shutdown' to abort."
+
+                pending = CONFIRMATION_GATE.request("restart", "Restart Host System", "Reboot the host PC in 60 seconds", do_reboot)
+                return {
+                    "success": True,
+                    "action": "restart",
+                    "confirmation_required": True,
+                    "confirmation_id": pending["id"],
+                    "message": pending["message"]
+                }
             else:
                 return {"success": False, "error": f"Unknown power action: {kind}"}
         except Exception as ex:

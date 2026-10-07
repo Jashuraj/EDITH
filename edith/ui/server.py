@@ -167,6 +167,48 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             except Exception as e:
                 self._send_json({"devices": [], "error": str(e)})
 
+        elif parsed.path == "/voice/clap_status":
+            from edith.voice.clap_detector import CLAP_DETECTOR
+            self._send_json({
+                "enabled": CONFIG.clap_welcome_enabled,
+                "active": CLAP_DETECTOR.is_running,
+            })
+
+        elif parsed.path == "/api/undo/history":
+            from edith.core.undo import UNDO_MANAGER
+            self._send_json({
+                "history": UNDO_MANAGER.history(),
+                "can_undo": UNDO_MANAGER.can_undo(),
+                "peek": UNDO_MANAGER.peek(),
+            })
+
+        elif parsed.path == "/api/confirm/pending":
+            from edith.core.confirm import CONFIRMATION_GATE
+            pending = CONFIRMATION_GATE.get_pending()
+            self._send_json({
+                "has_pending": pending is not None,
+                "pending": pending,
+            })
+
+        elif parsed.path == "/api/metrics":
+            import psutil
+            import platform
+            cpu = psutil.cpu_percent(interval=None)
+            mem = psutil.virtual_memory()
+            disk_path = "C:\\" if platform.system() == "Windows" else "/"
+            disk = psutil.disk_usage(disk_path)
+            dyn = CONFIG.refresh_dynamic_stats()
+            self._send_json({
+                "cpu_percent": cpu,
+                "ram_percent": mem.percent,
+                "ram_used_mb": mem.used // (1024 * 1024),
+                "ram_total_mb": mem.total // (1024 * 1024),
+                "disk_percent": disk.percent,
+                "battery_percent": dyn.get("battery_percent"),
+                "power_plugged": dyn.get("power_plugged"),
+                "is_online": dyn.get("online", False),
+            })
+
         elif parsed.path == "/vision/analyze_screen":
             from edith.tools.vision import VISION
             res = VISION.analyze_screen()
@@ -176,6 +218,7 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             self._send_json({"status": "ok", "system": CONFIG.system_name})
 
         elif parsed.path == "/mobile/config":
+
             import socket
             local_ip = "127.0.0.1"
             try:
@@ -416,6 +459,39 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             SPEAKER.set_muted(should_mute)
             self._send_json({"success": True, "muted": SPEAKER.is_muted})
 
+        elif parsed.path == "/voice/clap_toggle":
+            from edith.voice.clap_detector import CLAP_DETECTOR
+            new_val = data.get("enabled")
+            if new_val is None:
+                new_val = not CONFIG.clap_welcome_enabled
+            CONFIG.clap_welcome_enabled = bool(new_val)
+            if CONFIG.clap_welcome_enabled:
+                CLAP_DETECTOR.start()
+            else:
+                CLAP_DETECTOR.stop()
+            self._send_json({
+                "success": True,
+                "enabled": CONFIG.clap_welcome_enabled,
+                "active": CLAP_DETECTOR.is_running,
+            })
+
+        elif parsed.path == "/api/undo":
+            from edith.core.undo import UNDO_MANAGER
+            res = UNDO_MANAGER.undo_last()
+            self._send_json({
+                "success": True,
+                "result": res,
+                "can_undo": UNDO_MANAGER.can_undo(),
+                "peek": UNDO_MANAGER.peek(),
+            })
+
+        elif parsed.path == "/api/confirm/resolve":
+            from edith.core.confirm import CONFIRMATION_GATE
+            req_id = data.get("id", "")
+            approved = data.get("approved", False)
+            res = CONFIRMATION_GATE.resolve(req_id, approved=approved)
+            self._send_json(res)
+
         elif parsed.path == "/audio/select":
             dev_idx = data.get("device_index")
             from edith.voice.clap_detector import CLAP_DETECTOR
@@ -424,6 +500,7 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                 self._send_json({"success": True, "active_index": int(dev_idx)})
             else:
                 self._send_json({"success": False, "error": "No device index provided"}, status=400)
+
 
         elif parsed.path == "/vision/analyze_screen":
             prompt = data.get("prompt", "What do you see on my screen?")

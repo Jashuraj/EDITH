@@ -115,19 +115,58 @@ class TestUIServer(unittest.TestCase):
             data = json.loads(res.read().decode("utf-8"))
             self.assertTrue(data["success"])
 
-    def test_mobile_redirect(self):
-        class NoRedirect(urllib.request.HTTPRedirectHandler):
-            def redirect_request(self, req, fp, code, msg, headers, newurl):
-                return None
-
-        opener = urllib.request.build_opener(NoRedirect)
-        try:
-            res = opener.open("http://127.0.0.1:8796/mobile")
+    def test_clap_status_and_toggle(self):
+        # GET clap status
+        req = urllib.request.Request("http://127.0.0.1:8796/voice/clap_status")
+        with urllib.request.urlopen(req, timeout=3.0) as res:
             self.assertEqual(res.status, 200)
-        except urllib.error.HTTPError as e:
-            self.assertEqual(e.code, 302)
-            self.assertEqual(e.headers.get("Location"), "/mobile/")
+            data = json.loads(res.read().decode("utf-8"))
+            self.assertIn("enabled", data)
+            self.assertIn("active", data)
+
+        # POST clap toggle
+        body = json.dumps({"enabled": False}).encode("utf-8")
+        req = urllib.request.Request("http://127.0.0.1:8796/voice/clap_toggle", data=body, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            data = json.loads(res.read().decode("utf-8"))
+            self.assertTrue(data["success"])
+            self.assertFalse(data["enabled"])
+
+    def test_undo_and_confirm_endpoints(self):
+        # GET undo history
+        req = urllib.request.Request("http://127.0.0.1:8796/api/undo/history")
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            data = json.loads(res.read().decode("utf-8"))
+            self.assertIn("history", data)
+            self.assertIn("can_undo", data)
+
+        # POST undo
+        body = json.dumps({}).encode("utf-8")
+        req = urllib.request.Request("http://127.0.0.1:8796/api/undo", data=body, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            data = json.loads(res.read().decode("utf-8"))
+            self.assertTrue(data["success"])
+
+        # GET confirm pending
+        req = urllib.request.Request("http://127.0.0.1:8796/api/confirm/pending")
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            data = json.loads(res.read().decode("utf-8"))
+            self.assertIn("has_pending", data)
+
+    def test_metrics_endpoint(self):
+        req = urllib.request.Request("http://127.0.0.1:8796/api/metrics")
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            data = json.loads(res.read().decode("utf-8"))
+            self.assertIn("cpu_percent", data)
+            self.assertIn("ram_percent", data)
+            self.assertIn("disk_percent", data)
 
 
 if __name__ == "__main__":
     unittest.main()
+

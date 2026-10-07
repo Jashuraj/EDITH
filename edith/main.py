@@ -111,14 +111,15 @@ def serve_all(ui_port: int = 8794, phone_port: int = 8795) -> None:
 
     STATE.set_state_sync(SystemState.READY, reason="EDITH daemon servers online")
 
-    # Start double clap welcome listener in background
+    # Start double clap welcome listener in background (disabled by default)
     clap_active = False
-    try:
-        from edith.voice.clap_detector import CLAP_DETECTOR
-        CLAP_DETECTOR.start()
-        clap_active = True
-    except Exception as ex:
-        logger.warning("Could not initialize clap detector: %s", ex)
+    if CONFIG.clap_welcome_enabled:
+        try:
+            from edith.voice.clap_detector import CLAP_DETECTOR
+            CLAP_DETECTOR.start()
+            clap_active = True
+        except Exception as ex:
+            logger.warning("Could not initialize clap detector: %s", ex)
 
     # Retrieve LAN IP for phone pairing
     import socket

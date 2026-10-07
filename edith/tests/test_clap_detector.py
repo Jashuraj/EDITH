@@ -64,6 +64,37 @@ class TestClapDetector(unittest.TestCase):
             self.detector.stop()
             self.assertFalse(self.detector.is_running)
 
+    def test_echo_suppression_blocks_loop(self):
+        from edith.voice.clap_detector import SPEAKER_ECHO_GRACE_S, COOLDOWN_S
+        self.assertEqual(COOLDOWN_S, 15.0)
+        self.assertEqual(SPEAKER_ECHO_GRACE_S, 4.0)
+        with patch("edith.voice.clap_detector.SPEAKER") as mock_speaker:
+            mock_speaker.is_speaking = True
+            mock_speaker.last_spoke_time = time.monotonic()
+            self.assertTrue(mock_speaker.is_speaking)
+
+    def test_crest_factor_discriminates_impulse(self):
+        from edith.voice.clap_detector import MIN_CREST_FACTOR, MIN_PEAK_AMPLITUDE
+        # Smooth sine wave (human voice or speaker playback)
+        t = np.linspace(0, 1, 1000, endpoint=False)
+        voice_wave = 0.2 * np.sin(2 * np.pi * 440 * t).astype(np.float32)
+        rms = _calc_rms(voice_wave)
+        peak = float(np.max(np.abs(voice_wave)))
+        crest = peak / (rms + 1e-6)
+        # Sine crest factor is ~sqrt(2) = 1.414, which fails clap filter
+        self.assertLess(crest, MIN_CREST_FACTOR)
+
+        # Impulse clap sound: single sharp spike
+        impulse = np.zeros(1000, dtype=np.float32)
+        impulse[10] = 0.5
+        imp_rms = _calc_rms(impulse)
+        imp_peak = float(np.max(np.abs(impulse)))
+        imp_crest = imp_peak / (imp_rms + 1e-6)
+        # Impulse crest factor is huge (~31.6), passing filter
+        self.assertGreaterEqual(imp_crest, MIN_CREST_FACTOR)
+        self.assertGreaterEqual(imp_peak, MIN_PEAK_AMPLITUDE)
+
 
 if __name__ == "__main__":
     unittest.main()
+

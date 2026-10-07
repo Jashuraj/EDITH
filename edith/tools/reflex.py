@@ -175,6 +175,13 @@ class ReflexEngine:
         self.register(r"^(?:hey\s+edith[,\s]*)?(?:what\s+is\s+(?:today'?s\s+)?date|current\s+date|date|today'?s\s+date)$", "get_date", "system", {})
         self.register(r"^(?:hey+\s+edith[,\s]*)?(?:switch|change|use)\s+(?:model\s+to\s+|to\s+model\s+|model\s+)?(?P<model>[a-zA-Z0-9_\.\-:\/]+)$", "switch_model", "system", {})
 
+        # Mark-LV Reversible Undo & Safety Confirmation Reflexes (<15ms)
+        self.register(app_prefix + r"(?:undo|revert|undo\s+that|undo\s+last\s+action|cancel\s+last\s+action)$", "undo_action", "system", {})
+        self.register(app_prefix + r"(?:confirm|approve|confirm\s+action|yes\s+confirm|proceed)$", "confirm_action", "system", {"approved": True})
+        self.register(app_prefix + r"(?:abort|cancel\s+action|reject\s+action|no\s+cancel|deny)$", "confirm_action", "system", {"approved": False})
+        self.register(app_prefix + r"(?:system\s+metrics|system\s+stats|hardware\s+stats|performance\s+stats)$", "system_metrics", "system", {})
+
+
     def register(self, regex_pattern: str, command_name: str, action_type: str, params: Dict[str, Any]) -> None:
         """Register a new deterministic pattern."""
         self._patterns.append((
@@ -434,6 +441,26 @@ class ReflexEngine:
             kind = match.params.get("kind", "lock")
             res = WIN_TOOLS.power_action(kind)
             return res.get("message") or f"Executed power action: {kind}."
+        elif match.command_name == "undo_action":
+            from edith.core.undo import UNDO_MANAGER
+            return UNDO_MANAGER.undo_last()
+        elif match.command_name == "confirm_action":
+            from edith.core.confirm import CONFIRMATION_GATE
+            pending = CONFIRMATION_GATE.get_pending()
+            if not pending:
+                return "No pending actions awaiting confirmation."
+            approved = match.params.get("approved", True)
+            res = CONFIRMATION_GATE.resolve(pending["id"], approved=approved)
+            return res.get("message", "Confirmation processed.")
+        elif match.command_name == "system_metrics":
+            import psutil
+            import platform
+            cpu = psutil.cpu_percent(interval=None)
+            mem = psutil.virtual_memory()
+            disk_path = "C:\\" if platform.system() == "Windows" else "/"
+            disk = psutil.disk_usage(disk_path)
+            return f"System telemetry nominal. CPU: {cpu}%, RAM: {mem.percent}% ({mem.used // (1024*1024)}MB / {mem.total // (1024*1024)}MB), Disk: {disk.percent}% used."
+
 
         if executor:
             raw_out = executor(match.command_name, match.params)

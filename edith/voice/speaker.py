@@ -24,6 +24,24 @@ class SpeechSynthesizer:
         self._current_process: Optional[subprocess.Popen] = None
         self._lock = threading.Lock()
         self._muted: bool = False
+        self._last_spoke_time: float = 0.0
+
+    @property
+    def is_speaking(self) -> bool:
+        """Check if speech audio is actively playing."""
+        with self._lock:
+            if self._current_process is not None:
+                if self._current_process.poll() is None:
+                    return True
+                self._current_process = None
+                import time
+                self._last_spoke_time = time.monotonic()
+            return False
+
+    @property
+    def last_spoke_time(self) -> float:
+        """Monotonic timestamp of when speech finished playing."""
+        return self._last_spoke_time
 
     @property
     def is_muted(self) -> bool:
@@ -92,6 +110,9 @@ class SpeechSynthesizer:
                 except Exception:
                     pass
                 self._current_process = None
+                import time
+                self._last_spoke_time = time.monotonic()
+
 
 
 # Global speaker singleton

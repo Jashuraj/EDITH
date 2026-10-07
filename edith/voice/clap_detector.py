@@ -25,13 +25,17 @@ logger = logging.getLogger("edith.voice.clap")
 DEFAULT_SAMPLE_RATE = 44100
 BLOCK_MS = 40
 SPIKE_RATIO = 6.5
-COOLDOWN_S = 1.2
+COOLDOWN_S = 15.0
+SPEAKER_ECHO_GRACE_S = 4.0
+MIN_CREST_FACTOR = 3.8
+MIN_PEAK_AMPLITUDE = 0.07
 MIN_DOUBLE_GAP_S = 0.05
 MAX_DOUBLE_GAP_S = 0.45
 RETRIGGER_RATIO = 0.55
 NOISE_FLOOR_ALPHA = 0.990
 MIN_RMS = 0.010
 QUIET_GATE_MULT = 2.2
+
 
 
 def _calc_rms(block: np.ndarray) -> float:
@@ -54,6 +58,7 @@ class ClapDetector:
         self._thread: Optional[threading.Thread] = None
         self._stop_event = threading.Event()
         self.selected_device: Optional[int] = None
+        self._last_double_time: float = 0.0
         self.welcome_phrase = (
             "Welcome home, sir. All EDITH subsystems are online and nominal. Ready for your instructions."
         )
@@ -160,6 +165,7 @@ class ClapDetector:
 
     def trigger_welcome(self) -> str:
         """Execute the EDITH welcome sequence using the default laptop voice."""
+        self._last_double_time = time.monotonic()
         logger.info("EDITH Welcome Protocol activated by double-clap.")
         try:
             # Broadcast welcome event
@@ -183,8 +189,9 @@ class ClapDetector:
         """Core audio stream processing loop with continuous host error resilience."""
         noise_floor = MIN_RMS
         last_spike_time = 0.0
-        last_double_time = 0.0
+        last_double_time = self._last_double_time
         armed_for_second = False
+
 
         while not self._stop_event.is_set():
             try:
@@ -215,16 +222,27 @@ class ClapDetector:
                         rms = _calc_rms(data)
                         now = time.monotonic()
 
-                        # Dynamic noise floor tracking
-                        if rms < noise_floor * QUIET_GATE_MULT:
-                            noise_floor = NOISE_FLOOR_ALPHA * noise_floor + (1.0 - NOISE_FLOOR_ALPHA) * rms
-
-                        threshold = max(MIN_RMS, noise_floor * SPIKE_RATIO)
-                        is_spike = rms > threshold
+                        # Echo suppression: ignore microphone while speaker is active or echoing
+                        if SPEAKER.is_speaking or (now - SPEAKER.last_spoke_time < SPEAKER_ECHO_GRACE_S):
+                            armed_for_second = False
+                            continue
 
                         # Debounce check
                         if now < last_double_time + COOLDOWN_S:
+                            armed_for_second = False
                             continue
+
+                        # Dynamic noise floor tracking (ambient room only)
+                        if rms < noise_floor * QUIET_GATE_MULT:
+                            noise_floor = NOISE_FLOOR_ALPHA * noise_floor + (1.0 - NOISE_FLOOR_ALPHA) * rms
+
+                        peak = float(np.max(np.abs(data)))
+                        crest_factor = peak / (rms + 1e-6)
+                        is_impulse = (crest_factor >= MIN_CREST_FACTOR) and (peak >= MIN_PEAK_AMPLITUDE)
+
+                        threshold = max(MIN_RMS, noise_floor * SPIKE_RATIO)
+                        is_spike = (rms > threshold) and is_impulse
+
 
                         if is_spike:
                             if armed_for_second:

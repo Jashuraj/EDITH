@@ -180,6 +180,8 @@
         <button class="action-btn btn-vision" id="btn-vision" onclick="triggerVision()" title="EDITH screen perception analysis">SEE SCREEN</button>
         <button class="action-btn btn-gesture" id="btn-gestures" onclick="window.toggleGestures ? window.toggleGestures() : logEntry('Gestures module loading...', 'system')">GESTURE: OFF</button>
         <button class="action-btn btn-mouse" id="btn-os-mouse" onclick="window.toggleOsMouse ? window.toggleOsMouse() : logEntry('OS Mouse requires gestures active', 'system')" title="Toggle Full-Screen OS Desktop Mouse Control">OS MOUSE: OFF</button>
+        <button class="action-btn btn-clap" id="btn-clap" onclick="toggleClapWelcome()" title="Toggle Double-Clap Welcome Protocol">CLAP: OFF</button>
+        <button class="action-btn btn-undo" id="btn-undo" onclick="executeUndo()" title="Undo last state action" style="display:none;">UNDO</button>
         <button class="action-btn btn-emergency" id="btn-stop" onclick="toggleEmergencyStop()">&#x2715; STOP</button>
       </div>
     </footer>
@@ -277,6 +279,19 @@
           <button class="cmd-chip" onclick="runChip(this.innerText)">who are you</button>
           <button class="cmd-chip" onclick="runChip(this.innerText)">lock pc</button>
           <button class="cmd-chip" onclick="runChip(this.innerText)">cancel shutdown</button>
+        </div>
+      </div>
+    <!-- ── Mark-LV Safety Confirmation Modal ── -->
+    <div id="confirm-modal" class="confirm-modal glass-card" style="display: none;">
+      <div class="confirm-content">
+        <div class="confirm-icon">⚠️</div>
+        <div class="confirm-text">
+          <div id="confirm-title" class="confirm-title">SYSTEM ACTION CONFIRMATION</div>
+          <div id="confirm-desc" class="confirm-desc">Are you sure you want to proceed with this system operation?</div>
+        </div>
+        <div class="confirm-actions">
+          <button class="confirm-btn approve" id="btn-confirm-yes" onclick="resolveConfirm(true)">CONFIRM</button>
+          <button class="confirm-btn deny" id="btn-confirm-no" onclick="resolveConfirm(false)">ABORT</button>
         </div>
       </div>
     </div>
@@ -1099,7 +1114,158 @@
       }
     }
 
-    window.switchModel = switchModel;
+    // ── Mark-LV HUD Functions: Clap Welcome, Undo, and Confirmation ──
+    let isClapActive = false;
+    let activeConfirmId = null;
+
+    async function toggleClapWelcome() {
+      try {
+        const res = await fetch('/voice/clap_toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: !isClapActive })
+        });
+        const data = await res.json();
+        isClapActive = !!data.enabled;
+        updateClapUI(isClapActive);
+        logEntry(`Clap Welcome Protocol: ${isClapActive ? 'ENABLED (Standby for double-clap)' : 'DISABLED'}`, 'system');
+      } catch (e) {
+        console.error('[Clap toggle error]', e);
+      }
+    }
+    window.toggleClapWelcome = toggleClapWelcome;
+
+    function updateClapUI(active) {
+      const btn = document.getElementById('btn-clap');
+      if (btn) {
+        btn.innerText = active ? 'CLAP: ON' : 'CLAP: OFF';
+        if (active) btn.classList.add('active');
+        else btn.classList.remove('active');
+      }
+    }
+
+    async function checkClapStatus() {
+      try {
+        const res = await fetch('/voice/clap_status');
+        if (res.ok) {
+          const data = await res.json();
+          isClapActive = !!data.enabled;
+          updateClapUI(isClapActive);
+        }
+      } catch (_) {}
+    }
+
+    async function checkUndo() {
+      try {
+        const res = await fetch('/api/undo/history');
+        if (res.ok) {
+          const data = await res.json();
+          const btn = document.getElementById('btn-undo');
+          if (btn) {
+            if (data.can_undo && data.peek) {
+              btn.style.display = 'inline-flex';
+              btn.innerText = `↩ UNDO: ${data.peek.slice(0, 16)}`;
+              btn.title = `Undo: ${data.peek}`;
+            } else {
+              btn.style.display = 'none';
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    async function executeUndo() {
+      try {
+        const res = await fetch('/api/undo', { method: 'POST' });
+        const data = await res.json();
+        logEntry(`[UNDO]: ${escHtml(data.result || 'Last action reversed.')}`, 'system');
+        speakOut(data.result || 'Undone.');
+        checkUndo();
+      } catch (e) {
+        console.error('[Undo execution error]', e);
+      }
+    }
+    window.executeUndo = executeUndo;
+
+    async function checkConfirm() {
+      try {
+        const res = await fetch('/api/confirm/pending');
+        if (res.ok) {
+          const data = await res.json();
+          const modal = document.getElementById('confirm-modal');
+          if (data.has_pending && data.pending) {
+            activeConfirmId = data.pending.id;
+            document.getElementById('confirm-title').innerText = data.pending.title || 'SYSTEM ACTION CONFIRMATION';
+            document.getElementById('confirm-desc').innerText = data.pending.description || 'Action approval requested.';
+            if (modal) modal.style.display = 'block';
+          } else {
+            activeConfirmId = null;
+            if (modal) modal.style.display = 'none';
+          }
+        }
+      } catch (_) {}
+    }
+
+    async function resolveConfirm(approved) {
+      if (!activeConfirmId) return;
+      try {
+        const res = await fetch('/api/confirm/resolve', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: activeConfirmId, approved: approved })
+        });
+        const data = await res.json();
+        const modal = document.getElementById('confirm-modal');
+        if (modal) modal.style.display = 'none';
+        activeConfirmId = null;
+        logEntry(`[CONFIRMATION]: ${escHtml(data.message || 'Resolved.')}`, approved ? 'system' : 'error');
+        speakOut(data.message || 'Confirmation processed.');
+      } catch (e) {
+        console.error('[Confirm resolve error]', e);
+      }
+    }
+    window.resolveConfirm = resolveConfirm;
+
+    async function pollSystemMetrics() {
+      try {
+        const res = await fetch('/api/metrics');
+        if (res.ok) {
+          const m = await res.json();
+          const cpuEl = document.getElementById('val-cpu');
+          const ramEl = document.getElementById('val-ram');
+          const ramBar = document.getElementById('bar-ram');
+          const diskEl = document.getElementById('val-disk');
+          const diskBar = document.getElementById('bar-disk');
+          const batEl = document.getElementById('val-battery');
+          const netEl = document.getElementById('val-runtime');
+
+          if (cpuEl && m.cpu_percent !== undefined) cpuEl.textContent = `${m.cpu_percent}%`;
+          if (ramEl && m.ram_percent !== undefined) ramEl.textContent = `${m.ram_percent}% (${m.ram_used_mb}MB)`;
+          if (ramBar && m.ram_percent !== undefined) ramBar.style.width = `${m.ram_percent}%`;
+          if (diskEl && m.disk_percent !== undefined) diskEl.textContent = `${m.disk_percent}%`;
+          if (diskBar && m.disk_percent !== undefined) diskBar.style.width = `${m.disk_percent}%`;
+          if (batEl && m.battery_percent !== undefined) {
+            const plug = m.power_plugged ? ' [AC]' : ' [BATT]';
+            batEl.textContent = `${m.battery_percent}%${plug}`;
+          }
+          if (netEl) netEl.textContent = m.is_online ? 'ONLINE (HYBRID)' : 'OFFLINE (LOCAL)';
+        }
+      } catch (_) {}
+    }
+
+    // Start background telemetry and status polling loops
+    setInterval(() => {
+      checkClapStatus();
+      checkUndo();
+      checkConfirm();
+      pollSystemMetrics();
+    }, 2800);
+    setTimeout(() => {
+      checkClapStatus();
+      checkUndo();
+      checkConfirm();
+      pollSystemMetrics();
+    }, 1200);
 
     // ── Keyboard shortcut ─────────────────────────────────────
     document.getElementById('cmd-input').addEventListener('keydown', (e) => {
