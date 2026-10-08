@@ -157,10 +157,13 @@ class SystemConfig:
         self.manual_mode = cleaned
         if cleaned == "offline":
             self.offline_mode = True
+            self._user_locked_offline = True
         elif cleaned == "online":
             self.offline_mode = False
+            self._user_locked_offline = False
         else:
-            self.offline_mode = not self.check_internet(timeout_seconds=0.6)
+            self._user_locked_offline = False
+            self.offline_mode = not self.check_internet(timeout_seconds=0.8)
         return self.manual_mode
 
     def is_effectively_online(self) -> bool:
@@ -171,7 +174,7 @@ class SystemConfig:
             return False
         if self.manual_mode == "online":
             return True
-        return self.check_internet(timeout_seconds=0.6)
+        return self.check_internet(timeout_seconds=0.8)
 
     @staticmethod
     def check_internet(timeout_seconds: float = 1.0) -> bool:
@@ -182,10 +185,10 @@ class SystemConfig:
         # Use class-level attributes for thread-safe caching
         cached_time = getattr(SystemConfig, "_last_internet_time", 0.0)
         cached_status = getattr(SystemConfig, "_cached_internet_status", True)
-        if now - cached_time < 5.0:
+        if now - cached_time < 3.0:
             return cached_status
 
-        targets = [("1.1.1.1", 443), ("8.8.8.8", 53), ("1.1.1.1", 53)]
+        targets = [("8.8.8.8", 53), ("1.1.1.1", 53), ("1.1.1.1", 443)]
         is_ok = False
         for host, port in targets:
             try:
@@ -233,6 +236,13 @@ class SystemConfig:
         except Exception:
             pass
 
+        if self.manual_mode == "auto":
+            has_net = self.check_internet(timeout_seconds=0.8)
+            if has_net and self.offline_mode and not getattr(self, "_user_locked_offline", False):
+                self.offline_mode = False
+            elif not has_net:
+                self.offline_mode = True
+
         eff_online = self.is_effectively_online()
         if self.manual_mode == "offline":
             status_text = "OFFLINE (FORCED LOCAL)"
@@ -241,6 +251,17 @@ class SystemConfig:
         else:
             status_text = "ONLINE (HYBRID AI)" if eff_online else "OFFLINE (LOCAL AI)"
 
+        bat_pct = self.hardware.battery_percent
+        power_plug = self.hardware.is_ac_powered
+        try:
+            import psutil
+            b = psutil.sensors_battery()
+            if b:
+                bat_pct = int(round(b.percent))
+                power_plug = bool(b.power_plugged)
+        except Exception:
+            pass
+
         return {
             "online": eff_online,
             "manual_mode": self.manual_mode,
@@ -248,6 +269,8 @@ class SystemConfig:
             "free_ram_gb": self.hardware.free_ram_gb,
             "total_ram_gb": self.hardware.total_ram_gb,
             "disk_free_gb": self.hardware.disk_free_gb,
+            "battery_percent": bat_pct,
+            "power_plugged": power_plug,
         }
 
 

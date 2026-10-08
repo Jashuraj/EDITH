@@ -250,6 +250,12 @@
       state.isListening = false;
       state.audioWaveLevel = 0.1;
       dom.btnMic.classList.remove("listening");
+      if (event.error === "network" || event.error === "service-not-allowed") {
+        logConsole("VOICE (FALLBACK)", "Web Speech API blocked by browser. Switching to neural Whisper engine...");
+        recognition = null;
+        toggleFallbackSpeech();
+        return;
+      }
       if (event.error !== "no-speech") {
         logConsole("VOICE STATUS", `Speech recognition: ${event.error}`);
       }
@@ -567,15 +573,10 @@
       // Handle speech response
       speakResponse(outcome);
 
-      // Handle media playback or external navigation without opening on phone if opened on host laptop
+      // Commands dispatched from phone to EDITH execute on the host laptop.
+      // Do not auto-open on phone or force-dock media unless explicitly requested.
       if (data.opened_on_host) {
-        // Successfully opened on laptop host
-      } else if (data.embed_url) {
-        playInHudMedia(data.embed_url, outcome || "YouTube Media", data.url);
-      } else if (data.url && typeof data.url === "string") {
-        setTimeout(() => {
-          window.open(data.url, "_blank");
-        }, 600);
+        // Confirmed executed on laptop host
       }
 
       dom.cmdInput.value = "";
@@ -1016,8 +1017,8 @@
     isFetchingFrame = true;
 
     const ep = (state.activeEndpoint || defaultLocalUrl).replace(/\/+$/, "");
-    const scale = remoteResolution === "1080p" ? 1920 : 1280;
-    const quality = remoteResolution === "1080p" ? 80 : 75;
+    const scale = remoteResolution === "1080p" ? 1280 : 960;
+    const quality = remoteResolution === "1080p" ? 65 : 55;
     const streamUrl = `${ep}/api/screen/capture?scale=${scale}&quality=${quality}&token=${encodeURIComponent(state.token)}&t=${Date.now()}`;
 
     try {
@@ -1299,51 +1300,33 @@
     let twoFingerStartY = 0;
 
     function getNormalizedCoords(clientX, clientY) {
-      const el = dom.vncCanvas || dom.remoteScreenImg || dom.remoteViewport;
+      const isImg = dom.remoteScreenImg && dom.remoteScreenImg.style.display !== "none" && dom.remoteScreenImg.naturalWidth > 0;
+      const el = isImg ? dom.remoteScreenImg : (dom.vncCanvas || dom.remoteViewport);
       if (!el) return { x: 0.5, y: 0.5 };
       const rect = el.getBoundingClientRect();
       if (!rect || rect.width <= 1 || rect.height <= 1) return { x: 0.5, y: 0.5 };
 
-      const imgW = (el.width && el.height) ? el.width : 16;
-      const imgH = (el.width && el.height) ? el.height : 9;
-      const aspect = imgW / imgH;
-
-      let renderW = rect.width;
-      let renderH = rect.height;
-      let offsetX = 0;
-      let offsetY = 0;
-
-      const containerAspect = rect.width / rect.height;
-      if (containerAspect > aspect) {
-        renderW = rect.height * aspect;
-        offsetX = (rect.width - renderW) / 2;
-      } else {
-        renderH = rect.width / aspect;
-        offsetY = (rect.height - renderH) / 2;
-      }
-
-      const relX = clientX - (rect.left + offsetX);
-      const relY = clientY - (rect.top + offsetY);
-
-      const x = Math.max(0.0, Math.min(1.0, relX / renderW));
-      const y = Math.max(0.0, Math.min(1.0, relY / renderH));
+      const x = Math.max(0.0, Math.min(1.0, (clientX - rect.left) / rect.width));
+      const y = Math.max(0.0, Math.min(1.0, (clientY - rect.top) / rect.height));
       return { x, y };
     }
 
     function showRipple(clientX, clientY) {
-      if (!dom.remoteFeedback) return;
-      dom.remoteFeedback.style.left = `${clientX}px`;
-      dom.remoteFeedback.style.top = `${clientY}px`;
+      if (!dom.remoteFeedback || !dom.remoteViewport) return;
+      const vpRect = dom.remoteViewport.getBoundingClientRect();
+      dom.remoteFeedback.style.left = `${clientX - vpRect.left}px`;
+      dom.remoteFeedback.style.top = `${clientY - vpRect.top}px`;
       dom.remoteFeedback.classList.remove("ripple");
       void dom.remoteFeedback.offsetWidth;
       dom.remoteFeedback.classList.add("ripple");
     }
 
     function updateVirtualCursor(clientX, clientY) {
-      if (!dom.remoteCursor) return;
+      if (!dom.remoteCursor || !dom.remoteViewport) return;
+      const vpRect = dom.remoteViewport.getBoundingClientRect();
       dom.remoteCursor.style.display = "block";
-      dom.remoteCursor.style.left = `${clientX}px`;
-      dom.remoteCursor.style.top = `${clientY}px`;
+      dom.remoteCursor.style.left = `${clientX - vpRect.left}px`;
+      dom.remoteCursor.style.top = `${clientY - vpRect.top}px`;
     }
 
     dom.remoteViewport.addEventListener("touchstart", (e) => {

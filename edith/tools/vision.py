@@ -50,6 +50,42 @@ class VisionTools:
     def get_desktop_context(self) -> Dict[str, Any]:
         """Inspect running desktop applications and window contexts."""
         apps = []
+        active_window = ""
+        visible_windows = []
+
+        if platform.system() == "Windows":
+            try:
+                import ctypes
+                user32 = ctypes.windll.user32
+
+                # 1. Foreground window title
+                hwnd = user32.GetForegroundWindow()
+                if hwnd:
+                    length = user32.GetWindowTextLengthW(hwnd)
+                    if length > 0:
+                        buff = ctypes.create_unicode_buffer(length + 1)
+                        user32.GetWindowTextW(hwnd, buff, length + 1)
+                        active_window = buff.value.strip()
+
+                # 2. Enumerate visible top-level windows
+                titles = []
+                def enum_proc(h, extra):
+                    if user32.IsWindowVisible(h):
+                        len_w = user32.GetWindowTextLengthW(h)
+                        if len_w > 0:
+                            b = ctypes.create_unicode_buffer(len_w + 1)
+                            user32.GetWindowTextW(h, b, len_w + 1)
+                            title = b.value.strip()
+                            if title and title not in ("Program Manager", "Default IME", "MSCTFIME UI"):
+                                extra.append(title)
+                    return True
+
+                WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.py_object)
+                user32.EnumWindows(WNDENUMPROC(enum_proc), titles)
+                visible_windows = titles[:10]
+            except Exception as e:
+                logger.debug("Win32 window context scan notice: %s", e)
+
         try:
             import psutil
             target_names = {
@@ -83,8 +119,10 @@ class VisionTools:
 
         return {
             "active_apps": apps,
-            "has_browser": any("Browser" in a or "Chrome" in a or "Edge" in a for a in apps),
-            "has_code": "Visual Studio Code" in apps,
+            "active_window": active_window,
+            "visible_windows": visible_windows,
+            "has_browser": any("Browser" in a or "Chrome" in a or "Edge" in a for a in apps) or any("Chrome" in w or "Brave" in w or "Edge" in w for w in visible_windows),
+            "has_code": "Visual Studio Code" in apps or any("Code" in w for w in visible_windows),
         }
 
     def analyze_screen(self, prompt: str = "What do you see on my screen?") -> Dict[str, Any]:
@@ -109,7 +147,7 @@ class VisionTools:
                     data=json.dumps(vision_payload).encode("utf-8"),
                     headers={"Content-Type": "application/json"},
                 )
-                with urllib.request.urlopen(req, timeout=1.2) as resp:
+                with urllib.request.urlopen(req, timeout=10.0) as resp:
                     res_data = json.loads(resp.read().decode("utf-8"))
                     answer = (res_data.get("response") or "").strip()
                     if answer:
@@ -120,6 +158,7 @@ class VisionTools:
                             "source": f"local_vision_{self.vision_model}",
                             "message": f"I can see your screen, sir: {answer}",
                             "apps": context["active_apps"],
+                            "active_window": context.get("active_window", ""),
                         }
             except Exception as e:
                 logger.debug("Local vision model query bypassed or timed out: %s", e)
@@ -128,9 +167,12 @@ class VisionTools:
         active_str = ", ".join(context["active_apps"]) if context["active_apps"] else "Windows Desktop"
         screen_w = getattr(self.win, "screen_width", 1920)
         screen_h = getattr(self.win, "screen_height", 1080)
-        
+        active_win = context.get("active_window", "")
+
         # Build tailored live perception description
         details = []
+        if active_win:
+            details.append(f"focused active window is '{active_win}'")
         if context.get("has_browser"):
             details.append("a web browser is active")
         if context.get("has_code"):
@@ -153,6 +195,7 @@ class VisionTools:
             "source": "desktop_context_engine",
             "message": description,
             "apps": context["active_apps"],
+            "active_window": active_win,
         }
 
 

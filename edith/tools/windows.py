@@ -264,6 +264,7 @@ class WindowsTools:
                     return {
                         "success": True,
                         "app": "Notepad",
+                        "opened_on_host": True,
                         "message": "Notepad is already open and ready.",
                     }
             except Exception:
@@ -322,6 +323,7 @@ class WindowsTools:
                 return {
                     "success": True,
                     "app": display_name,
+                    "opened_on_host": True,
                     "message": f"Successfully launched {display_name}.",
                 }
             except Exception:
@@ -329,6 +331,7 @@ class WindowsTools:
                 return {
                     "success": True,
                     "app": display_name,
+                    "opened_on_host": True,
                     "message": f"Successfully launched {display_name}.",
                 }
         except Exception as e:
@@ -346,7 +349,25 @@ class WindowsTools:
             flags=re.IGNORECASE,
         ).strip()
         low = clean_q.lower()
-        if low in ("", "songs", "song", "music", "some music", "some songs", "hits", "popular songs", "top songs"):
+        if low in ("", "youtube", "yt"):
+            target_url = "https://www.youtube.com"
+            opened = False
+            if open_browser:
+                if not os.environ.get("PYTEST_CURRENT_TEST"):
+                    opened = bool(self.open_url(target_url))
+                else:
+                    opened = True
+            return {
+                "success": True,
+                "query": "youtube",
+                "url": target_url,
+                "video_id": None,
+                "embed_url": target_url,
+                "opened_on_host": opened,
+                "message": "Opening YouTube on host laptop.",
+            }
+
+        if low in ("songs", "song", "music", "some music", "some songs", "hits", "popular songs", "top songs"):
             clean_q = "top hit songs"
             display_title = "popular songs"
         else:

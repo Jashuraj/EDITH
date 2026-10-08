@@ -350,8 +350,8 @@
       if (isFetching) return;
       isFetching = true;
 
-      const scale = resolution === "1080p" ? 1920 : 1280;
-      const quality = resolution === "1080p" ? 80 : 75;
+      const scale = resolution === "1080p" ? 1280 : 960;
+      const quality = resolution === "1080p" ? 65 : 55;
       const url = `${origin}/api/screen/capture?scale=${scale}&quality=${quality}&t=${Date.now()}`;
 
       try {
@@ -388,35 +388,14 @@
       }
     }
 
-    // Touch & Mouse Viewport Normalization with letterbox offset correction
+    // Touch & Mouse Viewport Normalization
     function getNormalizedCoords(clientX, clientY) {
       if (!canvas) return { x: 0.5, y: 0.5 };
       const rect = canvas.getBoundingClientRect();
       if (!rect || rect.width <= 1 || rect.height <= 1) return { x: 0.5, y: 0.5 };
 
-      const imgW = (canvas.width && canvas.height) ? canvas.width : 16;
-      const imgH = (canvas.width && canvas.height) ? canvas.height : 9;
-      const aspect = imgW / imgH;
-
-      let renderW = rect.width;
-      let renderH = rect.height;
-      let offsetX = 0;
-      let offsetY = 0;
-
-      const containerAspect = rect.width / rect.height;
-      if (containerAspect > aspect) {
-        renderW = rect.height * aspect;
-        offsetX = (rect.width - renderW) / 2;
-      } else {
-        renderH = rect.width / aspect;
-        offsetY = (rect.height - renderH) / 2;
-      }
-
-      const relX = clientX - (rect.left + offsetX);
-      const relY = clientY - (rect.top + offsetY);
-
-      const x = Math.max(0.0, Math.min(1.0, relX / renderW));
-      const y = Math.max(0.0, Math.min(1.0, relY / renderH));
+      const x = Math.max(0.0, Math.min(1.0, (clientX - rect.left) / rect.width));
+      const y = Math.max(0.0, Math.min(1.0, (clientY - rect.top) / rect.height));
       return { x, y };
     }
 

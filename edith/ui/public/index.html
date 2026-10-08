@@ -727,6 +727,13 @@
           return; // Harmless silence or restart transition
         }
         console.warn('[STT error]', event.error);
+        if (event.error === 'network' || event.error === 'service-not-allowed') {
+          console.warn('[STT error] Web Speech API blocked by browser (Brave). Falling back to Whisper endpoint.');
+          disableVoice();
+          recognition = null;
+          toggleFallbackVoice();
+          return;
+        }
         if (event.error === 'not-allowed') {
           alert('Microphone permission denied. Allow mic access in your browser.');
           disableVoice();
@@ -1330,16 +1337,16 @@
           const batEl = document.getElementById('val-battery');
           const netEl = document.getElementById('val-runtime');
 
-          if (cpuEl && m.cpu_percent !== undefined) cpuEl.textContent = `${m.cpu_percent}%`;
-          if (ramEl && m.ram_percent !== undefined) ramEl.textContent = `${m.ram_percent}% (${m.ram_used_mb}MB)`;
-          if (ramBar && m.ram_percent !== undefined) ramBar.style.width = `${m.ram_percent}%`;
-          if (diskEl && m.disk_percent !== undefined) diskEl.textContent = `${m.disk_percent}%`;
-          if (diskBar && m.disk_percent !== undefined) diskBar.style.width = `${m.disk_percent}%`;
-          if (batEl && m.battery_percent !== undefined) {
+          if (cpuEl && m.cpu_percent !== undefined && m.cpu_percent !== null) cpuEl.textContent = `${m.cpu_percent}%`;
+          if (ramEl && m.ram_percent !== undefined && m.ram_percent !== null) ramEl.textContent = `${m.ram_percent}% (${m.ram_used_mb}MB)`;
+          if (ramBar && m.ram_percent !== undefined && m.ram_percent !== null) ramBar.style.width = `${m.ram_percent}%`;
+          if (diskEl && m.disk_percent !== undefined && m.disk_percent !== null) diskEl.textContent = `${m.disk_percent}%`;
+          if (diskBar && m.disk_percent !== undefined && m.disk_percent !== null) diskBar.style.width = `${m.disk_percent}%`;
+          if (batEl && m.battery_percent !== undefined && m.battery_percent !== null) {
             const plug = m.power_plugged ? ' [AC]' : ' [BATT]';
             batEl.textContent = `${m.battery_percent}%${plug}`;
           }
-          if (netEl) netEl.textContent = m.is_online ? 'ONLINE (HYBRID)' : 'OFFLINE (LOCAL)';
+          if (netEl && m.is_online !== undefined) netEl.textContent = m.is_online ? 'ONLINE (HYBRID)' : 'OFFLINE (LOCAL)';
         }
       } catch (_) {
       } finally {

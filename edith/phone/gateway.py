@@ -224,7 +224,10 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
                         res_url = res.get("url")
                         res_embed = res.get("embed_url")
                         res_vid = res.get("video_id")
-                        res_opened = res.get("opened_on_host", True if (res_url and "youtube" in str(res_url)) else False)
+                        if "opened_on_host" in res:
+                            res_opened = bool(res["opened_on_host"])
+                        else:
+                            res_opened = bool(res_url or res.get("app"))
                     else:
                         res_text = str(res)
                         res_url = None
@@ -312,7 +315,10 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
                             if out.get("url"): action_url = out["url"]
                             if out.get("embed_url"): action_embed = out["embed_url"]
                             if out.get("video_id"): action_vid = out["video_id"]
-                            if out.get("opened_on_host"): action_opened = out["opened_on_host"]
+                            if "opened_on_host" in out:
+                                action_opened = bool(out["opened_on_host"])
+                            elif out.get("url") or out.get("app"):
+                                action_opened = True
                         tool_outputs.append(f"{tc.name}: {out}")
 
                 STATE.set_state_sync(SystemState.READY, reason="Phone query complete")

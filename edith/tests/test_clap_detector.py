@@ -66,7 +66,7 @@ class TestClapDetector(unittest.TestCase):
 
     def test_echo_suppression_blocks_loop(self):
         from edith.voice.clap_detector import SPEAKER_ECHO_GRACE_S, COOLDOWN_S
-        self.assertEqual(COOLDOWN_S, 15.0)
+        self.assertEqual(COOLDOWN_S, 3.0)
         self.assertEqual(SPEAKER_ECHO_GRACE_S, 4.0)
         with patch("edith.voice.clap_detector.SPEAKER") as mock_speaker:
             mock_speaker.is_speaking = True

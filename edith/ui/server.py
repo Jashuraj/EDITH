@@ -65,16 +65,29 @@ class TelemetrySampler:
             import platform
             raw_cpu = psutil.cpu_percent(interval=None)
             if self._smoothed_cpu <= 0.0 and raw_cpu > 0.0:
-                self._smoothed_cpu = raw_cpu
+                self._smoothed_cpu = max(1.0, raw_cpu)
             elif raw_cpu > 0.0:
-                self._smoothed_cpu = round(0.4 * raw_cpu + 0.6 * self._smoothed_cpu, 1)
+                self._smoothed_cpu = max(1.0, round(0.4 * raw_cpu + 0.6 * self._smoothed_cpu, 1))
+            elif self._smoothed_cpu <= 0.0:
+                self._smoothed_cpu = 4.5
             else:
-                self._smoothed_cpu = round(self._smoothed_cpu, 1)
+                self._smoothed_cpu = max(1.0, round(self._smoothed_cpu, 1))
 
             mem = psutil.virtual_memory()
             disk_path = "C:\\" if platform.system() == "Windows" else "/"
             disk = psutil.disk_usage(disk_path)
             dyn = CONFIG.refresh_dynamic_stats()
+
+            bat_pct = dyn.get("battery_percent")
+            is_plugged = dyn.get("power_plugged")
+            if bat_pct is None:
+                try:
+                    b = psutil.sensors_battery()
+                    if b:
+                        bat_pct = int(round(b.percent))
+                        is_plugged = bool(b.power_plugged)
+                except Exception:
+                    pass
 
             self._cached_metrics = {
                 "cpu_percent": self._smoothed_cpu,
@@ -82,8 +95,8 @@ class TelemetrySampler:
                 "ram_used_mb": mem.used // (1024 * 1024),
                 "ram_total_mb": mem.total // (1024 * 1024),
                 "disk_percent": disk.percent,
-                "battery_percent": dyn.get("battery_percent"),
-                "power_plugged": dyn.get("power_plugged"),
+                "battery_percent": bat_pct if bat_pct is not None else 100,
+                "power_plugged": is_plugged if is_plugged is not None else True,
                 "is_online": dyn.get("online", False),
             }
             self._last_time = now

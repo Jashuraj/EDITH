@@ -65,6 +65,8 @@ class ReflexEngine:
         self.register(r"^(?:task\s*manager|taskmgr)$", "open_app", "windows", {"app": "taskmgr"})
 
         # YouTube & Media Search Reflexes (<15ms)
+        self.register(app_prefix + r"(?:open|launch|start|show)\s+(?:youtube|yt)$", "open_app", "windows", {"app": "youtube"})
+        self.register(r"^(?:youtube|yt)$", "open_app", "windows", {"app": "youtube"})
         self.register(app_prefix + r"open\s+youtube\s+and\s+(?:play|search(?:\s+for)?)\s+(?P<query>.+)$", "search_youtube", "windows", {})
         self.register(app_prefix + r"play\s+(?P<query>.+?)(?:\s+(?:on|in)\s+(?:youtube|browser|the\s+browser|chrome|brave|edge))?$", "search_youtube", "windows", {})
         self.register(app_prefix + r"(?:open\s+(?:the\s+)?(?:browser|chrome|brave|edge)\s+and\s+)?play\s+(?P<query>.+)$", "search_youtube", "windows", {})

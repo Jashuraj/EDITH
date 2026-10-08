@@ -1689,22 +1689,51 @@ html, body {
 /* ---------------- Responsive Screen Media Queries ---------------- */
 @media (max-height: 680px) {
   .reticle-container {
-    width: 140px;
-    height: 140px;
+    width: 130px;
+    height: 130px;
     margin: 1px 0;
   }
   .spider-core {
-    width: 66px;
-    height: 66px;
+    width: 62px;
+    height: 62px;
   }
   .spider-core-img {
-    width: 44px;
-    height: 44px;
+    width: 40px;
+    height: 40px;
   }
   .vitals-grid {
-    gap: 4px 8px;
+    gap: 4px 6px;
   }
   .vitals-card {
-    padding: 8px 12px;
+    padding: 6px 10px;
+  }
+  .live-console-card {
+    max-height: 80px;
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .app-container {
+    padding: calc(var(--safe-top) + 6px) 8px calc(var(--safe-bottom) + 6px) 8px;
+  }
+  .brand-title {
+    font-size: 0.95rem;
+  }
+  .reticle-container {
+    width: 125px;
+    height: 125px;
+  }
+  .spider-core {
+    width: 58px;
+    height: 58px;
+  }
+  .spider-core-img {
+    width: 38px;
+    height: 38px;
+  }
+  .chip-btn {
+    padding: 4px 10px;
+    font-size: 0.65rem;
   }
 }
