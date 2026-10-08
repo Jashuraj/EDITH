@@ -28,8 +28,12 @@ a = Analysis(
         'edith.tools.remote_input',
         'edith.tools.screen_stream',
         'edith.tools.gamestream',
+        'edith.tools.reflex',
         'edith.voice.transcript_stream',
+        'win32com',
+        'win32com.client',
     ],
+
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

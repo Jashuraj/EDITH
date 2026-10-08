@@ -222,6 +222,25 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                 "active_character": SPEAKER.active_character,
             })
 
+        elif parsed.path in ("/api/voice/tts", "/voice/tts"):
+            qs = urllib.parse.parse_qs(parsed.query)
+            text = qs.get("text", [""])[0]
+            char_id = qs.get("char", qs.get("character", [""]))[0] or None
+            wav_bytes = SPEAKER.synthesize_wav(text, character=char_id) if text else b""
+            if not wav_bytes:
+                self.send_response(204)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "audio/wav")
+            self.send_header("Content-Length", str(len(wav_bytes)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(wav_bytes)
+            return
+
         elif parsed.path == "/audio/devices":
             try:
                 import sounddevice as sd
@@ -660,6 +679,24 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             text = data.get("text", "")
             success = SPEAKER.speak(text, async_mode=True) if text else False
             self._send_json({"success": success})
+
+        elif parsed.path in ("/api/voice/tts", "/voice/tts"):
+            text = str(data.get("text", "")).strip()
+            char_id = data.get("char") or data.get("character")
+            wav_bytes = SPEAKER.synthesize_wav(text, character=char_id) if text else b""
+            if not wav_bytes:
+                self.send_response(204)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "audio/wav")
+            self.send_header("Content-Length", str(len(wav_bytes)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(wav_bytes)
+            return
 
         elif parsed.path == "/voice/stop":
             SPEAKER.stop()

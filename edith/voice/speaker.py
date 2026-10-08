@@ -222,6 +222,83 @@ class SpeechSynthesizer:
             logger.error("Speech synthesis failed: %s", e)
             return False
 
+    def synthesize_wav(self, text: Any, character: Optional[str] = None) -> bytes:
+        """Synthesize text into WAV audio bytes using native Windows SAPI."""
+        if not isinstance(text, str):
+            if isinstance(text, dict):
+                text = text.get("message") or text.get("result") or text.get("output") or json.dumps(text)
+            else:
+                text = str(text)
+
+        clean = text.replace('"', '""').replace("'", "''").strip()
+        if not clean:
+            return b""
+
+        char_info = self.get_character_info(character)
+        voice_pref = self.voice_name or char_info.get("sapi_voice", "Microsoft Zira Desktop")
+        rate_val = int(char_info.get("rate", 0))
+
+        # Try fast win32com SAPI
+        try:
+            import tempfile
+            import os
+            import win32com.client
+
+            v = win32com.client.Dispatch("SAPI.SpVoice")
+            for item in v.GetVoices():
+                if voice_pref.lower() in item.GetDescription().lower():
+                    v.Voice = item
+                    break
+            v.Rate = rate_val
+
+            stream = win32com.client.Dispatch("SAPI.SpFileStream")
+            tmp = tempfile.mktemp(suffix=".wav")
+            stream.Open(tmp, 3)
+            v.AudioOutputStream = stream
+            v.Speak(clean)
+            stream.Close()
+
+            if os.path.exists(tmp):
+                with open(tmp, "rb") as f:
+                    wav_data = f.read()
+                try:
+                    os.remove(tmp)
+                except Exception:
+                    pass
+                return wav_data
+        except Exception as ex:
+            logger.debug("win32com SAPI synthesize_wav fallback: %s", ex)
+
+        # Fallback to PowerShell
+        try:
+            import subprocess
+            import tempfile
+            import os
+
+            tmp = tempfile.mktemp(suffix=".wav")
+            ps = f"""
+            Add-Type -AssemblyName System.Speech
+            $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer
+            try {{ $synth.SelectVoice('{voice_pref}') }} catch {{}}
+            $synth.Rate = {rate_val}
+            $synth.SetOutputToWaveFile('{tmp}')
+            $synth.Speak('{clean}')
+            $synth.Dispose()
+            """
+            subprocess.run(["powershell", "-NoProfile", "-Command", ps], capture_output=True, timeout=10)
+            if os.path.exists(tmp):
+                with open(tmp, "rb") as f:
+                    data = f.read()
+                try:
+                    os.remove(tmp)
+                except Exception:
+                    pass
+                return data
+        except Exception as e:
+            logger.error("PowerShell SAPI synthesize_wav failed: %s", e)
+
+        return b""
+
     def stop(self) -> None:
         """Interrupt and terminate current speech (Barge-In)."""
         with self._lock:
@@ -238,3 +315,4 @@ class SpeechSynthesizer:
 
 # Global speaker singleton
 SPEAKER = SpeechSynthesizer()
+

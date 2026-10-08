@@ -57,6 +57,11 @@
     btnTts: document.getElementById("btn-toggle-tts"),
     ttsWave1: document.getElementById("tts-wave-1"),
     ttsWave2: document.getElementById("tts-wave-2"),
+    btnVoiceMode: document.getElementById("btn-voice-mode"),
+    voiceModeText: document.getElementById("voice-mode-text"),
+    voiceModeIcon: document.getElementById("voice-mode-icon"),
+    voicePills: document.querySelectorAll(".voice-pill"),
+
     btnOpenSettings: document.getElementById("btn-open-settings"),
     btnCloseSettings: document.getElementById("btn-close-settings"),
     modalSettings: document.getElementById("modal-settings"),
@@ -178,30 +183,91 @@
     if (dom.cfgTheme) dom.cfgTheme.value = mode;
   }
 
-  function setMobileVoiceCharacter(charId) {
+  let activeAudioPlayer = null;
+  let audioUnlocked = false;
+
+  function unlockAudioPlayback() {
+    if (audioUnlocked) return;
+    audioUnlocked = true;
+    try {
+      const silent = new Audio("data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA");
+      silent.play().catch(() => {});
+    } catch (_) {}
+  }
+  window.addEventListener("click", unlockAudioPlayback, { once: true });
+  window.addEventListener("touchstart", unlockAudioPlayback, { once: true });
+
+  function updateVoiceModeUI() {
+    if (dom.btnVoiceMode) {
+      if (state.ttsEnabled) {
+        dom.btnVoiceMode.className = "btn-voice-mode-toggle voice-on";
+        if (dom.voiceModeText) dom.voiceModeText.textContent = "VOICE: ON";
+        if (dom.voiceModeIcon) dom.voiceModeIcon.textContent = "🔊";
+      } else {
+        dom.btnVoiceMode.className = "btn-voice-mode-toggle voice-off";
+        if (dom.voiceModeText) dom.voiceModeText.textContent = "VOICE: OFF";
+        if (dom.voiceModeIcon) dom.voiceModeIcon.textContent = "🔇";
+      }
+    }
+    updateTtsIcon();
+  }
+
+  function toggleVoiceMode() {
+    state.ttsEnabled = !state.ttsEnabled;
+    localStorage.setItem(STORAGE_KEYS.TTS_ENABLED, state.ttsEnabled ? "true" : "false");
+    updateVoiceModeUI();
+    triggerHaptic(25);
+    if (state.ttsEnabled) {
+      logConsole("VOICE SYSTEM", "Voice response enabled. EDITH will speak all replies.");
+      speakResponse("Voice mode online.");
+    } else {
+      if (activeAudioPlayer) {
+        try { activeAudioPlayer.pause(); } catch (_) {}
+        activeAudioPlayer = null;
+      }
+      if (window.speechSynthesis) window.speechSynthesis.cancel();
+      state.audioWaveLevel = 0.1;
+      logConsole("VOICE SYSTEM", "Voice response muted.");
+    }
+  }
+
+  function setMobileVoiceCharacter(charId, speakGreeting = false) {
     activeMobileVoiceChar = charId;
     localStorage.setItem("mobile_voice_char", charId);
     if (dom.cfgVoiceChar) dom.cfgVoiceChar.value = charId;
+
+    if (dom.voicePills) {
+      dom.voicePills.forEach((p) => {
+        if (p.getAttribute("data-char") === charId) {
+          p.classList.add("active");
+        } else {
+          p.classList.remove("active");
+        }
+      });
+    }
+
     const ep = state.activeEndpoint || state.localUrl;
     if (ep) {
       fetch(`${ep}/voice/character`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ character: charId })
+        body: JSON.stringify({ character: charId }),
       }).catch(() => {});
+    }
+
+    const vcfg = MOBILE_CHARACTER_VOICES[charId] || MOBILE_CHARACTER_VOICES.edith;
+    logConsole("VOICE PROFILE", `Active voice: ${charId.toUpperCase()} (${vcfg.role || "AI Profile"})`);
+    if (speakGreeting && state.ttsEnabled) {
+      speakResponse(vcfg.welcome || `Voice profile ${charId} active.`);
     }
   }
 
-  // ---------------- Speech Synthesis & Audio ----------------
-  function speakResponse(text) {
+  function speakFallbackWebSpeech(cleanText) {
     if (!state.ttsEnabled || !window.speechSynthesis) return;
     try {
       window.speechSynthesis.cancel();
       clearTimeout(mobileSpeechTimer);
-      const clean = text.replace(/Action:\s*[\w_]+/gi, "").replace(/https?:\/\/\S+/g, "");
-      if (!clean.trim()) return;
-
-      const utterance = new SpeechSynthesisUtterance(clean);
+      const utterance = new SpeechSynthesisUtterance(cleanText);
       window._mobileUtterance = utterance;
       const vcfg = MOBILE_CHARACTER_VOICES[activeMobileVoiceChar] || MOBILE_CHARACTER_VOICES.edith;
       utterance.rate = vcfg.rate;
@@ -210,11 +276,11 @@
       const voices = window.speechSynthesis.getVoices();
       let preferred = null;
       if (vcfg.gender === "female") {
-        preferred = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Female") || v.name.includes("Zira") || v.name.includes("Samantha")));
+        preferred = voices.find((v) => v.lang.startsWith("en") && (v.name.includes("Female") || v.name.includes("Zira") || v.name.includes("Samantha")));
       } else {
-        preferred = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Male") || v.name.includes("David") || v.name.includes("George")));
+        preferred = voices.find((v) => v.lang.startsWith("en") && (v.name.includes("Male") || v.name.includes("David") || v.name.includes("George")));
       }
-      if (!preferred) preferred = voices.find(v => v.lang.startsWith("en"));
+      if (!preferred) preferred = voices.find((v) => v.lang.startsWith("en"));
       if (preferred) utterance.voice = preferred;
 
       utterance.onstart = () => {
@@ -231,7 +297,7 @@
         window._mobileUtterance = null;
       };
 
-      const maxMs = Math.min(10000, Math.max(2500, clean.length * 75 + 1000));
+      const maxMs = Math.min(10000, Math.max(2500, cleanText.length * 75 + 1000));
       mobileSpeechTimer = setTimeout(() => {
         state.audioWaveLevel = 0.1;
         window._mobileUtterance = null;
@@ -239,10 +305,64 @@
 
       window.speechSynthesis.speak(utterance);
     } catch (e) {
-      console.warn("TTS error:", e);
+      console.warn("Web Speech error:", e);
       state.audioWaveLevel = 0.1;
-      window._mobileUtterance = null;
     }
+  }
+
+  function speakResponse(text) {
+    if (!state.ttsEnabled) return;
+    const clean = (text || "")
+      .replace(/Action:\s*[\w_]+/gi, "")
+      .replace(/https?:\/\/\S+/g, "")
+      .replace(/[*_#`~[\]]/g, "")
+      .trim();
+    if (!clean) return;
+
+    unlockAudioPlayback();
+
+    const ep = state.activeEndpoint || state.localUrl;
+    if (ep) {
+      try {
+        if (activeAudioPlayer) {
+          try {
+            activeAudioPlayer.pause();
+            activeAudioPlayer.currentTime = 0;
+          } catch (_) {}
+          activeAudioPlayer = null;
+        }
+
+        const ttsUrl = `${ep.replace(/\/+$/, "")}/api/voice/tts?char=${encodeURIComponent(activeMobileVoiceChar)}&text=${encodeURIComponent(clean.slice(0, 320))}`;
+        const audio = new Audio(ttsUrl);
+        activeAudioPlayer = audio;
+
+        audio.onplay = () => {
+          state.audioWaveLevel = 0.85;
+        };
+        audio.onended = () => {
+          state.audioWaveLevel = 0.1;
+          activeAudioPlayer = null;
+        };
+        audio.onerror = () => {
+          state.audioWaveLevel = 0.1;
+          activeAudioPlayer = null;
+          speakFallbackWebSpeech(clean);
+        };
+
+        const playPromise = audio.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn("Server audio play failed, falling back to Web Speech:", err);
+            speakFallbackWebSpeech(clean);
+          });
+        }
+        return;
+      } catch (err) {
+        console.warn("Audio element error:", err);
+      }
+    }
+
+    speakFallbackWebSpeech(clean);
   }
 
   function updateTtsIcon() {
@@ -256,6 +376,7 @@
       dom.btnTts.style.color = "var(--text-muted)";
     }
   }
+
 
   // ---------------- Speech Recognition ----------------
   let recognition = null;
@@ -440,6 +561,9 @@
   async function resolveActiveEndpoint() {
     const local = state.localUrl.trim().replace(/\/+$/, "");
     const cloud = state.cloudUrl.trim().replace(/\/+$/, "");
+    const localAlt = local.includes(":8794")
+      ? local.replace(":8794", ":8795")
+      : (local.includes(":8795") ? local.replace(":8795", ":8794") : `${local}:8794`);
 
     // If currently online and connected to activeEndpoint, do a quick heartbeat check first
     if (state.isOnline && state.activeEndpoint) {
@@ -452,15 +576,25 @@
     }
 
     if (state.mode === "local") {
-      const res = await pingEndpoint(local, 3500);
-      if (res.ok) {
+      const [res1, res2] = await Promise.all([
+        pingEndpoint(local, 3000),
+        localAlt !== local ? pingEndpoint(localAlt, 3000) : Promise.resolve({ ok: false, ms: 0 }),
+      ]);
+      if (res1.ok) {
         consecutiveOfflineFailures = 0;
-        setConnectionState("LOCAL", local, res.ms);
+        setConnectionState("LOCAL", local, res1.ms);
+        return;
+      }
+      if (res2.ok) {
+        consecutiveOfflineFailures = 0;
+        state.localUrl = localAlt;
+        localStorage.setItem(STORAGE_KEYS.LOCAL_URL, localAlt);
+        setConnectionState("LOCAL", localAlt, res2.ms);
         return;
       }
       consecutiveOfflineFailures++;
       if (consecutiveOfflineFailures >= 2 || !state.isOnline) {
-        setConnectionState("OFFLINE", local, null);
+        setConnectionState("OFFLINE", local, null, "Wi-Fi LAN link searching...");
       }
       return;
     }
@@ -483,15 +617,24 @@
       return;
     }
 
-    // AUTO Mode: Concurrent probe of local WiFi and global cloud
-    const [localRes, cloudRes] = await Promise.all([
-      local ? pingEndpoint(local, 2500) : Promise.resolve({ ok: false, ms: 0 }),
+    // AUTO Mode: Probe local WiFi (primary and alt port) and global cloud
+    const [localRes1, localRes2, cloudRes] = await Promise.all([
+      local ? pingEndpoint(local, 2800) : Promise.resolve({ ok: false, ms: 0 }),
+      localAlt && localAlt !== local ? pingEndpoint(localAlt, 2800) : Promise.resolve({ ok: false, ms: 0 }),
       cloud ? pingEndpoint(cloud, 3500) : Promise.resolve({ ok: false, ms: 0 }),
     ]);
 
-    if (localRes.ok) {
+    if (localRes1.ok) {
       consecutiveOfflineFailures = 0;
-      setConnectionState("LOCAL", local, localRes.ms);
+      setConnectionState("LOCAL", local, localRes1.ms);
+      return;
+    }
+
+    if (localRes2.ok) {
+      consecutiveOfflineFailures = 0;
+      state.localUrl = localAlt;
+      localStorage.setItem(STORAGE_KEYS.LOCAL_URL, localAlt);
+      setConnectionState("LOCAL", localAlt, localRes2.ms);
       return;
     }
 
@@ -519,8 +662,8 @@
     if (type === "LOCAL") {
       dom.statusDot.style.background = "#00e676";
       dom.statusDot.style.boxShadow = "0 0 10px #00e676";
-      dom.statusText.textContent = `WI-FI (${latency}ms)`;
-      dom.consoleChannel.textContent = `CHANNEL: LOCAL WI-FI`;
+      dom.statusText.textContent = `WI-FI LAN (${latency}ms)`;
+      dom.consoleChannel.textContent = `CHANNEL: LOCAL WI-FI (OFFLINE LAN)`;
       dom.consolePing.textContent = `LATENCY: ${latency}ms`;
       if ((wasOffline || previousType !== "LOCAL") && !hasSpokenInitialLink) {
         hasSpokenInitialLink = true;
@@ -532,7 +675,7 @@
       dom.statusDot.style.background = "#00e5ff";
       dom.statusDot.style.boxShadow = "0 0 10px #00e5ff";
       dom.statusText.textContent = `CLOUD (${latency}ms)`;
-      dom.consoleChannel.textContent = `CHANNEL: GLOBAL INTERNET`;
+      dom.consoleChannel.textContent = `CHANNEL: GLOBAL CLOUD TUNNEL`;
       dom.consolePing.textContent = `LATENCY: ${latency}ms`;
       if ((wasOffline || previousType !== "CLOUD") && !hasSpokenInitialLink) {
         hasSpokenInitialLink = true;
@@ -541,6 +684,7 @@
         triggerHaptic(40);
       }
     } else {
+
       dom.statusDot.style.background = "#ff1744";
       dom.statusDot.style.boxShadow = "0 0 8px #ff1744";
       dom.statusText.textContent = "SEARCHING...";
@@ -868,47 +1012,49 @@
     }
   }
 
-  // ---------------- System Mode Switcher ----------------
-  let currentSystemMode = "auto";
-  function updateSystemModeUI(mode) {
-    currentSystemMode = mode || "auto";
+  // ---------------- Connection & System Mode Switcher ----------------
+  function updateModeButtonUI(mode) {
+    const m = mode || state.mode || "auto";
     if (dom.btnModeToggle) {
-      dom.btnModeToggle.textContent = currentSystemMode.toUpperCase();
-      dom.btnModeToggle.className = `btn-mode-toggle mode-${currentSystemMode}`;
+      if (m === "local") {
+        dom.btnModeToggle.textContent = "📶 WI-FI LAN";
+        dom.btnModeToggle.className = "btn-mode-toggle mode-local";
+        dom.btnModeToggle.title = "Connection: Local Wi-Fi (Tap to cycle)";
+      } else if (m === "cloud") {
+        dom.btnModeToggle.textContent = "🌐 CLOUD";
+        dom.btnModeToggle.className = "btn-mode-toggle mode-cloud";
+        dom.btnModeToggle.title = "Connection: Global Cloud (Tap to cycle)";
+      } else {
+        dom.btnModeToggle.textContent = "⚡ AUTO";
+        dom.btnModeToggle.className = "btn-mode-toggle mode-auto";
+        dom.btnModeToggle.title = "Connection: Smart Auto Probe (Tap to cycle)";
+      }
     }
-  }
-
-  async function toggleSystemMode() {
-    const modes = ["auto", "online", "offline"];
-    const nextIdx = (modes.indexOf(currentSystemMode) + 1) % modes.length;
-    const targetMode = modes[nextIdx];
-    const ep = state.activeEndpoint || window.location.origin;
-    try {
-      const res = await fetch(`${ep.replace(/\/+$/, "")}/api/mode`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: targetMode }),
+    if (dom.modeBtns) {
+      dom.modeBtns.forEach((btn) => {
+        if (btn.getAttribute("data-mode") === m) {
+          btn.classList.add("active");
+        } else {
+          btn.classList.remove("active");
+        }
       });
-      if (res.ok) {
-        const data = await res.json();
-        updateSystemModeUI(data.manual_mode || targetMode);
-        logConsole("SYSTEM MODE", `Mode changed: ${(data.manual_mode || targetMode).toUpperCase()}`);
-      }
-    } catch (e) {
-      console.warn("Mode toggle failed:", e);
     }
   }
 
-  async function syncSystemMode() {
-    const ep = state.activeEndpoint || window.location.origin;
-    try {
-      const res = await fetch(`${ep.replace(/\/+$/, "")}/api/mode`);
-      if (res.ok) {
-        const data = await res.json();
-        updateSystemModeUI(data.manual_mode);
-      }
-    } catch (_) {}
+  async function toggleConnectionMode() {
+    const modes = ["auto", "local", "cloud"];
+    const current = state.mode || "auto";
+    const nextIdx = (modes.indexOf(current) + 1) % modes.length;
+    const targetMode = modes[nextIdx];
+    state.mode = targetMode;
+    localStorage.setItem(STORAGE_KEYS.MODE, targetMode);
+    updateModeButtonUI(targetMode);
+    triggerHaptic(25);
+    const label = targetMode === "local" ? "LOCAL WI-FI (OFFLINE LAN)" : (targetMode === "cloud" ? "GLOBAL CLOUD TUNNEL" : "AUTO (SMART PROBE)");
+    logConsole("LINK MODE", `Connection mode switched to ${label}. Linking...`);
+    await resolveActiveEndpoint();
   }
+
 
   // ---------------- Canvas Visualizers ----------------
   // 1. Spider-Web Radar Background Canvas
@@ -1688,13 +1834,25 @@
       });
     });
 
-    // TTS Toggle
-    dom.btnTts.addEventListener("click", () => {
-      state.ttsEnabled = !state.ttsEnabled;
-      localStorage.setItem(STORAGE_KEYS.TTS_ENABLED, state.ttsEnabled.toString());
-      updateTtsIcon();
-      triggerHaptic(15);
-    });
+    // Voice Mode & TTS Toggles
+    if (dom.btnTts) {
+      dom.btnTts.addEventListener("click", toggleVoiceMode);
+    }
+    if (dom.btnVoiceMode) {
+      dom.btnVoiceMode.addEventListener("click", toggleVoiceMode);
+    }
+    if (dom.voicePills) {
+      dom.voicePills.forEach((pill) => {
+        pill.addEventListener("click", () => {
+          const charId = pill.getAttribute("data-char");
+          if (charId) {
+            triggerHaptic(20);
+            setMobileVoiceCharacter(charId, true);
+          }
+        });
+      });
+    }
+
 
     // Settings Modal Open/Close
     if (dom.btnBrandTheme) {
@@ -1844,10 +2002,11 @@
       dom.btnMediaClose.addEventListener("click", closeHudMedia);
     }
 
-    // Header Mode Toggle
+    // Header Connection Mode Toggle
     if (dom.btnModeToggle) {
-      dom.btnModeToggle.addEventListener("click", toggleSystemMode);
+      dom.btnModeToggle.addEventListener("click", toggleConnectionMode);
     }
+
 
     // Remote Desktop & Virtual Gamepad Listeners
     if (dom.btnOpenRemote) {
@@ -2107,26 +2266,26 @@
     initWebCanvas();
     initOscilloscopeCanvas();
     initEvents();
-    updateTtsIcon();
+    updateVoiceModeUI();
+    updateModeButtonUI();
     setMobileTheme(localStorage.getItem("mobile_theme") || "spiderman");
-    setMobileVoiceCharacter(localStorage.getItem("mobile_voice_char") || "edith");
+    setMobileVoiceCharacter(localStorage.getItem("mobile_voice_char") || "edith", false);
     if (dom.quickHostInput) dom.quickHostInput.value = state.localUrl;
 
     await fetchServerConfig();
     await resolveActiveEndpoint();
     if (dom.quickHostInput) dom.quickHostInput.value = state.localUrl;
-    await syncSystemMode();
     await pollLaptopVitals();
 
     // Heartbeat connection maintenance and bi-directional message polling
     setInterval(async () => {
       await fetchServerConfig();
       await resolveActiveEndpoint();
-      await syncSystemMode();
       await pollLaptopVitals();
       await pollPhoneMessagesAndTelemetry();
     }, 3500);
   }
+
 
   window.addEventListener("DOMContentLoaded", init);
 })();

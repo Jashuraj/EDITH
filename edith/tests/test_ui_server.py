@@ -166,7 +166,17 @@ class TestUIServer(unittest.TestCase):
             self.assertIn("ram_percent", data)
             self.assertIn("disk_percent", data)
 
+    def test_voice_tts_endpoint(self):
+        req = urllib.request.Request("http://127.0.0.1:8796/api/voice/tts?text=Test+audio&char=edith")
+        with urllib.request.urlopen(req, timeout=5.0) as res:
+            self.assertEqual(res.status, 200)
+            self.assertEqual(res.headers.get("Content-Type"), "audio/wav")
+            audio = res.read()
+            self.assertGreater(len(audio), 0)
+            self.assertTrue(audio.startswith(b"RIFF"))
+
 
 if __name__ == "__main__":
     unittest.main()
+
 

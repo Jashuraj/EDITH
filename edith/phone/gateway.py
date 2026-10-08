@@ -138,6 +138,26 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
             })
             return
 
+        # Voice Audio Synthesis (TTS)
+        if parsed.path in ("/api/voice/tts", "/voice/tts"):
+            text = str(data.get("text", "")).strip()
+            char_id = data.get("char") or data.get("character")
+            wav_bytes = SPEAKER.synthesize_wav(text, character=char_id) if text else b""
+            if not wav_bytes:
+                self.send_response(204)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "audio/wav")
+            self.send_header("Content-Length", str(len(wav_bytes)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(wav_bytes)
+            return
+
+
         # Authenticate operations when paired tokens exist
         device_id = str(data.get("device_id", "")).strip()
         token = str(data.get("token", "")).strip() or str(self.headers.get("X-Token", "")).strip()
@@ -474,6 +494,25 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
                 "active_character": SPEAKER.active_character,
             })
             return
+
+        elif parsed.path in ("/api/voice/tts", "/voice/tts"):
+            text = query_params.get("text", [""])[0]
+            char_id = query_params.get("char", query_params.get("character", [""]))[0] or None
+            wav_bytes = SPEAKER.synthesize_wav(text, character=char_id) if text else b""
+            if not wav_bytes:
+                self.send_response(204)
+                self.send_header("Access-Control-Allow-Origin", "*")
+                self.end_headers()
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "audio/wav")
+            self.send_header("Content-Length", str(len(wav_bytes)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(wav_bytes)
+            return
+
 
         elif parsed.path in ("/api/metrics", "/telemetry"):
             try:

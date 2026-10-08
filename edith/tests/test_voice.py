@@ -48,6 +48,18 @@ class TestVoiceSystem(unittest.TestCase):
         self.assertEqual(speaker.active_character, "edith")
         self.assertEqual(edith_info["name"], "EDITH")
 
+    def test_synthesize_wav_bytes(self):
+        speaker = SpeechSynthesizer()
+        wav = speaker.synthesize_wav("EDITH test", character="edith")
+        self.assertIsInstance(wav, bytes)
+        self.assertGreater(len(wav), 0)
+        self.assertTrue(wav.startswith(b"RIFF"))
+
+    def test_synthesize_wav_empty(self):
+        speaker = SpeechSynthesizer()
+        self.assertEqual(speaker.synthesize_wav(""), b"")
+
+
 
 if __name__ == "__main__":
     unittest.main()
