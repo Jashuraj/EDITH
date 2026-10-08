@@ -129,7 +129,7 @@ class SystemConfig:
     zero_credit_mode: bool = False
     privacy_mode: bool = False
     emergency_stopped: bool = False
-    clap_welcome_enabled: bool = False
+    clap_welcome_enabled: bool = True
     hardware: HardwareProfile = field(default_factory=HardwareProfile.detect)
     ceilings: ResourceCeilings = field(default_factory=ResourceCeilings)
     primary_local_model: str = "hermes3:3b"
