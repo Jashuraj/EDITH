@@ -216,6 +216,12 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
         elif parsed.path == "/voice/mute_status":
             self._send_json({"muted": SPEAKER.is_muted})
 
+        elif parsed.path == "/voice/characters":
+            self._send_json({
+                "characters": SPEAKER.list_characters(),
+                "active_character": SPEAKER.active_character,
+            })
+
         elif parsed.path == "/audio/devices":
             try:
                 import sounddevice as sd
@@ -667,6 +673,15 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             should_mute = data.get("mute", True)
             SPEAKER.set_muted(should_mute)
             self._send_json({"success": True, "muted": SPEAKER.is_muted})
+
+        elif parsed.path == "/voice/character":
+            char_id = data.get("character") or data.get("id") or "edith"
+            char_info = SPEAKER.set_character(char_id)
+            self._send_json({
+                "success": True,
+                "active_character": SPEAKER.active_character,
+                "character": char_info,
+            })
 
         elif parsed.path == "/voice/clap_toggle":
             from edith.voice.clap_detector import CLAP_DETECTOR

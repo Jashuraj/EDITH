@@ -127,6 +127,17 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
             })
             return
 
+        # Voice Character Profile Switch
+        if parsed.path == "/voice/character":
+            char_id = data.get("character") or data.get("id") or "edith"
+            char_info = SPEAKER.set_character(char_id)
+            self._send_json({
+                "success": True,
+                "active_character": SPEAKER.active_character,
+                "character": char_info,
+            })
+            return
+
         # Authenticate operations when paired tokens exist
         device_id = str(data.get("device_id", "")).strip()
         token = str(data.get("token", "")).strip() or str(self.headers.get("X-Token", "")).strip()
@@ -456,6 +467,13 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
 
         elif parsed.path in ("/ping", "/health"):
             self._send_json({"status": "ok", "time": time.time(), "system": CONFIG.system_name})
+
+        elif parsed.path == "/voice/characters":
+            self._send_json({
+                "characters": SPEAKER.list_characters(),
+                "active_character": SPEAKER.active_character,
+            })
+            return
 
         elif parsed.path in ("/api/metrics", "/telemetry"):
             try:

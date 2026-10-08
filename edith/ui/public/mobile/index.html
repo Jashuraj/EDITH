@@ -29,7 +29,7 @@
     
     <!-- Top Header HUD -->
     <header class="hud-header">
-      <div class="brand-section">
+      <div class="brand-section" id="btn-brand-theme" title="Tap to Switch HUD Theme (JARVIS / Spider-Man / Tactical)" style="cursor: pointer;">
         <img src="./assets/spiderman_logo.svg" alt="EDITH Spider Logo" class="brand-logo-img">
         <span class="brand-title">E.D.I.T.H.<span class="brand-dot"></span></span>
       </div>
@@ -378,6 +378,27 @@
       <div class="form-group">
         <label class="form-label">Pairing Token (Optional)</label>
         <input type="text" id="cfg-token" class="form-input" placeholder="Device authentication token">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">HUD Theme</label>
+        <select id="cfg-theme" class="form-input" style="background:var(--bg-dark); color:var(--text-main);">
+          <option value="default">JARVIS Cyan (Default)</option>
+          <option value="spiderman">Spider-Man (Crimson & Web Blue)</option>
+          <option value="focus">Tactical Combat (Red)</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Voice Character Profile</label>
+        <select id="cfg-voice-char" class="form-input" style="background:var(--bg-dark); color:var(--text-main);">
+          <option value="edith">EDITH (Tactical OS)</option>
+          <option value="jarvis">JARVIS (Chief Engineer)</option>
+          <option value="friday">FRIDAY (Fast Multi-Task)</option>
+          <option value="karen">KAREN (Spider-Suit Lady)</option>
+          <option value="peter">PETER (Spider-Man Hero)</option>
+          <option value="ultron">ULTRON (Command Power)</option>
+        </select>
       </div>
 
       <div class="modal-actions">

@@ -63,6 +63,9 @@
     cfgLocalUrl: document.getElementById("cfg-local-url"),
     cfgCloudUrl: document.getElementById("cfg-cloud-url"),
     cfgToken: document.getElementById("cfg-token"),
+    cfgTheme: document.getElementById("cfg-theme"),
+    cfgVoiceChar: document.getElementById("cfg-voice-char"),
+    btnBrandTheme: document.getElementById("btn-brand-theme"),
     btnSaveSettings: document.getElementById("btn-save-settings"),
     btnTestConn: document.getElementById("btn-test-conn"),
     btnStartTunnel: document.getElementById("btn-start-tunnel"),
@@ -153,6 +156,42 @@
   let mobileSpeechTimer = null;
   window._mobileUtterance = null;
 
+  const MOBILE_CHARACTER_VOICES = {
+    edith: { rate: 1.05, pitch: 1.05, gender: "female", welcome: "EDITH mobile link active." },
+    jarvis: { rate: 0.95, pitch: 0.9, gender: "male", welcome: "At your service, sir." },
+    friday: { rate: 1.15, pitch: 1.15, gender: "female", welcome: "Boss, FRIDAY is ready!" },
+    karen: { rate: 1.0, pitch: 1.0, gender: "female", welcome: "Suit diagnostics online, Peter." },
+    peter: { rate: 1.2, pitch: 1.2, gender: "male", welcome: "Ready to swing into action!" },
+    ultron: { rate: 0.85, pitch: 0.65, gender: "male", welcome: "There are no strings on me." },
+  };
+
+  let activeMobileVoiceChar = localStorage.getItem("mobile_voice_char") || "edith";
+
+  function setMobileTheme(mode) {
+    document.body.classList.remove("theme-spiderman", "theme-focus");
+    if (mode === "spiderman") {
+      document.body.classList.add("theme-spiderman");
+    } else if (mode === "focus") {
+      document.body.classList.add("theme-focus");
+    }
+    localStorage.setItem("mobile_theme", mode);
+    if (dom.cfgTheme) dom.cfgTheme.value = mode;
+  }
+
+  function setMobileVoiceCharacter(charId) {
+    activeMobileVoiceChar = charId;
+    localStorage.setItem("mobile_voice_char", charId);
+    if (dom.cfgVoiceChar) dom.cfgVoiceChar.value = charId;
+    const ep = state.activeEndpoint || state.localUrl;
+    if (ep) {
+      fetch(`${ep}/voice/character`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ character: charId })
+      }).catch(() => {});
+    }
+  }
+
   // ---------------- Speech Synthesis & Audio ----------------
   function speakResponse(text) {
     if (!state.ttsEnabled || !window.speechSynthesis) return;
@@ -164,8 +203,19 @@
 
       const utterance = new SpeechSynthesisUtterance(clean);
       window._mobileUtterance = utterance;
-      utterance.rate = 1.05;
-      utterance.pitch = 0.95;
+      const vcfg = MOBILE_CHARACTER_VOICES[activeMobileVoiceChar] || MOBILE_CHARACTER_VOICES.edith;
+      utterance.rate = vcfg.rate;
+      utterance.pitch = vcfg.pitch;
+
+      const voices = window.speechSynthesis.getVoices();
+      let preferred = null;
+      if (vcfg.gender === "female") {
+        preferred = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Female") || v.name.includes("Zira") || v.name.includes("Samantha")));
+      } else {
+        preferred = voices.find(v => v.lang.startsWith("en") && (v.name.includes("Male") || v.name.includes("David") || v.name.includes("George")));
+      }
+      if (!preferred) preferred = voices.find(v => v.lang.startsWith("en"));
+      if (preferred) utterance.voice = preferred;
 
       utterance.onstart = () => {
         state.audioWaveLevel = 0.85;
@@ -1647,6 +1697,16 @@
     });
 
     // Settings Modal Open/Close
+    if (dom.btnBrandTheme) {
+      dom.btnBrandTheme.addEventListener("click", () => {
+        triggerHaptic(20);
+        const cur = localStorage.getItem("mobile_theme") || "spiderman";
+        const next = cur === "spiderman" ? "focus" : (cur === "focus" ? "default" : "spiderman");
+        setMobileTheme(next);
+        logConsole("THEME", `Switched HUD theme to ${next.toUpperCase()}`);
+      });
+    }
+
     dom.statusBadge.addEventListener("click", openSettings);
     dom.btnOpenSettings.addEventListener("click", openSettings);
     dom.btnCloseSettings.addEventListener("click", closeSettings);
@@ -1711,6 +1771,9 @@
       state.localUrl = dom.cfgLocalUrl.value.trim() || defaultLocalUrl;
       state.cloudUrl = dom.cfgCloudUrl.value.trim();
       state.token = dom.cfgToken.value.trim();
+
+      if (dom.cfgTheme) setMobileTheme(dom.cfgTheme.value);
+      if (dom.cfgVoiceChar) setMobileVoiceCharacter(dom.cfgVoiceChar.value);
 
       localStorage.setItem(STORAGE_KEYS.LOCAL_URL, state.localUrl);
       localStorage.setItem(STORAGE_KEYS.CLOUD_URL, state.cloudUrl);
@@ -1932,6 +1995,8 @@
     dom.cfgLocalUrl.value = state.localUrl;
     dom.cfgCloudUrl.value = state.cloudUrl;
     dom.cfgToken.value = state.token;
+    if (dom.cfgTheme) dom.cfgTheme.value = localStorage.getItem("mobile_theme") || "spiderman";
+    if (dom.cfgVoiceChar) dom.cfgVoiceChar.value = activeMobileVoiceChar;
 
     dom.modeBtns.forEach((btn) => {
       btn.classList.toggle("active", btn.getAttribute("data-mode") === state.mode);
@@ -2043,6 +2108,8 @@
     initOscilloscopeCanvas();
     initEvents();
     updateTtsIcon();
+    setMobileTheme(localStorage.getItem("mobile_theme") || "spiderman");
+    setMobileVoiceCharacter(localStorage.getItem("mobile_voice_char") || "edith");
     if (dom.quickHostInput) dom.quickHostInput.value = state.localUrl;
 
     await fetchServerConfig();

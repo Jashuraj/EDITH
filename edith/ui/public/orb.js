@@ -225,6 +225,7 @@ const THEME_COLORS = {
   default: 0x00e5ff,
   bnd: 0x85dbe1,
   focus: 0xff3d00,
+  spiderman: 0xff1e42,
 };
 
 window.setActiveTheme = function(mode) {

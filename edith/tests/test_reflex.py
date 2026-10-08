@@ -42,6 +42,11 @@ class TestReflexEngine(unittest.TestCase):
             ("stop EDITH", "emergency_stop"),
             ("enable privacy mode", "enable_privacy"),
             ("what is your status", "show_status"),
+            ("switch voice to jarvis", "switch_voice_character"),
+            ("change character to karen", "switch_voice_character"),
+            ("activate spiderman personality", "switch_voice_character"),
+            ("switch theme to spiderman", "switch_theme"),
+            ("change theme to tactical", "switch_theme"),
         ]
 
         for phrase, expected_cmd in test_phrases:

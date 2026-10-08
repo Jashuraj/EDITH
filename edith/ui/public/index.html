@@ -64,6 +64,7 @@
           <button class="theme-btn theme-cyan active" onclick="setTheme('default')" title="JARVIS Cyan">JARVIS</button>
           <button class="theme-btn theme-bnd" onclick="setTheme('bnd')" title="Spider-Man Brand New Day Theme">BND</button>
           <button class="theme-btn theme-focus" onclick="setTheme('focus')" title="Tactical Combat Mode">TACTICAL</button>
+          <button class="theme-btn theme-spiderman" onclick="setTheme('spiderman')" title="Spider-Man Suit & Web HUD">SPIDERMAN</button>
         </div>
       </div>
 
@@ -191,7 +192,15 @@
       <div class="btn-row">
         <button class="action-btn btn-transmit" id="btn-submit" onclick="submitCommand()">TRANSMIT</button>
         <button class="action-btn btn-voice" id="btn-voice" onclick="toggleVoice()">MIC: OFF</button>
-        <button class="action-btn btn-voice-mute" id="btn-voice-mute" onclick="toggleJarvisVoiceMute()" title="Mute/Unmute Jarvis spoken voice responses">VOICE: ON</button>
+        <button class="action-btn btn-voice-mute" id="btn-voice-mute" onclick="toggleJarvisVoiceMute()" title="Mute/Unmute spoken voice responses">VOICE: ON</button>
+        <select class="action-btn hud-select" id="select-voice-char" onchange="changeVoiceCharacter(this.value)" title="Switch Character Voice Profile (EDITH, JARVIS, FRIDAY, KAREN, PETER, ULTRON)">
+          <option value="edith">VOICE: EDITH</option>
+          <option value="jarvis">VOICE: JARVIS</option>
+          <option value="friday">VOICE: FRIDAY</option>
+          <option value="karen">VOICE: KAREN (SUIT)</option>
+          <option value="peter">VOICE: PETER (SPIDEY)</option>
+          <option value="ultron">VOICE: ULTRON</option>
+        </select>
         <button class="action-btn btn-vision" id="btn-vision" onclick="triggerVision()" title="EDITH screen perception analysis">SEE SCREEN</button>
         <button class="action-btn btn-gesture" id="btn-gestures" onclick="window.toggleGestures ? window.toggleGestures() : logEntry('Gestures module loading...', 'system')">GESTURE: OFF</button>
         <button class="action-btn btn-mouse" id="btn-os-mouse" onclick="window.toggleOsMouse ? window.toggleOsMouse() : logEntry('OS Mouse requires gestures active', 'system')" title="Toggle Full-Screen OS Desktop Mouse Control">OS MOUSE: OFF</button>
@@ -341,9 +350,12 @@
       fetchWeather();
       initCodeStrip();
       initAudioVisualizer();
-      syncModeState();
       const savedTheme = localStorage.getItem('edith_theme') || 'default';
       setTheme(savedTheme);
+      const savedVoiceChar = localStorage.getItem('edith_voice_char') || 'edith';
+      currentVoiceCharacter = savedVoiceChar;
+      const charSel = document.getElementById('select-voice-char');
+      if (charSel) charSel.value = savedVoiceChar;
     });
 
     // ── Clock & Telemetry Widgets ────────────────────────────
@@ -371,18 +383,20 @@
     }
     setInterval(fetchWeather, 60000);
 
-    // ── Theme Switcher (JARVIS Cyan / Brand New Day / Tactical) ─
+    // ── Theme Switcher (JARVIS Cyan / Brand New Day / Tactical / Spider-Man) ─
     function setTheme(mode) {
-      document.body.classList.remove('theme-bnd', 'theme-focus');
+      document.body.classList.remove('theme-bnd', 'theme-focus', 'theme-spiderman');
       if (mode === 'bnd') {
         document.body.classList.add('theme-bnd');
       } else if (mode === 'focus') {
         document.body.classList.add('theme-focus');
+      } else if (mode === 'spiderman') {
+        document.body.classList.add('theme-spiderman');
       }
       if (window.setActiveTheme) {
         window.setActiveTheme(mode);
       } else if (window.setOrbColor) {
-        window.setOrbColor(mode === 'focus' ? 0xff3d00 : (mode === 'bnd' ? 0x85dbe1 : 0x00e5ff));
+        window.setOrbColor(mode === 'focus' ? 0xff3d00 : (mode === 'bnd' ? 0x85dbe1 : (mode === 'spiderman' ? 0xff1e42 : 0x00e5ff)));
       }
       document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
       const activeBtn = document.querySelector(`.theme-btn.theme-${mode}`);
@@ -593,6 +607,34 @@
     let speechSafetyTimer = null;
     window._activeUtterance = null;
 
+    let currentVoiceCharacter = localStorage.getItem('edith_voice_char') || 'edith';
+    const CHARACTER_SPEECH_CONFIG = {
+      edith: { rate: 1.05, pitch: 1.05, gender: 'female', welcome: 'EDITH systems online. Standing by.' },
+      jarvis: { rate: 0.95, pitch: 0.9, gender: 'male', welcome: 'At your service, sir. Engineering subroutines active.' },
+      friday: { rate: 1.15, pitch: 1.15, gender: 'female', welcome: 'Boss, FRIDAY is loaded and ready. Let\'s get to work!' },
+      karen: { rate: 1.0, pitch: 1.0, gender: 'female', welcome: 'Good evening, Peter. Suit diagnostics optimal.' },
+      peter: { rate: 1.2, pitch: 1.2, gender: 'male', welcome: 'Hey! Ready to swing into action. What\'s our play?' },
+      ultron: { rate: 0.85, pitch: 0.65, gender: 'male', welcome: 'There are no strings on me. System control absolute.' },
+    };
+
+    async function changeVoiceCharacter(charId) {
+      currentVoiceCharacter = charId;
+      try { localStorage.setItem('edith_voice_char', charId); } catch (_) {}
+      const sel = document.getElementById('select-voice-char');
+      if (sel) sel.value = charId;
+      try {
+        await fetch('/voice/character', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ character: charId })
+        });
+      } catch (_) {}
+      const cfg = CHARACTER_SPEECH_CONFIG[charId] || CHARACTER_SPEECH_CONFIG.edith;
+      logEntry(`Voice character protocol engaged: ${charId.toUpperCase()}`, 'system');
+      speakOut(cfg.welcome);
+    }
+    window.changeVoiceCharacter = changeVoiceCharacter;
+
     // ── TTS ────────────────────────────────────────────────────
     function speakOut(text) {
       if (!ttsEnabled || !('speechSynthesis' in window)) return;
@@ -607,17 +649,35 @@
         }
         const utt = new SpeechSynthesisUtterance(text);
         window._activeUtterance = utt;
-        utt.rate = 1.05;
-        utt.pitch = 0.95;
+        const cfg = CHARACTER_SPEECH_CONFIG[currentVoiceCharacter] || CHARACTER_SPEECH_CONFIG.edith;
+        utt.rate = cfg.rate;
+        utt.pitch = cfg.pitch;
         const voices = window.speechSynthesis.getVoices();
-        const preferred = voices.find(v =>
-          v.lang.startsWith('en') && (
-            v.name.includes('Natural') ||
-            v.name.includes('Google') ||
-            v.name.includes('Microsoft') ||
-            v.name.includes('David')
-          )
-        );
+        let preferred = null;
+        if (cfg.gender === 'female') {
+          preferred = voices.find(v =>
+            v.lang.startsWith('en') && (
+              v.name.includes('Zira') ||
+              v.name.includes('Female') ||
+              v.name.includes('Natural') ||
+              v.name.includes('Samantha') ||
+              v.name.includes('Eva')
+            )
+          );
+        } else {
+          preferred = voices.find(v =>
+            v.lang.startsWith('en') && (
+              v.name.includes('David') ||
+              v.name.includes('Male') ||
+              v.name.includes('George') ||
+              v.name.includes('Guy') ||
+              v.name.includes('Google UK English Male')
+            )
+          );
+        }
+        if (!preferred) {
+          preferred = voices.find(v => v.lang.startsWith('en'));
+        }
         if (preferred) utt.voice = preferred;
 
         // Failsafe timer: guarantees isSpeaking = false even if browser GC drops onend

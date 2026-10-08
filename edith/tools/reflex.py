@@ -132,6 +132,14 @@ class ReflexEngine:
         self.register(app_prefix + r"(?:mute|turn\s+off|disable|stop)\s+(?:jarvis\s+|edith\s+)?(?:voice|speech|speaker)$", "mute_voice", "voice", {})
         self.register(app_prefix + r"(?:unmute|turn\s+on|enable|start)\s+(?:jarvis\s+|edith\s+)?(?:voice|speech|speaker)$", "unmute_voice", "voice", {})
 
+        # Voice Character & Personality Switching (<15ms)
+        self.register(app_prefix + r"(?:switch|change|set)\s+(?:voice|character|personality)\s+(?:to\s+)?(?P<character>edith|jarvis|friday|karen|peter|spiderman|ultron)$", "switch_voice_character", "voice", {})
+        self.register(app_prefix + r"(?:activate|switch\s+to|change\s+to)\s+(?P<character>edith|jarvis|friday|karen|peter|spiderman|ultron)\s+(?:voice|mode|personality)$", "switch_voice_character", "voice", {})
+        self.register(app_prefix + r"(?:list|show|what\s+are)\s+(?:available\s+)?(?:voices|characters|personalities)$", "list_voice_characters", "voice", {})
+
+        # Theme Switching (<15ms)
+        self.register(app_prefix + r"(?:switch|change|set)\s+theme\s+(?:to\s+)?(?P<theme>default|cyan|jarvis|bnd|focus|tactical|spiderman)$", "switch_theme", "ui", {})
+
         # Bluetooth Microphone Selection (<15ms)
         self.register(app_prefix + r"(?:switch|change|set|use)\s+(?:mic|microphone)\s+(?:to\s+)?bluetooth$", "switch_mic_bluetooth", "voice", {})
         self.register(app_prefix + r"(?:switch|change|set|use)\s+bluetooth\s+(?:mic|microphone|headset|earphone)$", "switch_mic_bluetooth", "voice", {})
@@ -336,6 +344,30 @@ class ReflexEngine:
             from edith.voice.speaker import SPEAKER
             SPEAKER.set_muted(False)
             return "Jarvis voice output has been unmuted."
+        elif match.command_name == "switch_voice_character":
+            from edith.voice.speaker import SPEAKER
+            raw_target = match.parameters.get("character", "edith")
+            char_info = SPEAKER.set_character(raw_target)
+            msg = f"Voice protocol switched to {char_info['name']}. {char_info['welcome']}"
+            SPEAKER.speak(msg, async_mode=True)
+            return {
+                "message": msg,
+                "character": char_info,
+                "action": "switch_voice_character",
+            }
+        elif match.command_name == "list_voice_characters":
+            from edith.voice.speaker import SPEAKER
+            chars = SPEAKER.list_characters()
+            lines = [f"• {c['name']} ({c['role']}) - {c['description']}" for c in chars]
+            return "Available voice characters:\n" + "\n".join(lines)
+        elif match.command_name == "switch_theme":
+            raw_mode = match.parameters.get("theme", "spiderman")
+            mode = "spiderman" if "spider" in raw_mode.lower() else ("bnd" if "bnd" in raw_mode.lower() else ("focus" if "tactical" in raw_mode.lower() or "focus" in raw_mode.lower() else "default"))
+            return {
+                "message": f"HUD theme switched to {mode.upper()}.",
+                "theme": mode,
+                "action": "switch_theme",
+            }
         elif match.command_name == "switch_mic_bluetooth":
             from edith.voice.clap_detector import CLAP_DETECTOR
             import sounddevice as sd

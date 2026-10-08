@@ -44,6 +44,20 @@ body.theme-focus {
   --text-dim:    #b06363;
 }
 
+body.theme-spiderman {
+  --bg:          #080309;
+  --cyan:        #ff1e42;
+  --cyan-dim:    rgba(255, 30, 66, 0.45);
+  --cyan-glow:   rgba(255, 30, 66, 0.25);
+  --blue:        #0066ff;
+  --amber:       #ffd700;
+  --red:         #ff003c;
+  --glass:       rgba(24, 6, 14, 0.85);
+  --glass-edge:  rgba(255, 30, 66, 0.35);
+  --text:        #ffe4e8;
+  --text-dim:    #b35a6c;
+}
+
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* ---- Base ---- */
@@ -755,6 +769,19 @@ body.ar-active::after {
   border-color: var(--cyan);
   color: var(--cyan);
   box-shadow: 0 0 14px rgba(0, 229, 255, 0.3);
+}
+
+select.hud-select {
+  background: var(--glass);
+  color: var(--cyan);
+  border: 1px solid var(--glass-edge);
+  outline: none;
+  cursor: pointer;
+}
+
+select.hud-select option {
+  background: #040a12;
+  color: #c8eef5;
 }
 
 .btn-transmit {

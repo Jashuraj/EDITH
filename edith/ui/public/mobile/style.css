@@ -23,6 +23,37 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Spider-Man Suit & Web Theme */
+body.theme-spiderman {
+  --bg-deep: #080309;
+  --bg-dark: #12050f;
+  --bg-card: rgba(24, 8, 16, 0.82);
+  --bg-card-hover: rgba(36, 12, 24, 0.92);
+  --cyan-glow: #ff1e42;
+  --cyan-dim: rgba(255, 30, 66, 0.3);
+  --cyan-border: rgba(255, 30, 66, 0.45);
+  --red-glow: #ff003c;
+  --red-dim: rgba(255, 0, 60, 0.3);
+  --text-main: #ffe4e8;
+  --text-muted: #a65d6c;
+  --text-cyan: #ff758c;
+}
+
+/* Tactical Combat Focus Theme */
+body.theme-focus {
+  --bg-deep: #0a0404;
+  --bg-dark: #160808;
+  --bg-card: rgba(26, 10, 10, 0.82);
+  --bg-card-hover: rgba(40, 14, 14, 0.92);
+  --cyan-glow: #ff3d00;
+  --cyan-dim: rgba(255, 61, 0, 0.3);
+  --cyan-border: rgba(255, 61, 0, 0.45);
+  --red-glow: #ff1744;
+  --text-main: #ffebee;
+  --text-muted: #b06363;
+  --text-cyan: #ff9100;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
