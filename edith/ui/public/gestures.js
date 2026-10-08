@@ -49,16 +49,16 @@ const PINKY_MCP = 17;
 const PINKY_TIP = 20;
 
 // Gesture tuning thresholds
-const PINCH_ON = 0.38;
-const PINCH_OFF = 0.52;
+const PINCH_ON = 0.44;
+const PINCH_OFF = 0.58;
 const ROTATE_SPEED = 7.0;
 const ZOOM_SPEED = 35.0;
 const SMOOTHING = 0.85;
 
 // Persistent tracking states per hand (indexed 0 and 1)
 const handStates = [
-  { isPinching: false, isMiddlePinching: false, isPinkyPinching: false, grabX: 0.5, grabY: 0.5, prevGrabX: null, prevGrabY: null },
-  { isPinching: false, isMiddlePinching: false, isPinkyPinching: false, grabX: 0.5, grabY: 0.5, prevGrabX: null, prevGrabY: null }
+  { isPinching: false, isMiddlePinching: false, isPinkyPinching: false, pinchDist: 1.0, grabX: 0.5, grabY: 0.5, prevGrabX: null, prevGrabY: null },
+  { isPinching: false, isMiddlePinching: false, isPinkyPinching: false, pinchDist: 1.0, grabX: 0.5, grabY: 0.5, prevGrabX: null, prevGrabY: null }
 ];
 
 let prevTwoHandDist = null;
@@ -119,9 +119,9 @@ async function initLandmarker() {
       baseOptions: { ...baseConfig, delegate: "GPU" },
       runningMode: "VIDEO",
       numHands: 2,
-      minHandDetectionConfidence: 0.55,
-      minHandPresenceConfidence: 0.55,
-      minTrackingConfidence: 0.55
+      minHandDetectionConfidence: 0.35,
+      minHandPresenceConfidence: 0.35,
+      minTrackingConfidence: 0.4
     });
     console.log("[EDITH Vision] GPU HandLandmarker initialized.");
   } catch (gpuErr) {
@@ -130,9 +130,9 @@ async function initLandmarker() {
       baseOptions: { ...baseConfig, delegate: "CPU" },
       runningMode: "VIDEO",
       numHands: 2,
-      minHandDetectionConfidence: 0.5,
-      minHandPresenceConfidence: 0.5,
-      minTrackingConfidence: 0.5
+      minHandDetectionConfidence: 0.35,
+      minHandPresenceConfidence: 0.35,
+      minTrackingConfidence: 0.4
     });
     console.log("[EDITH Vision] CPU HandLandmarker initialized.");
   }
@@ -541,6 +541,7 @@ function processUltronGestures(landmarksList) {
 
     // Hysteresis pinch tracking
     const state = handStates[h];
+    state.pinchDist = pinchDist;
     if (state.isPinching) {
       if (pinchDist > PINCH_OFF) state.isPinching = false;
     } else {
@@ -771,7 +772,13 @@ function processUltronGestures(landmarksList) {
   // ----------------------------------------------------
   // TWO-HAND GESTURE 1: DUAL PINCH TO MAXIMIZE / MINIMIZE ORB
   // ----------------------------------------------------
-  if (numHands >= 2 && handStates[0].isPinching && handStates[1].isPinching) {
+  const isDualPinch = numHands >= 2 && (
+    (handStates[0].isPinching && handStates[1].isPinching) ||
+    (handStates[0].isPinching && (handStates[1].pinchDist || 1.0) < PINCH_OFF) ||
+    (handStates[1].isPinching && (handStates[0].pinchDist || 1.0) < PINCH_OFF)
+  );
+
+  if (isDualPinch) {
     window.isUserPinching = true;
     const currentDist = Math.hypot(
       handStates[0].grabX - handStates[1].grabX,
@@ -782,7 +789,7 @@ function processUltronGestures(landmarksList) {
       const deltaDist = currentDist - prevTwoHandDist;
       // Moving hands apart maximizes orb; pushing hands together minimizes orb
       if (window.scaleOrb) {
-        window.scaleOrb(deltaDist * 4.8);
+        window.scaleOrb(deltaDist * 5.2);
       }
       if (window.zoomOrb) {
         window.zoomOrb(-deltaDist * 32.0);

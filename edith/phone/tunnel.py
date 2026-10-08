@@ -41,7 +41,7 @@ class TunnelManager:
         self._active_provider: Optional[str] = None
         self._process: Optional[subprocess.Popen] = None
         self._custom_url: Optional[str] = None
-        self._preferred_provider: str = "pinggy" if shutil.which("ssh") else "localtunnel"
+        self._preferred_provider: str = "localtunnel"
         self._subdomain: Optional[str] = "edith-jashu"
         self._active_port: int = 8794
         self._watchdog_thread: Optional[threading.Thread] = None
@@ -56,10 +56,11 @@ class TunnelManager:
             try:
                 data = json.loads(TUNNEL_CONFIG_FILE.read_text(encoding="utf-8"))
                 self._custom_url = data.get("custom_url")
-                if data.get("provider"):
-                    self._preferred_provider = data.get("provider") or ("pinggy" if shutil.which("ssh") else "localtunnel")
-                if data.get("subdomain"):
-                    self._subdomain = data.get("subdomain")
+                if data.get("provider") and data.get("provider") != "pinggy":
+                    self._preferred_provider = data.get("provider")
+                else:
+                    self._preferred_provider = "localtunnel"
+                self._subdomain = data.get("subdomain") or "edith-jashu"
                 if self._custom_url:
                     self._active_url = self._custom_url
                     self._active_provider = "custom"
@@ -251,49 +252,28 @@ class TunnelManager:
                 logger.error("Localtunnel process launch error: %s", ex)
                 return None, None
 
-        # 1. Attempt with requested or configured subdomain
-        preferred = subdomain or self._subdomain
-        p, url = _launch_subdomain(preferred)
+        # 1. Launch localtunnel with fixed permanent subdomain
+        target_sub = "edith-jashu"
+        p, url = _launch_subdomain(target_sub)
 
-        # 2. Probe health: if url is found but returns 503 or fails, fall back to dynamic subdomain
         if p and url:
-            time.sleep(0.5)
-            if self.check_url_health(url):
-                self._process = p
-                self._active_provider = "localtunnel"
-                logger.info("Localtunnel active & verified at: %s", url)
-                return url
-            else:
-                logger.warning(
-                    "Localtunnel URL %s failed health probe (likely 503 collision). Auto-falling back to dynamic subdomain...",
-                    url,
-                )
-                try:
-                    p.terminate()
-                    p.wait(timeout=1.0)
-                except Exception:
-                    try:
-                        p.kill()
-                    except Exception:
-                        pass
+            self._process = p
+            self._active_provider = "localtunnel"
+            self._active_url = url
+            self._is_healthy = True
+            logger.info("Fixed Localtunnel online & pinned at: %s", url)
+            return url
 
-        # 3. Dynamic subdomain attempt (avoids stale 503 collisions on loca.lt)
-        dyn_sub = f"edith-{secrets.token_hex(4)}"
-        logger.info("Starting localtunnel with dynamic subdomain: %s", dyn_sub)
-        p_dyn, url_dyn = _launch_subdomain(dyn_sub)
-
-        if p_dyn and url_dyn:
-            time.sleep(0.5)
-            # Give it up to 2 seconds to stabilize
-            if self.check_url_health(url_dyn) or p_dyn.poll() is None:
-                self._process = p_dyn
-                self._active_provider = "localtunnel"
-                logger.info("Dynamic Localtunnel online at: %s", url_dyn)
-                return url_dyn
-            try:
-                p_dyn.terminate()
-            except Exception:
-                pass
+        # If initial launch didn't capture line immediately, retry once with edith-jashu
+        time.sleep(1.0)
+        p2, url2 = _launch_subdomain(target_sub)
+        if p2 and url2:
+            self._process = p2
+            self._active_provider = "localtunnel"
+            self._active_url = url2
+            self._is_healthy = True
+            logger.info("Fixed Localtunnel online & pinned at: %s", url2)
+            return url2
 
         return None
 

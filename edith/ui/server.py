@@ -39,6 +39,60 @@ UI_DIR = Path(__file__).resolve().parent / "public"
 STATE_DIR = Path(__file__).resolve().parent / "state"
 
 
+class TelemetrySampler:
+    """Thread-safe smoothed telemetry sampler preventing psutil timing jitter."""
+
+    def __init__(self) -> None:
+        import threading
+        self._lock = threading.Lock()
+        self._last_time = 0.0
+        self._cached_metrics: Optional[Dict[str, Any]] = None
+        self._smoothed_cpu: float = 0.0
+        try:
+            import psutil
+            psutil.cpu_percent(interval=None)
+        except Exception:
+            pass
+
+    def get_metrics(self) -> Dict[str, Any]:
+        import time
+        now = time.time()
+        with self._lock:
+            if self._cached_metrics and (now - self._last_time < 0.9):
+                return dict(self._cached_metrics)
+
+            import psutil
+            import platform
+            raw_cpu = psutil.cpu_percent(interval=None)
+            if self._smoothed_cpu <= 0.0 and raw_cpu > 0.0:
+                self._smoothed_cpu = raw_cpu
+            elif raw_cpu > 0.0:
+                self._smoothed_cpu = round(0.4 * raw_cpu + 0.6 * self._smoothed_cpu, 1)
+            else:
+                self._smoothed_cpu = round(self._smoothed_cpu, 1)
+
+            mem = psutil.virtual_memory()
+            disk_path = "C:\\" if platform.system() == "Windows" else "/"
+            disk = psutil.disk_usage(disk_path)
+            dyn = CONFIG.refresh_dynamic_stats()
+
+            self._cached_metrics = {
+                "cpu_percent": self._smoothed_cpu,
+                "ram_percent": mem.percent,
+                "ram_used_mb": mem.used // (1024 * 1024),
+                "ram_total_mb": mem.total // (1024 * 1024),
+                "disk_percent": disk.percent,
+                "battery_percent": dyn.get("battery_percent"),
+                "power_plugged": dyn.get("power_plugged"),
+                "is_online": dyn.get("online", False),
+            }
+            self._last_time = now
+            return dict(self._cached_metrics)
+
+
+TELEMETRY_SAMPLER = TelemetrySampler()
+
+
 class EdithUIHandler(SimpleHTTPRequestHandler):
     """Custom HTTP handler serving the holographic frontend and REST API."""
 
@@ -199,23 +253,7 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             })
 
         elif parsed.path == "/api/metrics":
-            import psutil
-            import platform
-            cpu = psutil.cpu_percent(interval=None)
-            mem = psutil.virtual_memory()
-            disk_path = "C:\\" if platform.system() == "Windows" else "/"
-            disk = psutil.disk_usage(disk_path)
-            dyn = CONFIG.refresh_dynamic_stats()
-            self._send_json({
-                "cpu_percent": cpu,
-                "ram_percent": mem.percent,
-                "ram_used_mb": mem.used // (1024 * 1024),
-                "ram_total_mb": mem.total // (1024 * 1024),
-                "disk_percent": disk.percent,
-                "battery_percent": dyn.get("battery_percent"),
-                "power_plugged": dyn.get("power_plugged"),
-                "is_online": dyn.get("online", False),
-            })
+            self._send_json(TELEMETRY_SAMPLER.get_metrics())
 
         elif parsed.path == "/vision/analyze_screen":
             from edith.tools.vision import VISION

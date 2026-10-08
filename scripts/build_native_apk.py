@@ -81,10 +81,12 @@ def prepare_project_files() -> None:
     except Exception:
         detected_ip = "127.0.0.1"
 
-    tunnel_url = None
+    tunnel_url = "https://edith-jashu.loca.lt"
     try:
         from edith.phone.tunnel import TUNNEL_MANAGER
-        tunnel_url = TUNNEL_MANAGER.get_active_url()
+        active = TUNNEL_MANAGER.get_active_url()
+        if active:
+            tunnel_url = active
     except Exception:
         pass
 

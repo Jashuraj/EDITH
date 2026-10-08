@@ -15,7 +15,7 @@
     TTS_ENABLED: "edith_mobile_tts_enabled",
   };
 
-  const DEFAULT_CLOUD_URL = "";
+  const DEFAULT_CLOUD_URL = "https://edith-jashu.loca.lt";
   const isCloudOrigin = window.location.origin.includes("loca.lt") ||
     window.location.origin.includes("trycloudflare.com") ||
     window.location.origin.includes("pinggy");
@@ -24,9 +24,9 @@
     ? window.location.origin
     : "http://192.168.1.167:8794";
 
-  let savedCloud = localStorage.getItem(STORAGE_KEYS.CLOUD_URL) || "";
-  if (savedCloud.includes("edith-core-jashu.loca.lt")) {
-    savedCloud = ""; // Reset stale broken localtunnel default
+  let savedCloud = localStorage.getItem(STORAGE_KEYS.CLOUD_URL) || DEFAULT_CLOUD_URL;
+  if (!savedCloud || savedCloud.includes("edith-core-jashu.loca.lt")) {
+    savedCloud = DEFAULT_CLOUD_URL;
   }
   if (!savedCloud && isCloudOrigin) {
     savedCloud = window.location.origin;
@@ -272,7 +272,7 @@
     const t0 = performance.now();
 
     try {
-      const resp = await fetch(`${cleanUrl}/ping`, {
+      const resp = await fetch(`${cleanUrl}/ping?bypass-tunnel-reminder=true`, {
         method: "GET",
         signal: controller.signal,
         headers: {
@@ -1593,7 +1593,7 @@
       const bResp = await fetch("./server_config.json");
       if (bResp.ok) {
         const bcfg = await bResp.json();
-        if (bcfg.cloud_url && !state.cloudUrl) {
+        if (bcfg.cloud_url) {
           state.cloudUrl = bcfg.cloud_url;
           localStorage.setItem(STORAGE_KEYS.CLOUD_URL, state.cloudUrl);
           if (dom.cfgCloudUrl) dom.cfgCloudUrl.value = state.cloudUrl;

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EDITH — Autonomous AI OS</title>
+  <title>EDITH - Autonomous AI OS</title>
   <link rel="stylesheet" href="style.css?v=2.6.0">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
@@ -89,7 +89,7 @@
       <div class="telemetry-row" style="flex-direction:column; align-items:flex-start; gap:4px;">
         <div style="display:flex;justify-content:space-between;width:100%;">
           <span class="t-label">RAM LOAD</span>
-          <span class="t-val" id="val-ram">—</span>
+          <span class="t-val" id="val-ram">--</span>
         </div>
         <div class="t-bar-wrap"><div class="t-bar" id="bar-ram" style="width:50%"></div></div>
       </div>
@@ -97,14 +97,14 @@
       <div class="telemetry-row" style="flex-direction:column; align-items:flex-start; gap:4px;">
         <div style="display:flex;justify-content:space-between;width:100%;">
           <span class="t-label">STORAGE</span>
-          <span class="t-val" id="val-disk">—</span>
+          <span class="t-val" id="val-disk">--</span>
         </div>
         <div class="t-bar-wrap"><div class="t-bar" id="bar-disk" style="width:35%"></div></div>
       </div>
 
       <div class="telemetry-row">
         <span class="t-label">POWER</span>
-        <span class="t-val" id="val-battery">—</span>
+        <span class="t-val" id="val-battery">--</span>
       </div>
 
       <div class="telemetry-row" style="flex-direction:column; align-items:flex-start; gap:5px;">
@@ -1241,7 +1241,10 @@
     }
     window.resolveConfirm = resolveConfirm;
 
+    let isPollingMetrics = false;
     async function pollSystemMetrics() {
+      if (isPollingMetrics) return;
+      isPollingMetrics = true;
       try {
         const res = await fetch('/api/metrics');
         if (res.ok) {
@@ -1265,7 +1268,10 @@
           }
           if (netEl) netEl.textContent = m.is_online ? 'ONLINE (HYBRID)' : 'OFFLINE (LOCAL)';
         }
-      } catch (_) {}
+      } catch (_) {
+      } finally {
+        isPollingMetrics = false;
+      }
     }
 
     async function updateMobileAndTunnelStatus() {
@@ -1345,20 +1351,15 @@
     }
 
     // Start background telemetry and status polling loops
-    setInterval(() => {
+    function pollAllStatus() {
       checkClapStatus();
       checkUndo();
       checkConfirm();
       pollSystemMetrics();
       updateMobileAndTunnelStatus();
-    }, 2800);
-    setTimeout(() => {
-      checkClapStatus();
-      checkUndo();
-      checkConfirm();
-      pollSystemMetrics();
-      updateMobileAndTunnelStatus();
-    }, 1200);
+    }
+    setTimeout(pollAllStatus, 500);
+    setInterval(pollAllStatus, 3000);
 
     // ── Keyboard shortcut ─────────────────────────────────────
     document.getElementById('cmd-input').addEventListener('keydown', (e) => {
