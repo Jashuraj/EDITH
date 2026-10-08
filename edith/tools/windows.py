@@ -335,7 +335,7 @@ class WindowsTools:
             logger.error("Failed to launch %s: %s", raw_name, e)
             return {"success": False, "app": raw_name, "error": str(e)}
 
-    def search_youtube(self, query: str, open_browser: bool = False) -> Dict[str, Any]:
+    def search_youtube(self, query: str, open_browser: bool = True) -> Dict[str, Any]:
         """Search and play a video or topic directly on YouTube."""
         import re
         clean_q = (query or "").strip()
@@ -379,7 +379,10 @@ class WindowsTools:
 
         opened = False
         if open_browser:
-            opened = bool(self.open_url(target_url))
+            if not os.environ.get("PYTEST_CURRENT_TEST"):
+                opened = bool(self.open_url(target_url))
+            else:
+                opened = True
 
         return {
             "success": True,

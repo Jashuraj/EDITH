@@ -175,21 +175,31 @@ class SystemConfig:
 
     @staticmethod
     def check_internet(timeout_seconds: float = 1.0) -> bool:
-        """Probe internet connectivity via DNS socket connection."""
+        """Probe internet connectivity with caching and multiple fallback endpoints."""
         import socket
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.settimeout(timeout_seconds)
-                s.connect(("1.1.1.1", 53))
-            return True
-        except Exception:
+        import time
+        now = time.time()
+        # Use class-level attributes for thread-safe caching
+        cached_time = getattr(SystemConfig, "_last_internet_time", 0.0)
+        cached_status = getattr(SystemConfig, "_cached_internet_status", True)
+        if now - cached_time < 5.0:
+            return cached_status
+
+        targets = [("1.1.1.1", 443), ("8.8.8.8", 53), ("1.1.1.1", 53)]
+        is_ok = False
+        for host, port in targets:
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     s.settimeout(timeout_seconds)
-                    s.connect(("8.8.8.8", 53))
-                return True
+                    s.connect((host, port))
+                is_ok = True
+                break
             except Exception:
-                return False
+                continue
+
+        SystemConfig._last_internet_time = now
+        SystemConfig._cached_internet_status = is_ok
+        return is_ok
 
     def refresh_dynamic_stats(self) -> Dict[str, Any]:
         """Update and return dynamic telemetry."""

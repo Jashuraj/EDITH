@@ -396,21 +396,37 @@ class RemoteInputDispatcher:
             return {"success": self.hotkey(keys), "action": "hotkey", "keys": keys}
 
         # --- Virtual Joystick & Gamepad Actions ---
-        elif action == "joystick":
+        elif action in ("joystick", "joystick_move"):
             x = float(params.get("x", 0.0))
             y = float(params.get("y", 0.0))
             deadzone = float(params.get("deadzone", 0.22))
             mode = str(params.get("mode", "wasd"))
             return self.handle_joystick(x, y, deadzone=deadzone, mode=mode)
 
-        elif action == "joystick_release":
+        elif action in ("joystick_release", "stick_release"):
             self.release_all_joystick()
             return {"success": True, "action": "joystick_release"}
 
-        elif action == "game_button":
-            button = str(params.get("button", "A"))
-            pressed = bool(params.get("pressed", True))
+        elif action in ("game_button", "button"):
+            button = str(params.get("button", params.get("key", "A")))
+            pressed = bool(params.get("pressed", params.get("is_pressed", True)))
             return self.handle_game_button(button, pressed)
+
+        elif action in ("game_button_down", "btn_down"):
+            button = str(params.get("button", params.get("key", "A")))
+            return self.handle_game_button(button, True)
+
+        elif action in ("game_button_up", "btn_up"):
+            button = str(params.get("button", params.get("key", "A")))
+            return self.handle_game_button(button, False)
+
+        elif action in ("key_down", "keydown"):
+            key = str(params.get("key", ""))
+            return {"success": self.key_down(key), "action": "key_down", "key": key}
+
+        elif action in ("key_up", "keyup"):
+            key = str(params.get("key", ""))
+            return {"success": self.key_up(key), "action": "key_up", "key": key}
 
         # --- OS Shortcut Actions ---
         elif action == "switch_window":

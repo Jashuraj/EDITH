@@ -171,23 +171,41 @@ html, body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   position: relative;
   width: 100%;
   max-width: 500px;
   margin: 0 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cyan-dim) transparent;
+  padding: 4px 2px;
+  gap: 8px;
+}
+
+.hud-body::-webkit-scrollbar {
+  width: 3px;
+}
+
+.hud-body::-webkit-scrollbar-thumb {
+  background: var(--cyan-dim);
+  border-radius: 3px;
 }
 
 /* Center HUD Arc Reticle & Spider Core */
 .reticle-container {
   position: relative;
-  width: 250px;
-  height: 250px;
+  width: clamp(150px, 34vw, 210px);
+  height: clamp(150px, 34vw, 210px);
+  aspect-ratio: 1 / 1;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: 10px 0;
+  margin: 2px 0;
+  flex-shrink: 0;
 }
 
 .reticle-svg {
@@ -223,8 +241,9 @@ html, body {
 /* Center Spider Emblem */
 .spider-core {
   position: relative;
-  width: 110px;
-  height: 110px;
+  width: clamp(70px, 15vw, 98px);
+  height: clamp(70px, 15vw, 98px);
+  aspect-ratio: 1 / 1;
   border-radius: 50%;
   background: radial-gradient(circle, rgba(14, 24, 48, 0.9) 30%, rgba(6, 10, 22, 0.95) 90%);
   border: 1.5px solid var(--cyan-border);
@@ -234,6 +253,7 @@ html, body {
   box-shadow: 0 0 25px rgba(0, 229, 255, 0.2), inset 0 0 15px rgba(255, 23, 68, 0.25);
   cursor: pointer;
   transition: transform 0.2s ease;
+  flex-shrink: 0;
 }
 
 .spider-core:active {
@@ -241,8 +261,9 @@ html, body {
 }
 
 .spider-core-img {
-  width: 76px;
-  height: 76px;
+  width: clamp(48px, 11vw, 68px);
+  height: clamp(48px, 11vw, 68px);
+  object-fit: contain;
   filter: drop-shadow(0 0 10px var(--red-glow));
   z-index: 2;
 }
@@ -250,8 +271,8 @@ html, body {
 /* Dynamic Live Audio Oscilloscope Canvas */
 #oscilloscope-canvas {
   position: absolute;
-  width: 220px;
-  height: 50px;
+  width: 88%;
+  height: clamp(30px, 7vw, 44px);
   z-index: 3;
   pointer-events: none;
 }
@@ -1289,4 +1310,401 @@ html, body {
 .kb-key-chip:active {
   background: rgba(0, 229, 255, 0.35);
   transform: scale(0.96);
+}
+
+/* ---------------- Laptop Vitals Status Card ---------------- */
+.vitals-card {
+  width: 100%;
+  background: rgba(10, 18, 36, 0.82);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--cyan-border);
+  border-radius: 14px;
+  padding: 10px 14px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55), inset 0 0 15px rgba(0, 229, 255, 0.05);
+  position: relative;
+  flex-shrink: 0;
+}
+
+.vitals-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 14px;
+  width: 32px;
+  height: 2px;
+  background: var(--cyan-glow);
+  box-shadow: 0 0 8px var(--cyan-glow);
+}
+
+.vitals-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.vitals-title-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.vitals-pulse-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cyan-glow);
+  box-shadow: 0 0 6px var(--cyan-glow);
+  animation: pulse-cyan 2s infinite;
+}
+
+@keyframes pulse-cyan {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.35; transform: scale(0.8); }
+}
+
+.vitals-title {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: var(--cyan-glow);
+  text-transform: uppercase;
+}
+
+.vitals-status-tag {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: rgba(0, 230, 118, 0.15);
+  border: 1px solid #00e676;
+  color: #00e676;
+  letter-spacing: 1px;
+  font-weight: 700;
+  transition: all 0.25s ease;
+}
+
+.vitals-status-tag.offline {
+  background: rgba(255, 23, 68, 0.15);
+  border-color: #ff1744;
+  color: #ff1744;
+}
+
+.vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 12px;
+}
+
+.vital-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.vital-item-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.vital-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  letter-spacing: 1px;
+}
+
+.vital-value {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.vital-progress-track {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.vital-progress-bar {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.4s ease;
+}
+
+.vital-progress-bar.bar-red {
+  background: linear-gradient(90deg, #ff1744, #ff5252);
+  box-shadow: 0 0 6px rgba(255, 23, 68, 0.6);
+}
+
+.vital-progress-bar.bar-cyan {
+  background: linear-gradient(90deg, #00b0ff, #00e5ff);
+  box-shadow: 0 0 6px rgba(0, 229, 255, 0.6);
+}
+
+.vital-progress-bar.bar-green {
+  background: linear-gradient(90deg, #00c853, #00e676);
+  box-shadow: 0 0 6px rgba(0, 230, 118, 0.6);
+}
+
+.vital-progress-bar.bar-purple {
+  background: linear-gradient(90deg, #7c4dff, #b388ff);
+  box-shadow: 0 0 6px rgba(179, 136, 255, 0.6);
+}
+
+/* ---------------- Command Guide Drawer / Modal ---------------- */
+.guide-modal-card {
+  max-width: 480px;
+  max-height: 85dvh;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.guide-header-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.guide-subtitle {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.guide-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.guide-search-icon {
+  position: absolute;
+  left: 10px;
+  font-size: 0.8rem;
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.guide-search-input {
+  width: 100%;
+  padding-left: 32px !important;
+  padding-right: 32px !important;
+  font-size: 0.82rem;
+  border-radius: 10px;
+}
+
+.guide-search-clear {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.guide-category-pills {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0 6px 0;
+  scrollbar-width: none;
+  flex-shrink: 0;
+}
+.guide-category-pills::-webkit-scrollbar {
+  display: none;
+}
+
+.guide-pill {
+  padding: 5px 12px;
+  border-radius: 14px;
+  background: rgba(14, 22, 42, 0.8);
+  border: 1px solid var(--cyan-dim);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.guide-pill.active {
+  background: rgba(0, 229, 255, 0.2);
+  border-color: var(--cyan-glow);
+  color: var(--cyan-glow);
+  font-weight: bold;
+  box-shadow: 0 0 8px rgba(0, 229, 255, 0.3);
+}
+
+.guide-command-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-right: 4px;
+  max-height: 52dvh;
+  scrollbar-width: thin;
+  scrollbar-color: var(--cyan-dim) transparent;
+}
+.guide-command-grid::-webkit-scrollbar {
+  width: 3px;
+}
+.guide-command-grid::-webkit-scrollbar-thumb {
+  background: var(--cyan-dim);
+  border-radius: 3px;
+}
+
+.guide-cmd-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(12, 20, 38, 0.85);
+  border: 1px solid rgba(0, 229, 255, 0.25);
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.guide-cmd-card:active {
+  transform: scale(0.98);
+  border-color: var(--cyan-glow);
+  background: rgba(0, 229, 255, 0.15);
+}
+
+.guide-cmd-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.guide-cmd-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.guide-cmd-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.guide-cmd-label {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.guide-cmd-cat-badge {
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  color: var(--cyan-glow);
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px solid rgba(0, 229, 255, 0.3);
+  padding: 1px 6px;
+  border-radius: 8px;
+}
+
+.guide-cmd-code {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--cyan-glow);
+  letter-spacing: 0.5px;
+}
+
+.guide-cmd-desc {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.guide-cmd-run-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(0, 229, 255, 0.15);
+  border: 1px solid var(--cyan-glow);
+  color: var(--cyan-glow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.guide-cmd-card:active .guide-cmd-run-btn {
+  background: var(--cyan-glow);
+  color: #04060d;
+}
+
+.guide-no-results {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 24px 0;
+}
+
+.gold-chip {
+  background: rgba(255, 183, 0, 0.12) !important;
+  border-color: rgba(255, 183, 0, 0.45) !important;
+  color: #ffb700 !important;
+}
+
+.green-chip {
+  background: rgba(0, 230, 118, 0.12) !important;
+  border-color: rgba(0, 230, 118, 0.45) !important;
+  color: #00e676 !important;
+}
+
+/* ---------------- Responsive Screen Media Queries ---------------- */
+@media (max-height: 680px) {
+  .reticle-container {
+    width: 140px;
+    height: 140px;
+    margin: 1px 0;
+  }
+  .spider-core {
+    width: 66px;
+    height: 66px;
+  }
+  .spider-core-img {
+    width: 44px;
+    height: 44px;
+  }
+  .vitals-grid {
+    gap: 4px 8px;
+  }
+  .vitals-card {
+    padding: 8px 12px;
+  }
 }

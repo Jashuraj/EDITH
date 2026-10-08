@@ -393,9 +393,31 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
         """Handle incoming command, voice, and emergency stop posts."""
         parsed = urllib.parse.urlparse(self.path)
         content_length = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+        raw_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+
+        # Voice audio transcription endpoint (e.g. Brave browser mic capture)
+        if parsed.path in ("/api/voice/transcribe", "/voice/transcribe"):
+            audio_data = b""
+            content_type = self.headers.get("Content-Type", "")
+            if "json" in content_type:
+                try:
+                    js = json.loads(raw_bytes.decode("utf-8", errors="ignore"))
+                    b64 = js.get("audio") or js.get("audio_base64") or js.get("wav")
+                    if b64:
+                        import base64
+                        audio_data = base64.b64decode(b64)
+                except Exception:
+                    pass
+            else:
+                audio_data = raw_bytes
+
+            from edith.voice.listener import LISTENER
+            text = LISTENER.transcribe_audio_bytes(audio_data)
+            self._send_json({"success": True, "text": text})
+            return
 
         try:
+            body = raw_bytes.decode("utf-8", errors="ignore") if raw_bytes else "{}"
             data = json.loads(body)
         except Exception:
             data = {}
@@ -503,9 +525,9 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                     for tc in resp.tool_calls:
                         try:
                             kwargs = dict(tc.arguments)
-                            # Pass open_browser=False for in-HUD media playback
+                            # Ensure open_browser=True so YouTube opens on host laptop browser
                             if tc.name == "search_youtube" and "open_browser" not in kwargs:
-                                kwargs["open_browser"] = False
+                                kwargs["open_browser"] = True
 
                             out = REGISTRY.execute_tool(tc.name, kwargs)
                             if isinstance(out, dict):

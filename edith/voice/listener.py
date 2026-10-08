@@ -42,6 +42,48 @@ class SpeechListener:
         if self._on_phrase_callback:
             self._on_phrase_callback(phrase)
 
+    def transcribe_audio_bytes(self, audio_bytes: bytes) -> str:
+        """Transcribe PCM/WAV or WebM audio bytes using speech_recognition / Google / Whisper."""
+        if not audio_bytes or len(audio_bytes) < 32:
+            return ""
+        try:
+            # Check if audio is WebM/Opus or non-WAV container; convert to WAV via ffmpeg
+            if not audio_bytes.startswith(b"RIFF"):
+                try:
+                    import subprocess
+                    p = subprocess.run(
+                        ["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", "pipe:0", "-f", "wav", "-ar", "16000", "-ac", "1", "pipe:1"],
+                        input=audio_bytes,
+                        capture_output=True,
+                        timeout=5,
+                    )
+                    if p.returncode == 0 and p.stdout:
+                        audio_bytes = p.stdout
+                except Exception as conv_err:
+                    logger.debug("FFmpeg audio decode notice: %s", conv_err)
+
+            import io
+            import speech_recognition as sr
+            r = sr.Recognizer()
+            buf = io.BytesIO(audio_bytes)
+            with sr.AudioFile(buf) as source:
+                audio = r.record(source)
+            try:
+                text = r.recognize_google(audio)
+                return (text or "").strip()
+            except sr.UnknownValueError:
+                return ""
+            except Exception as e:
+                logger.debug("Google STT fallback: %s", e)
+                try:
+                    text = r.recognize_whisper(audio)
+                    return (text or "").strip()
+                except Exception:
+                    return ""
+        except Exception as ex:
+            logger.error("Audio transcription error: %s", ex)
+            return ""
+
 
 # Global listener singleton
 LISTENER = SpeechListener()

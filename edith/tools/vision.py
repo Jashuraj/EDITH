@@ -125,10 +125,26 @@ class VisionTools:
                 logger.debug("Local vision model query bypassed or timed out: %s", e)
 
         # 3. High-precision contextual desktop perception fallback (<10ms)
-        active_str = ", ".join(context["active_apps"]) if context["active_apps"] else "desktop shell"
+        active_str = ", ".join(context["active_apps"]) if context["active_apps"] else "Windows Desktop"
+        screen_w = getattr(self.win, "screen_width", 1920)
+        screen_h = getattr(self.win, "screen_height", 1080)
+        
+        # Build tailored live perception description
+        details = []
+        if context.get("has_browser"):
+            details.append("a web browser is active")
+        if context.get("has_code"):
+            details.append("code editing workspace open")
+        if "Spotify" in context["active_apps"]:
+            details.append("audio media player running")
+        if "Windows Terminal" in context["active_apps"] or "PowerShell" in context["active_apps"]:
+            details.append("system terminal active")
+
+        detail_text = f" ({'; '.join(details)})" if details else ""
         description = (
-            f"I see your Windows display with active applications: {active_str}. "
-            f"EDITH Holographic OS is running in foreground monitoring telemetry and ready for commands."
+            f"Screen scan complete [{screen_w}x{screen_h}]. "
+            f"Active applications detected: {active_str}{detail_text}. "
+            f"Desktop workspace is responsive and ready."
         )
 
         return {

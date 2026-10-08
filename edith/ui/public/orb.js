@@ -281,66 +281,6 @@ async function pollState() {
   }
 }
 
-async function pollTelemetry() {
-  try {
-    const res = await fetch('/telemetry');
-    if (!res.ok) return;
-    const data = await res.json();
-
-    const cpuEl = document.getElementById('val-cpu');
-    if (cpuEl) cpuEl.innerText = `${data.cpu || 'Intel Core'} (${data.cores || 4} Cores)`;
-
-    const freeRam = parseFloat(data.free_ram_gb) || 0;
-    const totalRam = parseFloat(data.total_ram_gb) || 8;
-    const usedRam = parseFloat(data.used_ram_gb) || Math.max(0, totalRam - freeRam);
-    const ramPct = data.ram_percent !== undefined ? data.ram_percent : Math.round((usedRam / totalRam) * 100);
-    const ramEl = document.getElementById('val-ram');
-    if (ramEl) ramEl.innerText = `${usedRam.toFixed(1)}G / ${totalRam.toFixed(1)}G (${ramPct}%)`;
-    const barRam = document.getElementById('bar-ram');
-    if (barRam) {
-      barRam.style.width = `${Math.min(100, Math.max(5, ramPct))}%`;
-      barRam.style.background = ramPct > 85 ? '#ff0055' : ramPct > 65 ? '#ffb700' : 'var(--cyan)';
-    }
-
-    const diskEl = document.getElementById('val-disk');
-    if (diskEl) diskEl.innerText = `${data.disk_free_gb || '—'} GB free`;
-    const barDisk = document.getElementById('bar-disk');
-    if (barDisk) {
-      barDisk.style.width = `45%`;
-      barDisk.style.background = 'var(--cyan)';
-    }
-
-    const batEl = document.getElementById('val-battery');
-    if (batEl) {
-      if (data.battery_percent !== undefined) {
-        const ac = data.is_ac_powered;
-        batEl.innerText = `${data.battery_percent}% ${ac ? '(AC)' : '(BATT)'}`;
-        batEl.className = 't-val' + (data.battery_percent < 15 ? ' err' : data.battery_percent < 30 ? ' warn' : ' ok');
-      } else {
-        batEl.innerText = 'AC POWERED';
-        batEl.className = 't-val ok';
-      }
-    }
-
-    const modelEl = document.getElementById('val-model');
-    if (modelEl && modelEl.tagName === 'SELECT' && document.activeElement !== modelEl) {
-      if (data.primary_model) modelEl.value = data.primary_model;
-    }
-
-    const runtimeEl = document.getElementById('val-runtime');
-    if (runtimeEl) {
-      const isOnline = data.is_online ?? true;
-      runtimeEl.innerText = isOnline ? 'ONLINE (HYBRID AI)' : 'OFFLINE (LOCAL AI)';
-      runtimeEl.className = 't-val' + (isOnline ? ' ok' : ' warn');
-    }
-
-    const modCore = document.getElementById('mod-core');
-    if (modCore) {
-      modCore.innerText = (data.primary_model || 'HERMES3:3B').toUpperCase();
-    }
-  } catch (_) {}
-}
-
 window.setOrbColor = function(hexColor) {
   targetColor = new THREE.Color(hexColor);
 };
@@ -352,7 +292,5 @@ window.getCurrentThemeColor = function() {
 window.addEventListener('DOMContentLoaded', () => {
   initThreeScene();
   setInterval(pollState, 800);
-  setInterval(pollTelemetry, 3000);
   pollState();
-  pollTelemetry();
 });

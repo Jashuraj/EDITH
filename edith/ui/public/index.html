@@ -747,7 +747,83 @@
       return rec;
     }
 
+    let fallbackMediaRecorder = null;
+    let fallbackAudioChunks = [];
+    let isFallbackRecording = false;
+
+    async function toggleFallbackVoice() {
+      const btn = document.getElementById('btn-voice');
+      if (isFallbackRecording) {
+        if (fallbackMediaRecorder && fallbackMediaRecorder.state === 'recording') {
+          fallbackMediaRecorder.stop();
+        }
+        isFallbackRecording = false;
+        if (btn) {
+          btn.innerText = 'PROCESSING...';
+          btn.classList.remove('active');
+        }
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        fallbackAudioChunks = [];
+        fallbackMediaRecorder = new MediaRecorder(stream);
+        fallbackMediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) fallbackAudioChunks.push(e.data);
+        };
+        fallbackMediaRecorder.onstop = async () => {
+          stream.getTracks().forEach(t => t.stop());
+          const blob = new Blob(fallbackAudioChunks, { type: fallbackMediaRecorder.mimeType || 'audio/webm' });
+          const reader = new FileReader();
+          reader.onloadend = async () => {
+            const base64Audio = reader.result.split(',')[1];
+            try {
+              logEntry('Transcribing audio via EDITH engine...', 'system');
+              const res = await fetch('/api/voice/transcribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ audio: base64Audio })
+              });
+              const data = await res.json();
+              if (data.text) {
+                const input = document.getElementById('cmd-input');
+                if (input) input.value = data.text;
+                logEntry(`Voice recognized: "${data.text}"`, 'user');
+                submitCommand();
+              } else {
+                logEntry('No speech detected in recorded audio.', 'warn');
+              }
+            } catch (err) {
+              logEntry(`Transcription error: ${err.message}`, 'error');
+            } finally {
+              if (btn) {
+                btn.innerText = 'MIC: OFF';
+                btn.classList.remove('active');
+              }
+            }
+          };
+          reader.readAsDataURL(blob);
+        };
+
+        fallbackMediaRecorder.start();
+        isFallbackRecording = true;
+        if (btn) {
+          btn.innerText = 'MIC: REC';
+          btn.classList.add('active');
+        }
+        logEntry('Microphone recording active (Brave/WebAudio fallback). Tap mic again to send.', 'system');
+      } catch (err) {
+        alert('Microphone access denied: ' + err.message);
+      }
+    }
+
     function toggleVoice() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        toggleFallbackVoice();
+        return;
+      }
       isVoiceActive ? disableVoice() : enableVoice();
     }
 
@@ -774,8 +850,7 @@
 
       if (!recognition) recognition = initSpeechRecognition();
       if (!recognition) {
-        logEntry('Browser does not support Web Speech API. Use Chrome, Edge, or enable Speech in Brave settings.', 'error');
-        alert('Voice input requires Web Speech API. Use Chrome, Edge, or Brave with Speech Services enabled.');
+        toggleFallbackVoice();
         return;
       }
       try {
@@ -788,10 +863,8 @@
         }
         logEntry('Microphone activated. Listening for commands...', 'system');
       } catch (e) {
-        console.error('[STT start failed]', e);
-        if (e.name !== 'InvalidStateError') {
-          logEntry(`Mic note: ${e.message}`, 'error');
-        }
+        console.warn('[STT native failed, switching to fallback]', e);
+        toggleFallbackVoice();
       }
     }
 

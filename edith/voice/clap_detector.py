@@ -24,13 +24,13 @@ logger = logging.getLogger("edith.voice.clap")
 # Audio detection constants (tuned for laptop microphone)
 DEFAULT_SAMPLE_RATE = 44100
 BLOCK_MS = 40
-SPIKE_RATIO = 6.5
+SPIKE_RATIO = 4.5
 COOLDOWN_S = 15.0
 SPEAKER_ECHO_GRACE_S = 4.0
-MIN_CREST_FACTOR = 3.8
-MIN_PEAK_AMPLITUDE = 0.07
-MIN_DOUBLE_GAP_S = 0.05
-MAX_DOUBLE_GAP_S = 0.45
+MIN_CREST_FACTOR = 3.2
+MIN_PEAK_AMPLITUDE = 0.05
+MIN_DOUBLE_GAP_S = 0.06
+MAX_DOUBLE_GAP_S = 0.85
 RETRIGGER_RATIO = 0.55
 NOISE_FLOOR_ALPHA = 0.990
 MIN_RMS = 0.010
@@ -257,6 +257,8 @@ class ClapDetector:
                                 elif gap > MAX_DOUBLE_GAP_S:
                                     # First clap timed out; reset with this as new first clap
                                     last_spike_time = now
+                                    armed_for_second = True
+                                # If gap < MIN_DOUBLE_GAP_S, it is reverberation tail of the first clap; do nothing and remain armed
                             else:
                                 last_spike_time = now
                                 armed_for_second = True

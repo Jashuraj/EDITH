@@ -369,7 +369,7 @@ class ReflexEngine:
         elif match.command_name == "search_youtube":
             from edith.tools.windows import WIN_TOOLS
             q = match.params.get("query", "").strip()
-            return WIN_TOOLS.search_youtube(q)
+            return WIN_TOOLS.search_youtube(q, open_browser=True)
         elif match.command_name == "search_google":
             from edith.tools.windows import WIN_TOOLS
             q = match.params.get("query", "").strip()

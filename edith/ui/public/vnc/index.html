@@ -388,12 +388,35 @@
       }
     }
 
-    // Touch Viewport Normalization
+    // Touch & Mouse Viewport Normalization with letterbox offset correction
     function getNormalizedCoords(clientX, clientY) {
+      if (!canvas) return { x: 0.5, y: 0.5 };
       const rect = canvas.getBoundingClientRect();
-      if (!rect || rect.width <= 10) return { x: 0.5, y: 0.5 };
-      const x = Math.max(0.0, Math.min(1.0, (clientX - rect.left) / rect.width));
-      const y = Math.max(0.0, Math.min(1.0, (clientY - rect.top) / rect.height));
+      if (!rect || rect.width <= 1 || rect.height <= 1) return { x: 0.5, y: 0.5 };
+
+      const imgW = (canvas.width && canvas.height) ? canvas.width : 16;
+      const imgH = (canvas.width && canvas.height) ? canvas.height : 9;
+      const aspect = imgW / imgH;
+
+      let renderW = rect.width;
+      let renderH = rect.height;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      const containerAspect = rect.width / rect.height;
+      if (containerAspect > aspect) {
+        renderW = rect.height * aspect;
+        offsetX = (rect.width - renderW) / 2;
+      } else {
+        renderH = rect.width / aspect;
+        offsetY = (rect.height - renderH) / 2;
+      }
+
+      const relX = clientX - (rect.left + offsetX);
+      const relY = clientY - (rect.top + offsetY);
+
+      const x = Math.max(0.0, Math.min(1.0, relX / renderW));
+      const y = Math.max(0.0, Math.min(1.0, relY / renderH));
       return { x, y };
     }
 
@@ -438,6 +461,28 @@
       }
     }, { passive: true });
 
+    // Desktop Mouse support on VNC canvas
+    viewport.addEventListener("mousedown", (e) => {
+      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar")) return;
+      const coords = getNormalizedCoords(e.clientX, e.clientY);
+      if (e.button === 2) {
+        sendInput("right_click", coords);
+      } else {
+        sendInput("click", coords);
+      }
+    });
+
+    viewport.addEventListener("mousemove", (e) => {
+      if (e.buttons > 0 && !e.target.closest("#gamepad-overlay") && !e.target.closest(".vnc-hotkeys-bar")) {
+        const coords = getNormalizedCoords(e.clientX, e.clientY);
+        sendInput("move", coords);
+      }
+    });
+
+    viewport.addEventListener("contextmenu", (e) => {
+      if (!e.target.closest(".vnc-hotkeys-bar")) e.preventDefault();
+    });
+
     // Resolution Toggle
     btnRes.addEventListener("click", () => {
       resolution = resolution === "720p" ? "1080p" : "720p";
@@ -471,17 +516,24 @@
       });
     });
 
-    // Gamepad Action Diamond
+    // Gamepad Action Diamond (Touch + Mouse)
     document.querySelectorAll(".action-btn").forEach(btn => {
       const buttonName = btn.dataset.btn;
-      btn.addEventListener("touchstart", (e) => {
+      const press = (e) => {
         e.preventDefault();
         sendInput("game_button_down", { button: buttonName });
-      });
-      btn.addEventListener("touchend", (e) => {
+      };
+      const release = (e) => {
         e.preventDefault();
         sendInput("game_button_up", { button: buttonName });
-      });
+      };
+
+      btn.addEventListener("touchstart", press, { passive: false });
+      btn.addEventListener("touchend", release, { passive: false });
+      btn.addEventListener("touchcancel", release, { passive: false });
+      btn.addEventListener("mousedown", press);
+      btn.addEventListener("mouseup", release);
+      btn.addEventListener("mouseleave", release);
     });
 
     // Virtual Joystick Logic

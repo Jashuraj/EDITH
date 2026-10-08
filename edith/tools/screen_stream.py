@@ -33,6 +33,9 @@ class ScreenStreamer:
         self._screen_size: Tuple[int, int] = (1920, 1080)
         self._last_error: Optional[str] = None
 
+        self._last_scale: Optional[int] = None
+        self._last_quality: Optional[int] = None
+
         if self._is_windows:
             self._init_win32_desktop()
 
@@ -41,6 +44,10 @@ class ScreenStreamer:
         try:
             import ctypes
             u32 = ctypes.windll.user32
+            try:
+                u32.SetProcessDPIAware()
+            except Exception:
+                pass
             hdesk = u32.OpenInputDesktop(0, False, 0x01FF)
             if hdesk:
                 u32.SetThreadDesktop(hdesk)
@@ -50,8 +57,8 @@ class ScreenStreamer:
         except Exception as ex:
             logger.debug("Win32 desktop initialization notice: %s", ex)
 
-    def _capture_win32_gdi(self):
-        """Ultra-fast zero-latency Win32 GDI screen capture via ctypes."""
+    def _capture_win32_gdi(self, scale_width: Optional[int] = None):
+        """Ultra-fast zero-latency Win32 GDI screen capture via ctypes with optional StretchBlt hardware scaling."""
         try:
             import ctypes
             import ctypes.wintypes
@@ -80,36 +87,52 @@ class ScreenStreamer:
             if w <= 0 or h <= 0:
                 return None
 
+            self._screen_size = (w, h)
+
+            # Determine target dimensions
+            if scale_width and scale_width < w:
+                tw = scale_width
+                th = max(1, int(h * tw / w))
+                use_stretch = True
+            else:
+                tw = w
+                th = h
+                use_stretch = False
+
             hdc_screen = u32.GetDC(0)
             if not hdc_screen:
                 return None
 
             hdc_mem = gdi32.CreateCompatibleDC(hdc_screen)
-            hbm = gdi32.CreateCompatibleBitmap(hdc_screen, w, h)
+            hbm = gdi32.CreateCompatibleBitmap(hdc_screen, tw, th)
             old_bm = gdi32.SelectObject(hdc_mem, hbm)
 
             try:
-                # 0x00CC0020 is SRCCOPY
-                res = gdi32.BitBlt(hdc_mem, 0, 0, w, h, hdc_screen, 0, 0, 0x00CC0020)
+                if use_stretch:
+                    gdi32.SetStretchBltMode(hdc_mem, 3)  # COLORONCOLOR / HALFTONE
+                    res = gdi32.StretchBlt(hdc_mem, 0, 0, tw, th, hdc_screen, 0, 0, w, h, 0x00CC0020)
+                else:
+                    # 0x00CC0020 is SRCCOPY
+                    res = gdi32.BitBlt(hdc_mem, 0, 0, w, h, hdc_screen, 0, 0, 0x00CC0020)
+
                 if not res:
                     return None
 
                 bmi = BITMAPINFOHEADER()
                 bmi.biSize = ctypes.sizeof(BITMAPINFOHEADER)
-                bmi.biWidth = w
-                bmi.biHeight = -h  # top-down DIB
+                bmi.biWidth = tw
+                bmi.biHeight = -th  # top-down DIB
                 bmi.biPlanes = 1
                 bmi.biBitCount = 32
                 bmi.biCompression = 0
 
-                buf = ctypes.create_string_buffer(w * h * 4)
-                lines = gdi32.GetDIBits(hdc_mem, hbm, 0, h, buf, ctypes.byref(bmi), 0)
+                buf = ctypes.create_string_buffer(tw * th * 4)
+                lines = gdi32.GetDIBits(hdc_mem, hbm, 0, th, buf, ctypes.byref(bmi), 0)
                 if lines == 0:
                     return None
 
-                im = Image.frombuffer("RGBA", (w, h), buf, "raw", "BGRA", 0, 1)
+                im = Image.frombuffer("RGBA", (tw, th), buf, "raw", "BGRA", 0, 1)
                 rgb = im.convert("RGB")
-                self._screen_size = (w, h)
                 return rgb
             finally:
                 if old_bm:
@@ -124,12 +147,12 @@ class ScreenStreamer:
             self._last_error = f"GDI capture exception: {ex}"
             return None
 
-    def capture_raw_image(self):
+    def capture_raw_image(self, scale_width: Optional[int] = None):
         """Capture the current display as a PIL Image."""
         if self._is_windows:
             self._init_win32_desktop()
             # 1. Attempt ultra-fast Win32 GDI hardware capture
-            gdi_im = self._capture_win32_gdi()
+            gdi_im = self._capture_win32_gdi(scale_width=scale_width)
             if gdi_im is not None:
                 return gdi_im
 
@@ -180,17 +203,29 @@ class ScreenStreamer:
     def capture_jpeg_bytes(
         self,
         scale_width: Optional[int] = 1280,
-        quality: int = 75,
+        quality: int = 70,
     ) -> bytes:
         """Capture screen, optionally downsample, and encode into JPEG bytes."""
+        now = time.time()
         with self._lock:
-            im = self.capture_raw_image()
+            # Low-latency cache: Return recent frame if requested within 33ms (target 30 FPS)
+            if (
+                self._last_frame_bytes is not None
+                and (now - self._last_capture_time < 0.033)
+                and (self._last_scale == scale_width)
+            ):
+                return self._last_frame_bytes
+
+            try:
+                im = self.capture_raw_image(scale_width=scale_width)
+            except TypeError:
+                im = self.capture_raw_image()
 
             # Ensure RGB color mode for JPEG encoding (prevent RGBA crash)
             if im.mode != "RGB":
                 im = im.convert("RGB")
 
-            # Downsample if requested and current image is wider than target
+            # Fallback downsample if hardware GDI scaling was bypassed and image is wider
             if scale_width and im.width > scale_width:
                 aspect = im.height / im.width
                 target_height = max(1, int(scale_width * aspect))
@@ -203,7 +238,9 @@ class ScreenStreamer:
             data = buf.getvalue()
 
             self._last_frame_bytes = data
-            self._last_capture_time = time.time()
+            self._last_capture_time = now
+            self._last_scale = scale_width
+            self._last_quality = quality
             self._frame_count += 1
             return data
 

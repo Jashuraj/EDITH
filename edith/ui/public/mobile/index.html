@@ -42,6 +42,14 @@
       </div>
 
       <div class="header-actions">
+        <button class="btn-icon" id="btn-open-guide" title="Command Guide">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+            <line x1="8" y1="7" x2="16" y2="7"></line>
+            <line x1="8" y1="11" x2="14" y2="11"></line>
+          </svg>
+        </button>
         <button class="btn-icon" id="btn-toggle-tts" title="Toggle Voice Output">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
@@ -52,7 +60,7 @@
         <button class="btn-icon" id="btn-open-settings" title="Open Settings">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"></circle>
-            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0 2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
           </svg>
         </button>
       </div>
@@ -97,6 +105,7 @@
 
       <!-- Quick Action Controls -->
       <div class="quick-actions-bar">
+        <button class="chip-btn gold-chip" id="btn-chip-guide">📖 Guide</button>
         <button class="chip-btn blue-chip" id="btn-open-remote">🖥️ Remote Desktop</button>
         <button class="chip-btn purple-chip" id="btn-open-gamepad">🎮 Game Controller</button>
         <button class="chip-btn green-chip" id="btn-open-vnc">🌐 VNC Portal</button>
@@ -115,6 +124,55 @@
         <button class="chip-btn" data-cmd="system metrics">📊 Stats</button>
         <button class="chip-btn" data-cmd="open terminal">⚡ Terminal</button>
         <button class="chip-btn red-chip" data-cmd="emergency stop">🛑 E-STOP</button>
+      </div>
+
+      <!-- Laptop Vitals Status Card -->
+      <div class="vitals-card" id="laptop-vitals-card">
+        <div class="vitals-header">
+          <div class="vitals-title-group">
+            <span class="vitals-pulse-dot" id="vitals-pulse-dot"></span>
+            <span class="vitals-title">HOST VITALS</span>
+          </div>
+          <span class="vitals-status-tag" id="vitals-status-tag">STANDBY</span>
+        </div>
+        <div class="vitals-grid">
+          <div class="vital-item">
+            <div class="vital-item-top">
+              <span class="vital-label">CPU</span>
+              <span class="vital-value" id="vital-cpu-val">--%</span>
+            </div>
+            <div class="vital-progress-track">
+              <div class="vital-progress-bar bar-red" id="vital-cpu-bar" style="width: 0%;"></div>
+            </div>
+          </div>
+          <div class="vital-item">
+            <div class="vital-item-top">
+              <span class="vital-label">RAM</span>
+              <span class="vital-value" id="vital-ram-val">-- GB</span>
+            </div>
+            <div class="vital-progress-track">
+              <div class="vital-progress-bar bar-cyan" id="vital-ram-bar" style="width: 0%;"></div>
+            </div>
+          </div>
+          <div class="vital-item">
+            <div class="vital-item-top">
+              <span class="vital-label">BATTERY</span>
+              <span class="vital-value" id="vital-bat-val">--%</span>
+            </div>
+            <div class="vital-progress-track">
+              <div class="vital-progress-bar bar-green" id="vital-bat-bar" style="width: 0%;"></div>
+            </div>
+          </div>
+          <div class="vital-item">
+            <div class="vital-item-top">
+              <span class="vital-label">STORAGE</span>
+              <span class="vital-value" id="vital-disk-val">-- GB</span>
+            </div>
+            <div class="vital-progress-track">
+              <div class="vital-progress-bar bar-purple" id="vital-disk-bar" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Live Feedback Console Card -->
@@ -325,6 +383,38 @@
       <div class="modal-actions">
         <button class="btn-secondary" id="btn-test-conn">Test Link</button>
         <button class="btn-primary" id="btn-save-settings">Save & Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Interactive Tactical Command Guide Drawer / Modal -->
+  <div class="modal-overlay" id="modal-command-guide" style="display: none;">
+    <div class="modal-card guide-modal-card">
+      <div class="modal-header">
+        <div class="guide-header-title">
+          <span class="modal-title">TACTICAL COMMAND GUIDE</span>
+          <span class="guide-subtitle">Tap any command to execute on host laptop</span>
+        </div>
+        <button class="btn-icon" id="btn-close-guide" title="Close Guide">✕</button>
+      </div>
+
+      <div class="guide-search-wrap">
+        <span class="guide-search-icon">🔍</span>
+        <input type="text" id="guide-search-input" class="form-input guide-search-input" placeholder="Search commands (e.g. youtube, volume, steam)..." autocomplete="off" autocapitalize="none">
+        <button class="guide-search-clear" id="btn-guide-clear" style="display:none;">✕</button>
+      </div>
+
+      <div class="guide-category-pills" id="guide-category-pills">
+        <button class="guide-pill active" data-category="all">ALL</button>
+        <button class="guide-pill" data-category="media">MEDIA</button>
+        <button class="guide-pill" data-category="system">SYSTEM</button>
+        <button class="guide-pill" data-category="apps">APPS</button>
+        <button class="guide-pill" data-category="gaming">GAMING</button>
+        <button class="guide-pill" data-category="security">SECURITY</button>
+      </div>
+
+      <div class="guide-command-grid" id="guide-command-grid">
+        <!-- Rendered dynamically by app.js with category & search filtering -->
       </div>
     </div>
   </div>

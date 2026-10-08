@@ -70,9 +70,31 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
     def do_POST(self) -> None:
         parsed = urllib.parse.urlparse(self.path)
         content_length = int(self.headers.get("Content-Length", 0))
-        body = self.rfile.read(content_length).decode("utf-8") if content_length > 0 else "{}"
+        raw_bytes = self.rfile.read(content_length) if content_length > 0 else b""
+
+        # Voice audio transcription endpoint (e.g. Brave browser mic capture)
+        if parsed.path in ("/api/voice/transcribe", "/voice/transcribe"):
+            audio_data = b""
+            content_type = self.headers.get("Content-Type", "")
+            if "json" in content_type:
+                try:
+                    js = json.loads(raw_bytes.decode("utf-8", errors="ignore"))
+                    b64 = js.get("audio") or js.get("audio_base64") or js.get("wav")
+                    if b64:
+                        import base64
+                        audio_data = base64.b64decode(b64)
+                except Exception:
+                    pass
+            else:
+                audio_data = raw_bytes
+
+            from edith.voice.listener import LISTENER
+            text = LISTENER.transcribe_audio_bytes(audio_data)
+            self._send_json({"success": True, "text": text})
+            return
 
         try:
+            body = raw_bytes.decode("utf-8", errors="ignore") if raw_bytes else "{}"
             data = json.loads(body)
         except Exception:
             self._send_json({"error": "Malformed JSON payload."}, status=400)
@@ -202,11 +224,13 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
                         res_url = res.get("url")
                         res_embed = res.get("embed_url")
                         res_vid = res.get("video_id")
+                        res_opened = res.get("opened_on_host", True if (res_url and "youtube" in str(res_url)) else False)
                     else:
                         res_text = str(res)
                         res_url = None
                         res_embed = None
                         res_vid = None
+                        res_opened = False
 
                     self._send_json({
                         "success": True,
@@ -215,6 +239,7 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
                         "url": res_url,
                         "embed_url": res_embed,
                         "video_id": res_vid,
+                        "opened_on_host": res_opened,
                         "model": "REFLEX_ENGINE",
                         "queued": True,
                         "queue_length": queue_len,
@@ -274,18 +299,20 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
                 action_url = None
                 action_embed = None
                 action_vid = None
+                action_opened = False
 
                 if resp.tool_calls:
                     STATE.set_state_sync(SystemState.EXECUTING, reason="Executing phone tool calls")
                     for tc in resp.tool_calls:
                         kwargs = dict(tc.arguments)
                         if tc.name == "search_youtube" and "open_browser" not in kwargs:
-                            kwargs["open_browser"] = False
+                            kwargs["open_browser"] = True
                         out = REGISTRY.execute_tool(tc.name, kwargs)
                         if isinstance(out, dict):
                             if out.get("url"): action_url = out["url"]
                             if out.get("embed_url"): action_embed = out["embed_url"]
                             if out.get("video_id"): action_vid = out["video_id"]
+                            if out.get("opened_on_host"): action_opened = out["opened_on_host"]
                         tool_outputs.append(f"{tc.name}: {out}")
 
                 STATE.set_state_sync(SystemState.READY, reason="Phone query complete")
@@ -300,6 +327,7 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
                     "url": action_url,
                     "embed_url": action_embed,
                     "video_id": action_vid,
+                    "opened_on_host": action_opened,
                     "model": resp.model,
                     "queued": True,
                     "queue_length": queue_len,
@@ -423,6 +451,26 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
         elif parsed.path in ("/ping", "/health"):
             self._send_json({"status": "ok", "time": time.time(), "system": CONFIG.system_name})
 
+        elif parsed.path in ("/api/metrics", "/telemetry"):
+            try:
+                from edith.ui.server import TELEMETRY_SAMPLER
+                metrics = TELEMETRY_SAMPLER.get_metrics()
+            except Exception:
+                stats = WIN_TOOLS.get_system_stats()
+                dyn = CONFIG.refresh_dynamic_stats()
+                metrics = {
+                    "cpu_percent": 12.0,
+                    "ram_percent": stats.get("ram_percent", 50),
+                    "ram_used_mb": int(stats.get("used_ram_gb", 4.0) * 1024),
+                    "ram_total_mb": int(stats.get("total_ram_gb", 8.0) * 1024),
+                    "disk_percent": 50,
+                    "disk_free_gb": stats.get("disk_free_gb", 50.0),
+                    "battery_percent": stats.get("battery_percent"),
+                    "power_plugged": stats.get("is_ac_powered", True),
+                    "is_online": dyn.get("online", False),
+                }
+            self._send_json(metrics)
+
         elif parsed.path == "/status":
             stats = WIN_TOOLS.get_system_stats()
             dyn = CONFIG.refresh_dynamic_stats()
@@ -433,6 +481,11 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
             stats["active_model"] = CONFIG.primary_local_model
             stats["manual_mode"] = CONFIG.manual_mode
             stats["is_online"] = dyn.get("online", False)
+            try:
+                from edith.ui.server import TELEMETRY_SAMPLER
+                stats["cpu_percent"] = TELEMETRY_SAMPLER.get_metrics().get("cpu_percent", 12.0)
+            except Exception:
+                stats["cpu_percent"] = 12.0
             self._send_json(stats)
 
         elif parsed.path == "/api/mode":

@@ -116,6 +116,29 @@
     btnQuickConnect: document.getElementById("btn-quick-connect"),
     btnQuickScan: document.getElementById("btn-quick-scan"),
     btnOpenVnc: document.getElementById("btn-open-vnc"),
+
+    // Command Guide References
+    btnOpenGuide: document.getElementById("btn-open-guide"),
+    btnChipGuide: document.getElementById("btn-chip-guide"),
+    modalGuide: document.getElementById("modal-command-guide"),
+    btnCloseGuide: document.getElementById("btn-close-guide"),
+    guideSearchInput: document.getElementById("guide-search-input"),
+    btnGuideClear: document.getElementById("btn-guide-clear"),
+    guideCategoryPills: document.getElementById("guide-category-pills"),
+    guideCommandGrid: document.getElementById("guide-command-grid"),
+
+    // Laptop Vitals References
+    vitalsCard: document.getElementById("laptop-vitals-card"),
+    vitalsStatusTag: document.getElementById("vitals-status-tag"),
+    vitalsPulseDot: document.getElementById("vitals-pulse-dot"),
+    vitalCpuVal: document.getElementById("vital-cpu-val"),
+    vitalCpuBar: document.getElementById("vital-cpu-bar"),
+    vitalRamVal: document.getElementById("vital-ram-val"),
+    vitalRamBar: document.getElementById("vital-ram-bar"),
+    vitalBatVal: document.getElementById("vital-bat-val"),
+    vitalBatBar: document.getElementById("vital-bat-bar"),
+    vitalDiskVal: document.getElementById("vital-disk-val"),
+    vitalDiskBar: document.getElementById("vital-disk-bar"),
   };
 
   // ---------------- Service Worker Setup ----------------
@@ -239,9 +262,74 @@
     };
   }
 
+  let fallbackRecorder = null;
+  let fallbackChunks = [];
+  let isFallbackRecording = false;
+
+  async function toggleFallbackSpeech() {
+    if (isFallbackRecording) {
+      if (fallbackRecorder && fallbackRecorder.state === "recording") {
+        fallbackRecorder.stop();
+      }
+      isFallbackRecording = false;
+      state.isListening = false;
+      state.audioWaveLevel = 0.2;
+      dom.btnMic.classList.remove("listening");
+      logConsole("PROCESSING", "Transcribing speech via EDITH neural engine...");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      fallbackChunks = [];
+      fallbackRecorder = new MediaRecorder(stream);
+      fallbackRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) fallbackChunks.push(e.data);
+      };
+      fallbackRecorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(fallbackChunks, { type: fallbackRecorder.mimeType || "audio/webm" });
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const base64Audio = reader.result.split(",")[1];
+          const ep = (state.activeEndpoint || defaultLocalUrl).replace(/\/+$/, "");
+          try {
+            const res = await fetch(`${ep}/api/voice/transcribe`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "Bypass-Tunnel-Reminder": "true" },
+              body: JSON.stringify({ audio: base64Audio }),
+            });
+            const data = await res.json();
+            if (data.text) {
+              dom.cmdInput.value = data.text;
+              logConsole("VOICE DETECTED", `"${data.text}"`);
+              executeCommand(data.text);
+            } else {
+              logConsole("VOICE STATUS", "No speech detected in audio.");
+            }
+          } catch (err) {
+            logConsole("VOICE ERROR", `Transcription failed: ${err.message}`);
+          }
+        };
+        reader.readAsDataURL(blob);
+      };
+
+      fallbackRecorder.start();
+      isFallbackRecording = true;
+      state.isListening = true;
+      state.audioWaveLevel = 0.9;
+      dom.btnMic.classList.add("listening");
+      logConsole("LISTENING (FALLBACK)", "Microphone active. Speak and tap mic again to send.");
+      triggerHaptic(30);
+    } catch (err) {
+      console.warn("Fallback mic error:", err);
+      logConsole("MIC ERROR", "Microphone access denied or unavailable.");
+    }
+  }
+
   function toggleSpeech() {
     if (!recognition) {
-      alert("Web Speech API is not supported on this browser. You can type commands directly.");
+      toggleFallbackSpeech();
       return;
     }
     if (state.isListening) {
@@ -250,7 +338,8 @@
       try {
         recognition.start();
       } catch (err) {
-        console.warn("Could not start recognition:", err);
+        console.warn("Could not start recognition, using fallback:", err);
+        toggleFallbackSpeech();
       }
     }
   }
@@ -264,7 +353,10 @@
   }
 
   // ---------------- Connection Manager ----------------
-  async function pingEndpoint(url, timeoutMs = 2000) {
+  let consecutiveOfflineFailures = 0;
+  let hasSpokenInitialLink = false;
+
+  async function pingEndpoint(url, timeoutMs = 3500) {
     if (!url) return { ok: false, ms: 0 };
     const cleanUrl = url.replace(/\/+$/, "");
     const controller = new AbortController();
@@ -293,13 +385,27 @@
     const local = state.localUrl.trim().replace(/\/+$/, "");
     const cloud = state.cloudUrl.trim().replace(/\/+$/, "");
 
+    // If currently online and connected to activeEndpoint, do a quick heartbeat check first
+    if (state.isOnline && state.activeEndpoint) {
+      const heartRes = await pingEndpoint(state.activeEndpoint, 3000);
+      if (heartRes.ok) {
+        consecutiveOfflineFailures = 0;
+        setConnectionState(state.activeType, state.activeEndpoint, heartRes.ms);
+        return;
+      }
+    }
+
     if (state.mode === "local") {
-      const res = await pingEndpoint(local, 2500);
+      const res = await pingEndpoint(local, 3500);
       if (res.ok) {
+        consecutiveOfflineFailures = 0;
         setConnectionState("LOCAL", local, res.ms);
         return;
       }
-      setConnectionState("OFFLINE", local, null);
+      consecutiveOfflineFailures++;
+      if (consecutiveOfflineFailures >= 2 || !state.isOnline) {
+        setConnectionState("OFFLINE", local, null);
+      }
       return;
     }
 
@@ -308,32 +414,41 @@
         setConnectionState("OFFLINE", "", null, "Cloud URL not configured");
         return;
       }
-      const res = await pingEndpoint(cloud, 3000);
+      const res = await pingEndpoint(cloud, 4000);
       if (res.ok) {
+        consecutiveOfflineFailures = 0;
         setConnectionState("CLOUD", cloud, res.ms);
         return;
       }
-      setConnectionState("OFFLINE", cloud, null);
+      consecutiveOfflineFailures++;
+      if (consecutiveOfflineFailures >= 2 || !state.isOnline) {
+        setConnectionState("OFFLINE", cloud, null);
+      }
       return;
     }
 
     // AUTO Mode: Concurrent probe of local WiFi and global cloud
     const [localRes, cloudRes] = await Promise.all([
-      local ? pingEndpoint(local, 1800) : Promise.resolve({ ok: false, ms: 0 }),
-      cloud ? pingEndpoint(cloud, 2800) : Promise.resolve({ ok: false, ms: 0 }),
+      local ? pingEndpoint(local, 2500) : Promise.resolve({ ok: false, ms: 0 }),
+      cloud ? pingEndpoint(cloud, 3500) : Promise.resolve({ ok: false, ms: 0 }),
     ]);
 
     if (localRes.ok) {
+      consecutiveOfflineFailures = 0;
       setConnectionState("LOCAL", local, localRes.ms);
       return;
     }
 
     if (cloudRes.ok) {
+      consecutiveOfflineFailures = 0;
       setConnectionState("CLOUD", cloud, cloudRes.ms);
       return;
     }
 
-    setConnectionState("OFFLINE", local || cloud, null, "Searching for EDITH mainframe...");
+    consecutiveOfflineFailures++;
+    if (consecutiveOfflineFailures >= 2 || !state.isOnline) {
+      setConnectionState("OFFLINE", local || cloud, null, "Searching for EDITH mainframe...");
+    }
   }
 
   let previousType = "INITIAL";
@@ -351,7 +466,8 @@
       dom.statusText.textContent = `WI-FI (${latency}ms)`;
       dom.consoleChannel.textContent = `CHANNEL: LOCAL WI-FI`;
       dom.consolePing.textContent = `LATENCY: ${latency}ms`;
-      if (wasOffline || previousType !== "LOCAL") {
+      if ((wasOffline || previousType !== "LOCAL") && !hasSpokenInitialLink) {
+        hasSpokenInitialLink = true;
         logConsole("LINK ACCEPTED", `Connected to laptop via Local Wi-Fi (${latency}ms). Ready.`);
         speakResponse("EDITH system linked on local Wi-Fi, Creator.");
         triggerHaptic(40);
@@ -362,7 +478,8 @@
       dom.statusText.textContent = `CLOUD (${latency}ms)`;
       dom.consoleChannel.textContent = `CHANNEL: GLOBAL INTERNET`;
       dom.consolePing.textContent = `LATENCY: ${latency}ms`;
-      if (wasOffline || previousType !== "CLOUD") {
+      if ((wasOffline || previousType !== "CLOUD") && !hasSpokenInitialLink) {
+        hasSpokenInitialLink = true;
         logConsole("LINK ACCEPTED", `Connected to laptop via Global Cloud Tunnel (${latency}ms). Ready.`);
         speakResponse("EDITH mainframe online via satellite cloud link.");
         triggerHaptic(40);
@@ -373,6 +490,10 @@
       dom.statusText.textContent = "SEARCHING...";
       dom.consoleChannel.textContent = `CHANNEL: SCANNING`;
       dom.consolePing.textContent = `LATENCY: --ms`;
+      if (dom.vitalsStatusTag) {
+        dom.vitalsStatusTag.textContent = "OFFLINE";
+        dom.vitalsStatusTag.classList.add("offline");
+      }
       if (msg && previousType !== "OFFLINE") {
         logConsole("STANDBY", "Searching for EDITH on laptop. Launch EDITH.exe to connect.");
       }
@@ -446,10 +567,12 @@
       // Handle speech response
       speakResponse(outcome);
 
-      // Handle media playback or external navigation without duplicate tabs
-      if (data.embed_url) {
+      // Handle media playback or external navigation without opening on phone if opened on host laptop
+      if (data.opened_on_host) {
+        // Successfully opened on laptop host
+      } else if (data.embed_url) {
         playInHudMedia(data.embed_url, outcome || "YouTube Media", data.url);
-      } else if (data.url && typeof data.url === "string" && !data.opened_on_host) {
+      } else if (data.url && typeof data.url === "string") {
         setTimeout(() => {
           window.open(data.url, "_blank");
         }, 600);
@@ -497,6 +620,200 @@
     if (activeMediaUrl) {
       window.open(activeMediaUrl, "_blank");
       closeHudMedia();
+    }
+  }
+
+  // ---------------- Tactical Command Guide Drawer ----------------
+  const COMMAND_GUIDE_DATA = [
+    // Media & Audio
+    { cmd: "open youtube", label: "Open YouTube", desc: "Opens YouTube in host laptop browser", cat: "media", icon: "▶️" },
+    { cmd: "play song on youtube", label: "Play Music", desc: "Searches & plays music on laptop browser", cat: "media", icon: "🎵" },
+    { cmd: "play alan walker on youtube", label: "Play Alan Walker", desc: "Direct music playback on host", cat: "media", icon: "🎧" },
+    { cmd: "pause media", label: "Pause Media", desc: "Windows play/pause media toggle", cat: "media", icon: "⏸️" },
+    { cmd: "volume up", label: "Volume Up", desc: "Increase laptop master volume (+10%)", cat: "media", icon: "🔊" },
+    { cmd: "volume down", label: "Volume Down", desc: "Decrease laptop master volume (-10%)", cat: "media", icon: "🔉" },
+    { cmd: "mute volume", label: "Mute Audio", desc: "Mute host laptop master audio", cat: "media", icon: "🔇" },
+    { cmd: "unmute volume", label: "Unmute Audio", desc: "Unmute host laptop audio", cat: "media", icon: "🔈" },
+
+    // System Control
+    { cmd: "system metrics", label: "System Metrics", desc: "Live CPU, RAM, and Disk telemetry", cat: "system", icon: "📊" },
+    { cmd: "battery status", label: "Battery Status", desc: "Inspect laptop battery level and AC status", cat: "system", icon: "🔋" },
+    { cmd: "take screenshot", label: "Capture Screen", desc: "Take Windows desktop screenshot", cat: "system", icon: "📸" },
+    { cmd: "lock screen", label: "Lock Laptop", desc: "Instantly lock Windows workstation", cat: "system", icon: "🔒" },
+    { cmd: "enable clap", label: "Enable Clap", desc: "Activate double-clap wake listener", cat: "system", icon: "👏" },
+    { cmd: "disable clap", label: "Disable Clap", desc: "Deactivate double-clap listener", cat: "system", icon: "🛑" },
+    { cmd: "undo", label: "Undo Action", desc: "Undo last file or system action", cat: "system", icon: "↩️" },
+    { cmd: "open terminal", label: "Open Terminal", desc: "Launch PowerShell console on laptop", cat: "system", icon: "⚡" },
+
+    // Applications
+    { cmd: "open chrome", label: "Open Chrome", desc: "Launch Google Chrome browser", cat: "apps", icon: "🌐" },
+    { cmd: "open brave", label: "Open Brave", desc: "Launch Brave privacy browser", cat: "apps", icon: "🦁" },
+    { cmd: "open notepad", label: "Open Notepad", desc: "Launch Windows Notepad editor", cat: "apps", icon: "📝" },
+    { cmd: "open calculator", label: "Calculator", desc: "Open Windows Calculator", cat: "apps", icon: "🧮" },
+    { cmd: "open task manager", label: "Task Manager", desc: "Open Windows Task Manager", cat: "apps", icon: "📈" },
+    { cmd: "open file explorer", label: "File Explorer", desc: "Open Windows File Explorer", cat: "apps", icon: "📁" },
+    { cmd: "open settings", label: "Settings", desc: "Open Windows Settings panel", cat: "apps", icon: "⚙️" },
+
+    // Gaming & Stream
+    { cmd: "open steam", label: "Open Steam", desc: "Launch Steam gaming platform", cat: "gaming", icon: "🎮" },
+    { cmd: "start sunshine", label: "Launch Sunshine", desc: "Start low-latency Sunshine GameStream host", cat: "gaming", icon: "☀️" },
+
+    // Security & Core
+    { cmd: "emergency stop", label: "Emergency Stop", desc: "Halt all active autonomous tasks", cat: "security", icon: "🛑" },
+    { cmd: "resume", label: "Resume System", desc: "Clear emergency halt and resume operations", cat: "security", icon: "▶️" },
+    { cmd: "mode auto", label: "Auto Mode", desc: "Switch to hybrid local/cloud routing", cat: "security", icon: "🤖" },
+    { cmd: "mode online", label: "Online Mode", desc: "Prioritize cloud models (Gemini Flash)", cat: "security", icon: "☁️" },
+    { cmd: "mode offline", label: "Offline Mode", desc: "Force air-gapped local AI inference", cat: "security", icon: "🛡️" },
+  ];
+
+  let guideActiveCategory = "all";
+  let guideSearchText = "";
+
+  function openGuideModal() {
+    if (!dom.modalGuide) return;
+    triggerHaptic(20);
+    dom.modalGuide.style.display = "flex";
+    dom.modalGuide.classList.add("open");
+    renderGuideCommands(guideActiveCategory, guideSearchText);
+    if (dom.guideSearchInput) {
+      setTimeout(() => dom.guideSearchInput.focus(), 100);
+    }
+  }
+
+  function closeGuideModal() {
+    if (!dom.modalGuide) return;
+    dom.modalGuide.style.display = "none";
+    dom.modalGuide.classList.remove("open");
+  }
+
+  function renderGuideCommands(category = "all", search = "") {
+    if (!dom.guideCommandGrid) return;
+    const cleanSearch = (search || "").trim().toLowerCase();
+    const filtered = COMMAND_GUIDE_DATA.filter((item) => {
+      const matchCat = category === "all" || item.cat === category;
+      const matchSearch = !cleanSearch ||
+        item.cmd.toLowerCase().includes(cleanSearch) ||
+        item.label.toLowerCase().includes(cleanSearch) ||
+        item.desc.toLowerCase().includes(cleanSearch);
+      return matchCat && matchSearch;
+    });
+
+    if (filtered.length === 0) {
+      dom.guideCommandGrid.innerHTML = `
+        <div class="guide-no-results">
+          No tactical commands match "${cleanSearch}".<br>
+          <span style="font-size:0.7rem; color:var(--text-muted); margin-top:4px; display:inline-block;">Try 'youtube', 'volume', 'steam', or 'metrics'.</span>
+        </div>`;
+      return;
+    }
+
+    dom.guideCommandGrid.innerHTML = filtered.map((item) => {
+      return `
+        <div class="guide-cmd-card" data-cmd="${item.cmd}">
+          <div class="guide-cmd-icon">${item.icon}</div>
+          <div class="guide-cmd-info">
+            <div class="guide-cmd-header">
+              <span class="guide-cmd-label">${item.label}</span>
+              <span class="guide-cmd-cat-badge">${item.cat}</span>
+            </div>
+            <div class="guide-cmd-code">&gt; ${item.cmd}</div>
+            <div class="guide-cmd-desc">${item.desc}</div>
+          </div>
+          <button class="guide-cmd-run-btn" title="Execute command on host laptop">▶</button>
+        </div>
+      `;
+    }).join("");
+
+    dom.guideCommandGrid.querySelectorAll(".guide-cmd-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        const cmd = card.getAttribute("data-cmd");
+        if (!cmd) return;
+        triggerHaptic(30);
+        closeGuideModal();
+        if (dom.cmdInput) dom.cmdInput.value = cmd;
+        executeCommand(cmd);
+      });
+    });
+  }
+
+  // ---------------- Laptop Vitals Telemetry ----------------
+  async function pollLaptopVitals() {
+    if (!state.activeEndpoint || !state.isOnline) {
+      if (dom.vitalsStatusTag) {
+        dom.vitalsStatusTag.textContent = "OFFLINE";
+        dom.vitalsStatusTag.classList.add("offline");
+      }
+      return;
+    }
+
+    const ep = state.activeEndpoint.replace(/\/+$/, "");
+    try {
+      const resp = await fetch(`${ep}/api/metrics`, {
+        headers: { "Bypass-Tunnel-Reminder": "true" },
+      });
+
+      if (resp.ok) {
+        const m = await resp.json();
+        updateVitalsUI(m);
+      } else {
+        const sResp = await fetch(`${ep}/status`, {
+          headers: { "Bypass-Tunnel-Reminder": "true" },
+        });
+        if (sResp.ok) {
+          const s = await sResp.json();
+          updateVitalsUI(s);
+        }
+      }
+    } catch (_) {
+      // Quiet fail on network jitter
+    }
+  }
+
+  function updateVitalsUI(m) {
+    if (!m) return;
+    if (dom.vitalsStatusTag) {
+      dom.vitalsStatusTag.textContent = state.activeType || "LINKED";
+      dom.vitalsStatusTag.classList.remove("offline");
+    }
+
+    // CPU Percent
+    if (dom.vitalCpuVal && m.cpu_percent !== undefined) {
+      const cpu = Math.round(m.cpu_percent);
+      dom.vitalCpuVal.textContent = `${cpu}%`;
+      if (dom.vitalCpuBar) dom.vitalCpuBar.style.width = `${Math.min(100, Math.max(0, cpu))}%`;
+    }
+
+    // RAM Percent and Usage
+    if (dom.vitalRamVal) {
+      const ramPct = m.ram_percent !== undefined ? Math.round(m.ram_percent) : null;
+      const usedGb = m.used_ram_gb !== undefined ? m.used_ram_gb : (m.ram_used_mb ? (m.ram_used_mb / 1024).toFixed(1) : null);
+      if (ramPct !== null) {
+        dom.vitalRamVal.textContent = usedGb ? `${usedGb} GB (${ramPct}%)` : `${ramPct}%`;
+        if (dom.vitalRamBar) dom.vitalRamBar.style.width = `${Math.min(100, Math.max(0, ramPct))}%`;
+      }
+    }
+
+    // Battery Percent and Charging Status
+    if (dom.vitalBatVal && m.battery_percent !== undefined && m.battery_percent !== null) {
+      const bat = Math.round(m.battery_percent);
+      const plug = (m.power_plugged || m.is_ac_powered) ? " ⚡" : "";
+      dom.vitalBatVal.textContent = `${bat}%${plug}`;
+      if (dom.vitalBatBar) dom.vitalBatBar.style.width = `${Math.min(100, Math.max(0, bat))}%`;
+    } else if (dom.vitalBatVal) {
+      dom.vitalBatVal.textContent = "AC LINE ⚡";
+      if (dom.vitalBatBar) dom.vitalBatBar.style.width = "100%";
+    }
+
+    // Disk Storage
+    if (dom.vitalDiskVal) {
+      if (m.disk_free_gb !== undefined) {
+        dom.vitalDiskVal.textContent = `${Math.round(m.disk_free_gb)} GB FREE`;
+        const diskPct = m.disk_percent !== undefined ? m.disk_percent : 45;
+        if (dom.vitalDiskBar) dom.vitalDiskBar.style.width = `${Math.min(100, Math.max(0, diskPct))}%`;
+      } else if (m.disk_percent !== undefined) {
+        dom.vitalDiskVal.textContent = `${Math.round(m.disk_percent)}% USED`;
+        if (dom.vitalDiskBar) dom.vitalDiskBar.style.width = `${Math.min(100, Math.max(0, m.disk_percent))}%`;
+      }
     }
   }
 
@@ -982,18 +1299,34 @@
     let twoFingerStartY = 0;
 
     function getNormalizedCoords(clientX, clientY) {
-      let rect = dom.vncCanvas ? dom.vncCanvas.getBoundingClientRect() : null;
-      if (!rect || rect.width <= 10 || rect.height <= 10) {
-        rect = dom.remoteScreenImg ? dom.remoteScreenImg.getBoundingClientRect() : null;
+      const el = dom.vncCanvas || dom.remoteScreenImg || dom.remoteViewport;
+      if (!el) return { x: 0.5, y: 0.5 };
+      const rect = el.getBoundingClientRect();
+      if (!rect || rect.width <= 1 || rect.height <= 1) return { x: 0.5, y: 0.5 };
+
+      const imgW = (el.width && el.height) ? el.width : 16;
+      const imgH = (el.width && el.height) ? el.height : 9;
+      const aspect = imgW / imgH;
+
+      let renderW = rect.width;
+      let renderH = rect.height;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      const containerAspect = rect.width / rect.height;
+      if (containerAspect > aspect) {
+        renderW = rect.height * aspect;
+        offsetX = (rect.width - renderW) / 2;
+      } else {
+        renderH = rect.width / aspect;
+        offsetY = (rect.height - renderH) / 2;
       }
-      if (!rect || rect.width <= 10 || rect.height <= 10) {
-        rect = dom.remoteViewport.getBoundingClientRect();
-      }
-      if (!rect || rect.width === 0 || rect.height === 0) {
-        return { x: 0.5, y: 0.5 };
-      }
-      const x = Math.max(0.0, Math.min(1.0, (clientX - rect.left) / rect.width));
-      const y = Math.max(0.0, Math.min(1.0, (clientY - rect.top) / rect.height));
+
+      const relX = clientX - (rect.left + offsetX);
+      const relY = clientY - (rect.top + offsetY);
+
+      const x = Math.max(0.0, Math.min(1.0, relX / renderW));
+      const y = Math.max(0.0, Math.min(1.0, relY / renderH));
       return { x, y };
     }
 
@@ -1338,6 +1671,48 @@
     dom.modalSettings.addEventListener("click", (e) => {
       if (e.target === dom.modalSettings) closeSettings();
     });
+
+    // Command Guide Drawer & Modal
+    if (dom.btnOpenGuide) dom.btnOpenGuide.addEventListener("click", openGuideModal);
+    if (dom.btnChipGuide) dom.btnChipGuide.addEventListener("click", openGuideModal);
+    if (dom.btnCloseGuide) dom.btnCloseGuide.addEventListener("click", closeGuideModal);
+    if (dom.modalGuide) {
+      dom.modalGuide.addEventListener("click", (e) => {
+        if (e.target === dom.modalGuide) closeGuideModal();
+      });
+    }
+
+    if (dom.guideSearchInput) {
+      dom.guideSearchInput.addEventListener("input", (e) => {
+        guideSearchText = e.target.value;
+        if (dom.btnGuideClear) {
+          dom.btnGuideClear.style.display = guideSearchText ? "block" : "none";
+        }
+        renderGuideCommands(guideActiveCategory, guideSearchText);
+      });
+    }
+
+    if (dom.btnGuideClear) {
+      dom.btnGuideClear.addEventListener("click", () => {
+        guideSearchText = "";
+        if (dom.guideSearchInput) dom.guideSearchInput.value = "";
+        dom.btnGuideClear.style.display = "none";
+        renderGuideCommands(guideActiveCategory, "");
+      });
+    }
+
+    if (dom.guideCategoryPills) {
+      const pills = dom.guideCategoryPills.querySelectorAll(".guide-pill");
+      pills.forEach((pill) => {
+        pill.addEventListener("click", () => {
+          pills.forEach((p) => p.classList.remove("active"));
+          pill.classList.add("active");
+          guideActiveCategory = pill.getAttribute("data-category") || "all";
+          renderGuideCommands(guideActiveCategory, guideSearchText);
+          triggerHaptic(15);
+        });
+      });
+    }
 
     // Mode Selector Buttons
     dom.modeBtns.forEach((btn) => {
@@ -1691,12 +2066,14 @@
     await resolveActiveEndpoint();
     if (dom.quickHostInput) dom.quickHostInput.value = state.localUrl;
     await syncSystemMode();
+    await pollLaptopVitals();
 
     // Heartbeat connection maintenance and bi-directional message polling
     setInterval(async () => {
       await fetchServerConfig();
       await resolveActiveEndpoint();
       await syncSystemMode();
+      await pollLaptopVitals();
       await pollPhoneMessagesAndTelemetry();
     }, 3500);
   }

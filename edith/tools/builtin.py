@@ -97,7 +97,7 @@ def register_builtin_tools(registry) -> None:
         description="Search and play a video or topic directly on YouTube",
         action_pack="WINDOWS_PACK",
         risk=RiskLevel.LOW,
-        fn=lambda query="", **kwargs: WIN_TOOLS.search_youtube(query or kwargs.get("q") or kwargs.get("text") or ""),
+        fn=lambda query="", **kwargs: WIN_TOOLS.search_youtube(query or kwargs.get("q") or kwargs.get("text") or "", open_browser=kwargs.get("open_browser", True)),
         parameters_schema={"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
     )
     registry.register(
