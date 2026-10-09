@@ -54,6 +54,7 @@ class StateMachine:
             SystemState.OFFLINE,
             SystemState.ONLINE,
             SystemState.PAUSED,
+            SystemState.ERROR,
             SystemState.EMERGENCY_STOP,
         },
         SystemState.LISTENING: {

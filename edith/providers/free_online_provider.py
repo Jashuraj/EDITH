@@ -60,10 +60,10 @@ class FreeOnlineProvider(LLMProvider):
         }
         last_user_msg = next((m["content"] for m in reversed(messages) if m["role"] == "user"), "")
 
-        # Tier 1: POST with openai-fast
-        for model in ("openai-fast", "openai"):
+        # Tier 1: POST with active models
+        for model in ("openai-fast", "mistral", "qwen", "openai"):
             try:
-                payload = {"messages": messages, "model": model}
+                payload = {"messages": messages, "model": model, "seed": 42}
                 data = json.dumps(payload).encode("utf-8")
                 req = urllib.request.Request(
                     "https://text.pollinations.ai/",
@@ -78,11 +78,11 @@ class FreeOnlineProvider(LLMProvider):
             except Exception as e:
                 logger.debug("Pollinations POST %s error: %s", model, e)
 
-        # Tier 2: GET with direct user prompt
+        # Tier 2: GET with direct user prompt without deprecated query param
         if last_user_msg:
             try:
                 encoded = urllib.parse.quote(last_user_msg[:600])
-                get_url = f"https://text.pollinations.ai/{encoded}?model=openai"
+                get_url = f"https://text.pollinations.ai/{encoded}"
                 get_req = urllib.request.Request(
                     get_url,
                     headers={"User-Agent": headers["User-Agent"]},

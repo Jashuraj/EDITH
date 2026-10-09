@@ -8,9 +8,13 @@ from __future__ import annotations
 
 import json
 import logging
+import os
+import shutil
+import subprocess
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from edith.core.config import CONFIG
@@ -38,6 +42,53 @@ class OllamaProvider(LLMProvider):
         CONFIG.primary_local_model = model_name
         logger.info("Switched active local model to: %s", model_name)
 
+    def ensure_daemon_running(self) -> bool:
+        """Ensure Ollama background service is running on the host machine."""
+        try:
+            req = urllib.request.Request(f"{self.base_url}/api/tags", method="GET")
+            with urllib.request.urlopen(req, timeout=1.0) as res:
+                if res.status == 200:
+                    return True
+        except Exception:
+            pass
+
+        # Locate host ollama executable
+        ollama_bin = shutil.which("ollama")
+        if not ollama_bin:
+            default_win_path = Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "Ollama" / "ollama.exe"
+            if default_win_path.exists():
+                ollama_bin = str(default_win_path)
+
+        if not ollama_bin:
+            return False
+
+        try:
+            creationflags = 0
+            if os.name == "nt":
+                creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0x08000000)
+            subprocess.Popen(
+                [ollama_bin, "serve"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                stdin=subprocess.DEVNULL,
+                creationflags=creationflags,
+            )
+            # Give Ollama a moment to bind port 11434
+            for _ in range(6):
+                time.sleep(0.5)
+                try:
+                    req = urllib.request.Request(f"{self.base_url}/api/tags", method="GET")
+                    with urllib.request.urlopen(req, timeout=1.0) as res:
+                        if res.status == 200:
+                            self.circuit_breaker.record_success()
+                            logger.info("Ollama background service successfully started.")
+                            return True
+                except Exception:
+                    continue
+        except Exception as e:
+            logger.warning("Could not auto-start Ollama daemon: %s", e)
+        return False
+
     async def is_healthy(self) -> bool:
         """Ping Ollama API tags endpoint and auto-recover circuit breaker."""
         try:
@@ -46,9 +97,13 @@ class OllamaProvider(LLMProvider):
                 if res.status == 200:
                     self.circuit_breaker.record_success()
                     return True
-                return False
         except Exception:
-            return False
+            pass
+
+        # Attempt auto-starting daemon if not currently responding
+        if self.ensure_daemon_running():
+            return True
+        return False
 
     async def list_models(self) -> List[str]:
         """Fetch list of all installed Ollama model names with fast timeout."""

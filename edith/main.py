@@ -16,6 +16,17 @@ import sys
 import threading
 import time
 
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+if sys.stderr and hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
 logger = logging.getLogger("edith.main")
 
 from edith.core.config import CONFIG
@@ -72,13 +83,24 @@ async def execute_command(cmd: str) -> None:
 
     # 2. Local AI Tool Calling / Hermes 3B
     await STATE.transition_to(SystemState.UNDERSTANDING, reason="Analyzing command via local model")
-    schemas = REGISTRY.get_tool_schemas()
+    tool_keywords = [
+        "open", "launch", "run", "start", "close", "kill", "terminate",
+        "file", "read", "write", "create", "delete", "screenshot",
+        "volume", "mute", "lock", "battery", "stats", "task", "app", "browser",
+        "youtube", "song", "songs", "music", "play"
+    ]
+    is_tool_intent = any(k in cmd.lower() for k in tool_keywords)
+    schemas = REGISTRY.get_tool_schemas() if is_tool_intent else None
+    category = TaskCategory.TOOL_CALLING if is_tool_intent else TaskCategory.GENERAL
     try:
         resp = await ROUTER.execute(
             prompt=cmd,
-            category=TaskCategory.TOOL_CALLING,
+            category=category,
             tools=schemas,
-            system_prompt="You are EDITH, a concise local-first operating system. Use tools when needed.",
+            system_prompt=(
+                "You are EDITH, a concise, autonomous local-first AI operating system "
+                "created by Jashwanth Raj. You run on Windows. Answer concisely in 1 to 2 sentences."
+            ),
         )
         await STATE.transition_to(SystemState.READY, reason="Model response complete")
         dt_ms = (time.perf_counter() - t0) * 1000.0

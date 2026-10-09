@@ -172,15 +172,19 @@ class DeterministicFallbackEngine:
                 model="OFFLINE_CORE",
                 provider="deterministic",
             )
-        if any(term in low for term in ("who made you", "who created you", "who is your creator", "creator")):
+        if any(term in low for term in (
+            "who made you", "who created you", "who is your creator", "creator",
+            "jashwanth", "jashwanth raj", "jashu", "who is jashwanth", "who is jashwanth raj",
+            "who is your boss", "who is your developer", "who is your master"
+        )):
             return ModelResponse(
-                content=f"I was created by {CONFIG.creator} as an autonomous, local-first AI operating system.",
+                content=f"Jashwanth Raj is my creator and the lead engineer who designed and built EDITH as an autonomous, local-first AI operating system.",
                 model="OFFLINE_CORE",
                 provider="deterministic",
             )
         if any(term in low for term in ("who are you", "what are you", "what is edith", "introduce yourself")):
             return ModelResponse(
-                content="I am E.D.I.T.H. (Even Dead, I'm The Hero), an autonomous local-first artificial intelligence operating system.",
+                content="I am E.D.I.T.H. (Even Dead, I'm The Hero), an autonomous local-first artificial intelligence operating system created by Jashwanth Raj.",
                 model="OFFLINE_CORE",
                 provider="deterministic",
             )
@@ -240,6 +244,32 @@ class DeterministicFallbackEngine:
                     )
                 except Exception:
                     pass
+
+        # 4.5 Factual & Educational Query Lookup (Zero-Auth Wikipedia REST fallback)
+        m_fact = re.search(r"^(?:who\s+is|what\s+is|where\s+is|define|tell\s+me\s+about)\s+(?P<q>[a-zA-Z0-9\s\.\-_]+?)\??$", clean, re.IGNORECASE)
+        if m_fact and CONFIG.is_effectively_online():
+            topic = m_fact.group("q").strip()
+            try:
+                import urllib.parse
+                import urllib.request
+                import json
+                wiki_url = f"https://en.wikipedia.org/api/rest_v1/page/summary/{urllib.parse.quote(topic.replace(' ', '_'))}"
+                req = urllib.request.Request(wiki_url, headers={"User-Agent": "EDITH/1.0 (Autonomous OS)"})
+                with urllib.request.urlopen(req, timeout=3.0) as r:
+                    if r.status == 200:
+                        wdata = json.loads(r.read().decode("utf-8"))
+                        ext = wdata.get("extract", "").strip()
+                        if ext:
+                            sentences = [s.strip() for s in ext.split(". ") if s.strip()]
+                            short_ext = ". ".join(sentences[:2]).rstrip(".") + "."
+                            return ModelResponse(
+                                content=short_ext,
+                                model="OFFLINE_KNOWLEDGE",
+                                provider="factual_knowledge",
+                                duration_ms=180.0,
+                            )
+            except Exception:
+                pass
 
         # 5. Check User Memory Database
         try:
@@ -467,18 +497,19 @@ class ModelRouter:
             try:
                 is_omni_up = await self.omniroute.is_healthy()
                 if is_omni_up:
+                    omni_model = "default" if decision.model == "FREE_CLOUD_AI" else decision.model
                     if tools:
                         response = await self.omniroute.generate_with_tools(
                             prompt=clean_prompt,
                             tools=tools,
                             system_prompt=system_prompt,
-                            model_name=decision.model,
+                            model_name=omni_model,
                         )
                     else:
                         response = await self.omniroute.generate(
                             prompt=clean_prompt,
                             system_prompt=system_prompt,
-                            model_name=decision.model,
+                            model_name=omni_model,
                         )
             except Exception as ex:
                 logger.debug("Tier 1.5 (OmniRoute) unavailable: %s", ex)
@@ -489,18 +520,19 @@ class ModelRouter:
             is_healthy = await self.local.is_healthy()
             if is_healthy:
                 try:
+                    local_model = self._route_local(category, bool(tools), "Ollama local execution").model
                     if tools:
                         response = await self.local.generate_with_tools(
                             prompt=clean_prompt,
                             tools=tools,
                             system_prompt=system_prompt,
-                            model_name=decision.model,
+                            model_name=local_model,
                         )
                     else:
                         response = await self.local.generate(
                             prompt=clean_prompt,
                             system_prompt=system_prompt,
-                            model_name=decision.model,
+                            model_name=local_model,
                         )
                 except Exception as ex:
                     logger.warning("Tier 2 (Local Ollama) failed: %s", ex)
