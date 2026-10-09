@@ -410,9 +410,9 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
 
         # 1. Real-Time Screen Streaming (MJPEG)
         if parsed.path in ("/stream/screen", "/stream/mjpeg"):
-            fps = int(query_params.get("fps", [20])[0])
+            fps = int(query_params.get("fps", [90])[0])
             scale = int(query_params.get("scale", [1280])[0])
-            quality = int(query_params.get("quality", [75])[0])
+            quality = int(query_params.get("quality", [55])[0])
 
             self.send_response(200)
             self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")

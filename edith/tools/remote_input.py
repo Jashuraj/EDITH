@@ -63,6 +63,40 @@ for code in range(ord("0"), ord("9") + 1):
 for code in range(ord("A"), ord("Z") + 1):
     VK_MAP[chr(code).lower()] = code
 
+# OEM Punctuation keys
+OEM_KEYS: Dict[str, int] = {
+    ",": 0xBC, ".": 0xBE, "/": 0xBF, ";": 0xBA, "'": 0xDE,
+    "[": 0xDB, "]": 0xDD, "\\": 0xDC, "-": 0xBD, "=": 0xBB,
+    "`": 0xC0,
+}
+VK_MAP.update(OEM_KEYS)
+
+# Browser key string normalization map
+BROWSER_KEY_MAP: Dict[str, str] = {
+    "arrowup": "up",
+    "arrowdown": "down",
+    "arrowleft": "left",
+    "arrowright": "right",
+    "escape": "esc",
+    "enter": "enter",
+    "return": "enter",
+    "backspace": "backspace",
+    "delete": "del",
+    "tab": "tab",
+    "shift": "shift",
+    "control": "ctrl",
+    "alt": "alt",
+    "meta": "win",
+    "os": "win",
+    " ": "space",
+    "spacebar": "space",
+    "pageup": "pageup",
+    "pagedown": "pagedown",
+    "home": "home",
+    "end": "end",
+    "insert": "insert",
+}
+
 # Gamepad Action Button to Keyboard Key Mappings
 GAME_BUTTON_MAP: Dict[str, str] = {
     "A": "space",       # Primary Action / Jump
@@ -124,6 +158,7 @@ class RemoteInputDispatcher:
     def _get_vk(self, key_name: str) -> Optional[int]:
         """Resolve string key name to Win32 virtual key code."""
         cleaned = key_name.strip().lower()
+        cleaned = BROWSER_KEY_MAP.get(cleaned, cleaned)
         return VK_MAP.get(cleaned)
 
     def key_down(self, key_name: str) -> bool:
@@ -370,9 +405,17 @@ class RemoteInputDispatcher:
                 MOUSE.drag_end()
             return {"success": True, "action": "mouse_up", "button": btn}
 
-        elif action == "scroll":
+        elif action in ("scroll", "mouse_scroll"):
             delta = int(params.get("delta", 1))
             return {"success": MOUSE.scroll(delta), "action": "scroll"}
+
+        elif action in ("scroll_up", "wheel_up"):
+            delta = int(params.get("delta", 1))
+            return {"success": MOUSE.scroll(abs(delta)), "action": "scroll_up"}
+
+        elif action in ("scroll_down", "wheel_down"):
+            delta = int(params.get("delta", -1))
+            return {"success": MOUSE.scroll(-abs(delta)), "action": "scroll_down"}
 
         # --- Keyboard Actions ---
         elif action == "type_text":

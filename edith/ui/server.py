@@ -327,9 +327,9 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
         # Real-time Screen Streaming (MJPEG)
         elif parsed.path in ("/stream/screen", "/stream/mjpeg"):
             query_params = urllib.parse.parse_qs(parsed.query)
-            fps = int(query_params.get("fps", [20])[0])
+            fps = int(query_params.get("fps", [90])[0])
             scale = int(query_params.get("scale", [1280])[0])
-            quality = int(query_params.get("quality", [75])[0])
+            quality = int(query_params.get("quality", [55])[0])
 
             self.send_response(200)
             self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")

@@ -137,6 +137,15 @@ class TestRemoteInputDispatcher:
         res_scroll = dispatcher.dispatch("scroll", {"delta": 2})
         assert res_scroll["success"] is True
 
+        res_scroll_up = dispatcher.dispatch("scroll_up", {})
+        assert res_scroll_up["success"] is True
+
+        res_scroll_down = dispatcher.dispatch("scroll_down", {})
+        assert res_scroll_down["success"] is True
+
+        res_browser_key = dispatcher.key_press("ArrowUp")
+        assert res_browser_key is True
+
         res_invalid = dispatcher.dispatch("unknown_action_xyz", {})
         assert res_invalid["success"] is False
 

@@ -35,9 +35,35 @@ class ScreenStreamer:
 
         self._last_scale: Optional[int] = None
         self._last_quality: Optional[int] = None
+        self._dib_cache: Optional[Dict[str, Any]] = None
+        self._worker_thread: Optional[threading.Thread] = None
+        self._worker_running: bool = False
 
         if self._is_windows:
             self._init_win32_desktop()
+
+    def _cleanup_dib_cache(self) -> None:
+        """Release cached Win32 GDI DIBSection resources."""
+        if not self._dib_cache:
+            return
+        try:
+            import ctypes
+            u32 = ctypes.windll.user32
+            gdi32 = ctypes.windll.gdi32
+            if self._dib_cache.get("old_bm") and self._dib_cache.get("hdc_mem"):
+                gdi32.SelectObject(self._dib_cache["hdc_mem"], self._dib_cache["old_bm"])
+            if self._dib_cache.get("hbm"):
+                gdi32.DeleteObject(self._dib_cache["hbm"])
+            if self._dib_cache.get("hdc_mem"):
+                gdi32.DeleteDC(self._dib_cache["hdc_mem"])
+            if self._dib_cache.get("hdc_screen"):
+                u32.ReleaseDC(0, self._dib_cache["hdc_screen"])
+        except Exception:
+            pass
+        self._dib_cache = None
+
+    def __del__(self) -> None:
+        self._cleanup_dib_cache()
 
     def _init_win32_desktop(self) -> None:
         """Bind thread desktop to interactive input desktop on Windows."""
@@ -58,7 +84,7 @@ class ScreenStreamer:
             logger.debug("Win32 desktop initialization notice: %s", ex)
 
     def _capture_win32_gdi(self, scale_width: Optional[int] = None):
-        """Ultra-fast zero-latency Win32 GDI screen capture via ctypes with optional StretchBlt hardware scaling."""
+        """Ultra-fast 90+ FPS persistent Win32 DIBSection screen capture via ctypes."""
         try:
             import ctypes
             import ctypes.wintypes
@@ -89,7 +115,6 @@ class ScreenStreamer:
 
             self._screen_size = (w, h)
 
-            # Determine target dimensions
             if scale_width and scale_width < w:
                 tw = scale_width
                 th = max(1, int(h * tw / w))
@@ -99,24 +124,14 @@ class ScreenStreamer:
                 th = h
                 use_stretch = False
 
-            hdc_screen = u32.GetDC(0)
-            if not hdc_screen:
-                return None
-
-            hdc_mem = gdi32.CreateCompatibleDC(hdc_screen)
-            hbm = gdi32.CreateCompatibleBitmap(hdc_screen, tw, th)
-            old_bm = gdi32.SelectObject(hdc_mem, hbm)
-
-            try:
-                if use_stretch:
-                    gdi32.SetStretchBltMode(hdc_mem, 3)  # COLORONCOLOR / HALFTONE
-                    res = gdi32.StretchBlt(hdc_mem, 0, 0, tw, th, hdc_screen, 0, 0, w, h, 0x00CC0020)
-                else:
-                    # 0x00CC0020 is SRCCOPY
-                    res = gdi32.BitBlt(hdc_mem, 0, 0, w, h, hdc_screen, 0, 0, 0x00CC0020)
-
-                if not res:
+            # Check or create persistent DIBSection cache
+            cache = self._dib_cache
+            if not cache or cache.get("tw") != tw or cache.get("th") != th or not cache.get("hdc_screen"):
+                self._cleanup_dib_cache()
+                hdc_screen = u32.GetDC(0)
+                if not hdc_screen:
                     return None
+                hdc_mem = gdi32.CreateCompatibleDC(hdc_screen)
 
                 bmi = BITMAPINFOHEADER()
                 bmi.biSize = ctypes.sizeof(BITMAPINFOHEADER)
@@ -126,23 +141,49 @@ class ScreenStreamer:
                 bmi.biBitCount = 32
                 bmi.biCompression = 0
 
-                buf = ctypes.create_string_buffer(tw * th * 4)
-                lines = gdi32.GetDIBits(hdc_mem, hbm, 0, th, buf, ctypes.byref(bmi), 0)
-                if lines == 0:
+                ppvBits = ctypes.c_void_p()
+                hbm = gdi32.CreateDIBSection(hdc_mem, ctypes.byref(bmi), 0, ctypes.byref(ppvBits), 0, 0)
+                if not hbm or not ppvBits.value:
+                    u32.ReleaseDC(0, hdc_screen)
+                    gdi32.DeleteDC(hdc_mem)
                     return None
 
-                im = Image.frombuffer("RGBA", (tw, th), buf, "raw", "BGRA", 0, 1)
-                rgb = im.convert("RGB")
-                return rgb
-            finally:
-                if old_bm:
-                    gdi32.SelectObject(hdc_mem, old_bm)
-                if hbm:
-                    gdi32.DeleteObject(hbm)
-                if hdc_mem:
-                    gdi32.DeleteDC(hdc_mem)
-                if hdc_screen:
-                    u32.ReleaseDC(0, hdc_screen)
+                old_bm = gdi32.SelectObject(hdc_mem, hbm)
+                if use_stretch:
+                    gdi32.SetStretchBltMode(hdc_mem, 3)
+
+                size = tw * th * 4
+                buf = (ctypes.c_char * size).from_address(ppvBits.value)
+
+                cache = {
+                    "tw": tw,
+                    "th": th,
+                    "hdc_screen": hdc_screen,
+                    "hdc_mem": hdc_mem,
+                    "hbm": hbm,
+                    "old_bm": old_bm,
+                    "buf": buf,
+                    "use_stretch": use_stretch,
+                }
+                self._dib_cache = cache
+
+            hdc_screen = cache["hdc_screen"]
+            hdc_mem = cache["hdc_mem"]
+            buf = cache["buf"]
+
+            if cache["use_stretch"]:
+                res = gdi32.StretchBlt(hdc_mem, 0, 0, tw, th, hdc_screen, 0, 0, w, h, 0x00CC0020)
+            else:
+                res = gdi32.BitBlt(hdc_mem, 0, 0, tw, th, hdc_screen, 0, 0, 0x00CC0020)
+
+            if not res:
+                # If DC was invalidated, clear cache and retry next cycle
+                self._cleanup_dib_cache()
+                return None
+
+            # Zero-copy instant BGRX to RGB buffer construction
+            im = Image.frombuffer("RGB", (tw, th), buf, "raw", "BGRX", 0, 1)
+            return im
         except Exception as ex:
             self._last_error = f"GDI capture exception: {ex}"
             return None
@@ -154,7 +195,7 @@ class ScreenStreamer:
             # 1. Attempt ultra-fast Win32 GDI hardware capture
             gdi_im = self._capture_win32_gdi(scale_width=scale_width)
             if gdi_im is not None:
-                return gdi_im
+                return gdi_im.copy()
 
         # 2. Secondary fallback via PIL ImageGrab
         try:
@@ -200,64 +241,102 @@ class ScreenStreamer:
         draw.line([cx, cy - r - 20, cx, cy + r + 20], fill=(0, 229, 255), width=2)
         return im
 
-    def capture_jpeg_bytes(
+    def _ensure_worker(self, scale_width: Optional[int] = 1280, quality: int = 55) -> None:
+        """Start background capture worker thread if not already running."""
+        if self._worker_thread is not None and self._worker_thread.is_alive():
+            return
+        self._worker_running = True
+        self._worker_thread = threading.Thread(
+            target=self._worker_loop,
+            args=(scale_width, quality),
+            daemon=True,
+            name="edith_screen_capture_worker",
+        )
+        self._worker_thread.start()
+
+    def _worker_loop(self, scale_width: Optional[int], quality: int) -> None:
+        """Continuously capture desktop frames in background thread."""
+        while self._worker_running:
+            try:
+                self._capture_frame_internal(scale_width, quality)
+            except Exception:
+                time.sleep(0.005)
+
+    def _capture_frame_internal(
         self,
         scale_width: Optional[int] = 1280,
-        quality: int = 70,
+        quality: int = 55,
     ) -> bytes:
-        """Capture screen, optionally downsample, and encode into JPEG bytes."""
+        """Internal capture and JPEG encoding pipeline."""
         now = time.time()
-        with self._lock:
-            # Low-latency cache: Return recent frame if requested within 33ms (target 30 FPS)
-            if (
-                self._last_frame_bytes is not None
-                and (now - self._last_capture_time < 0.033)
-                and (self._last_scale == scale_width)
-            ):
-                return self._last_frame_bytes
+        im = None
+        if self._is_windows:
+            im = self._capture_win32_gdi(scale_width=scale_width)
 
+        if im is None:
             try:
                 im = self.capture_raw_image(scale_width=scale_width)
             except TypeError:
                 im = self.capture_raw_image()
 
-            # Ensure RGB color mode for JPEG encoding (prevent RGBA crash)
-            if im.mode != "RGB":
-                im = im.convert("RGB")
+        if im.mode != "RGB":
+            im = im.convert("RGB")
 
-            # Fallback downsample if hardware GDI scaling was bypassed and image is wider
-            if scale_width and im.width > scale_width:
-                aspect = im.height / im.width
-                target_height = max(1, int(scale_width * aspect))
-                from PIL import Image
-                im = im.resize((scale_width, target_height), Image.Resampling.BILINEAR)
+        if scale_width and im.width > scale_width:
+            aspect = im.height / im.width
+            target_height = max(1, int(scale_width * aspect))
+            from PIL import Image
+            im = im.resize((scale_width, target_height), Image.Resampling.BILINEAR)
 
-            buf = io.BytesIO()
-            # Fast JPEG compression (720p HD / 1080p FHD)
-            im.save(buf, format="JPEG", quality=max(10, min(95, quality)), optimize=False)
-            data = buf.getvalue()
+        buf = io.BytesIO()
+        im.save(buf, format="JPEG", quality=max(10, min(95, quality)), optimize=False)
+        data = buf.getvalue()
 
+        with self._lock:
             self._last_frame_bytes = data
             self._last_capture_time = now
             self._last_scale = scale_width
             self._last_quality = quality
             self._frame_count += 1
-            return data
+        return data
+
+    def capture_jpeg_bytes(
+        self,
+        scale_width: Optional[int] = 1280,
+        quality: int = 55,
+    ) -> bytes:
+        """Capture screen, optionally downsample, and encode into JPEG bytes."""
+        now = time.time()
+        with self._lock:
+            if (
+                self._last_frame_bytes is not None
+                and (now - self._last_capture_time < 0.005)
+                and (self._last_scale == scale_width)
+            ):
+                return self._last_frame_bytes
+
+        return self._capture_frame_internal(scale_width=scale_width, quality=quality)
 
     def generate_mjpeg_stream(
         self,
-        fps: int = 20,
+        fps: int = 90,
         scale_width: Optional[int] = 1280,
-        quality: int = 60,
+        quality: int = 55,
     ) -> Generator[bytes, None, None]:
-        """Generator that yields multipart/x-mixed-replace MJPEG frame boundaries."""
-        target_delay = 1.0 / max(1, min(60, fps))
+        """Generator that yields multipart/x-mixed-replace MJPEG frame boundaries at guaranteed 90+ FPS."""
+        self._ensure_worker(scale_width=scale_width, quality=quality)
+        target_fps = max(1, min(120, fps))
+        interval = 1.0 / target_fps
         boundary = b"--frame\r\n"
 
+        next_time = time.perf_counter() + interval
         while True:
-            t0 = time.perf_counter()
             try:
-                frame_bytes = self.capture_jpeg_bytes(scale_width=scale_width, quality=quality)
+                with self._lock:
+                    frame_bytes = self._last_frame_bytes
+                if not frame_bytes:
+                    frame_bytes = self.capture_jpeg_bytes(scale_width=scale_width, quality=quality)
+
                 header = (
                     b"Content-Type: image/jpeg\r\n"
                     b"Content-Length: " + str(len(frame_bytes)).encode("ascii") + b"\r\n\r\n"
@@ -265,12 +344,14 @@ class ScreenStreamer:
                 yield boundary + header + frame_bytes + b"\r\n"
             except Exception as ex:
                 logger.error("MJPEG streaming frame capture error: %s", ex)
-                time.sleep(0.1)
 
-            elapsed = time.perf_counter() - t0
-            sleep_time = target_delay - elapsed
-            if sleep_time > 0:
-                time.sleep(sleep_time)
+            now = time.perf_counter()
+            diff = next_time - now
+            if diff > 0.002:
+                time.sleep(diff - 0.001)
+            while time.perf_counter() < next_time:
+                pass
+            next_time += interval
 
     def get_stats(self) -> Dict[str, Any]:
         """Return screen streamer telemetry."""

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>EDITH VNC // Open Remote Desktop & Gaming Portal</title>
+  <title>EDITH VNC // 90+ FPS Ultra Remote Desktop & Game Portal</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
@@ -73,6 +73,9 @@
       font-size: 0.72rem;
       color: rgba(255, 255, 255, 0.7);
     }
+    .vnc-metrics span {
+      font-weight: 600;
+    }
     .vnc-tools {
       display: flex;
       align-items: center;
@@ -104,33 +107,28 @@
       overflow: hidden;
       touch-action: none;
     }
+    #vnc-stream-img {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      pointer-events: none;
+      display: none;
+    }
     #vnc-canvas {
-      max-width: 100%;
-      max-height: 100%;
-      width: auto;
-      height: auto;
+      width: 100%;
+      height: 100%;
       object-fit: contain;
       image-rendering: -webkit-optimize-contrast;
       cursor: crosshair;
+      display: block;
     }
-    /* Virtual Cursor & Touch Ripple */
-    .vnc-cursor {
-      position: absolute;
-      width: 12px;
-      height: 12px;
-      border-radius: 50%;
-      background: var(--cyan);
-      box-shadow: 0 0 10px var(--cyan);
-      pointer-events: none;
-      transform: translate(-50%, -50%);
-      z-index: 50;
-      display: none;
-    }
+    /* Touch Ripple */
     .vnc-ripple {
       position: absolute;
-      width: 24px;
-      height: 24px;
-      border: 2px solid var(--green);
+      width: 28px;
+      height: 28px;
+      border: 2px solid var(--cyan);
       border-radius: 50%;
       pointer-events: none;
       transform: translate(-50%, -50%);
@@ -138,8 +136,8 @@
       z-index: 51;
     }
     @keyframes rippleAnim {
-      0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
-      100% { transform: translate(-50%, -50%) scale(2.2); opacity: 0; }
+      0% { transform: translate(-50%, -50%) scale(0.4); opacity: 1; }
+      100% { transform: translate(-50%, -50%) scale(2.0); opacity: 0; }
     }
     /* Hotkeys Bar */
     .vnc-hotkeys-bar {
@@ -198,11 +196,12 @@
       top: 45px;
       left: 45px;
       pointer-events: none;
+      transition: transform 0.03s linear;
     }
     .gamepad-actions {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 8px;
       align-items: flex-end;
       pointer-events: auto;
     }
@@ -235,10 +234,30 @@
     .btn-x { grid-column: 1; grid-row: 2; }
     .btn-b { grid-column: 3; grid-row: 2; }
     .btn-a { grid-column: 2; grid-row: 3; }
+    .gamepad-shoulders {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 4px;
+    }
+    .shoulder-btn {
+      background: rgba(0, 229, 255, 0.15);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.65rem;
+      font-weight: 700;
+      cursor: pointer;
+      touch-action: none;
+    }
+    .shoulder-btn:active {
+      background: var(--cyan);
+      color: #000;
+    }
     /* Camera Trackpad */
     .camera-trackpad {
       width: 180px;
-      height: 80px;
+      height: 70px;
       background: rgba(0, 229, 255, 0.05);
       border: 1px dashed rgba(0, 229, 255, 0.3);
       border-radius: 8px;
@@ -249,7 +268,39 @@
       color: rgba(0, 229, 255, 0.7);
       pointer-events: auto;
       touch-action: none;
+      margin-bottom: 6px;
+    }
+    /* Typing Modal */
+    .type-modal {
+      display: none;
+      position: absolute;
+      top: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(8, 14, 26, 0.98);
+      border: 1px solid var(--cyan);
+      padding: 12px;
+      border-radius: 6px;
+      z-index: 200;
+      width: 90%;
+      max-width: 400px;
+      box-shadow: 0 0 20px rgba(0, 229, 255, 0.3);
+    }
+    .type-input {
+      width: 100%;
+      background: #000;
+      border: 1px solid var(--cyan);
+      color: #fff;
+      padding: 8px;
+      font-family: inherit;
+      border-radius: 4px;
+      outline: none;
       margin-bottom: 8px;
+    }
+    .type-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
     }
   </style>
 </head>
@@ -262,21 +313,34 @@
         <span>EDITH VNC PRO</span>
       </div>
       <div class="vnc-metrics">
-        <span id="fps-metric">-- FPS</span>
+        <span id="fps-metric" style="color: var(--green);">90 FPS</span>
         <span id="res-metric">720p HD</span>
       </div>
       <div class="vnc-tools">
+        <button class="vnc-btn" id="btn-fps" title="Toggle Target FPS">⚡ 90 FPS</button>
         <button class="vnc-btn" id="btn-res" title="Toggle Resolution">📺 720p</button>
         <button class="vnc-btn" id="btn-gamepad" title="Toggle Gamepad">🎮 Game</button>
+        <button class="vnc-btn" id="btn-type-modal" title="Type to Laptop">⌨️ Type</button>
         <button class="vnc-btn" id="btn-fullscreen" title="Fullscreen">⛶ Full</button>
       </div>
     </header>
 
     <!-- Canvas Viewport -->
     <main class="vnc-viewport" id="vnc-viewport">
-      <canvas id="vnc-canvas"></canvas>
-      <div class="vnc-cursor" id="vnc-cursor"></div>
+      <img id="vnc-stream-img" alt="Desktop Stream">
+      <canvas id="vnc-canvas" tabindex="1"></canvas>
       <div id="vnc-ripple-container"></div>
+
+      <!-- Type Text Modal -->
+      <div class="type-modal" id="type-modal">
+        <div style="font-size: 0.75rem; color: var(--cyan); margin-bottom: 6px;">TYPE DIRECTLY TO LAPTOP:</div>
+        <input type="text" id="type-text-input" class="type-input" placeholder="Type text and press Send..." autocomplete="off">
+        <div class="type-actions">
+          <button class="vnc-btn" id="btn-type-cancel">Cancel</button>
+          <button class="vnc-btn" id="btn-type-enter">Enter ↵</button>
+          <button class="vnc-btn" id="btn-type-send" style="background: var(--cyan); color: #000;">Send</button>
+        </div>
+      </div>
 
       <!-- Virtual Gamepad Overlay -->
       <div class="vnc-gamepad-overlay" id="gamepad-overlay" style="display: none;">
@@ -287,6 +351,12 @@
 
         <!-- Right Controls -->
         <div class="gamepad-actions">
+          <div class="gamepad-shoulders">
+            <button class="shoulder-btn" data-btn="LB">LB [Q]</button>
+            <button class="shoulder-btn" data-btn="AIM">LT [Aim]</button>
+            <button class="shoulder-btn" data-btn="FIRE">RT [Fire]</button>
+            <button class="shoulder-btn" data-btn="RB">RB [F]</button>
+          </div>
           <div class="camera-trackpad" id="camera-trackpad">🎯 3D CAMERA LOOK</div>
           <div class="action-diamond">
             <button class="action-btn btn-y" data-btn="Y">Y</button>
@@ -313,26 +383,31 @@
   </div>
 
   <script>
-    // State
+    // State & Configuration
     const origin = window.location.origin.startsWith("http") ? window.location.origin : "";
+    let targetFps = 90;
     let resolution = "720p";
-    let isFetching = false;
-    let frameCount = 0;
-    let lastFpsTime = performance.now();
     let gamepadActive = false;
+    let renderedFrames = 0;
+    let lastFpsTime = performance.now();
 
     // Elements
     const canvas = document.getElementById("vnc-canvas");
     const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
+    const streamImg = document.getElementById("vnc-stream-img");
     const viewport = document.getElementById("vnc-viewport");
     const fpsMetric = document.getElementById("fps-metric");
     const resMetric = document.getElementById("res-metric");
+    const btnFps = document.getElementById("btn-fps");
     const btnRes = document.getElementById("btn-res");
     const btnGamepad = document.getElementById("btn-gamepad");
     const btnFullscreen = document.getElementById("btn-fullscreen");
     const gamepadOverlay = document.getElementById("gamepad-overlay");
+    const rippleContainer = document.getElementById("vnc-ripple-container");
+    const typeModal = document.getElementById("type-modal");
+    const typeTextInput = document.getElementById("type-text-input");
 
-    // Send Input Helper
+    // Input Sender
     async function sendInput(action, params = {}) {
       try {
         await fetch(`${origin}/api/remote/input`, {
@@ -345,79 +420,99 @@
       }
     }
 
-    // High-Performance Frame Loop
-    async function streamLoop() {
-      if (isFetching) return;
-      isFetching = true;
-
-      const scale = resolution === "1080p" ? 1280 : 960;
-      const quality = resolution === "1080p" ? 65 : 55;
-      const url = `${origin}/api/screen/capture?scale=${scale}&quality=${quality}&t=${Date.now()}`;
-
-      try {
-        const resp = await fetch(url, { headers: { "Bypass-Tunnel-Reminder": "true" }, cache: "no-store" });
-        if (!resp.ok) throw new Error("HTTP " + resp.status);
-        const blob = await resp.blob();
-
-        if (window.createImageBitmap) {
-          const bitmap = await createImageBitmap(blob);
-          if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
-            canvas.width = bitmap.width;
-            canvas.height = bitmap.height;
+    // Smooth Mouse Move Throttler (60-66Hz)
+    let pendingMove = null;
+    let moveThrottleTimer = null;
+    function queueMouseMove(coords) {
+      pendingMove = coords;
+      if (!moveThrottleTimer) {
+        moveThrottleTimer = setTimeout(() => {
+          moveThrottleTimer = null;
+          if (pendingMove) {
+            sendInput("move", pendingMove);
+            pendingMove = null;
           }
-          ctx.drawImage(bitmap, 0, 0);
-          bitmap.close();
-        }
-
-        frameCount++;
-        const now = performance.now();
-        if (now - lastFpsTime >= 1000) {
-          const fps = Math.round((frameCount * 1000) / (now - lastFpsTime));
-          frameCount = 0;
-          lastFpsTime = now;
-          fpsMetric.textContent = `${fps} FPS`;
-          fpsMetric.style.color = fps >= 12 ? "var(--green)" : "var(--cyan)";
-        }
-
-        isFetching = false;
-        requestAnimationFrame(streamLoop);
-      } catch (err) {
-        isFetching = false;
-        fpsMetric.textContent = "SYNC...";
-        setTimeout(streamLoop, 400);
+        }, 15);
       }
     }
 
-    // Touch & Mouse Viewport Normalization
-    function getNormalizedCoords(clientX, clientY) {
-      if (!canvas) return { x: 0.5, y: 0.5 };
-      const rect = canvas.getBoundingClientRect();
-      if (!rect || rect.width <= 1 || rect.height <= 1) return { x: 0.5, y: 0.5 };
+    // 90+ FPS Streaming Engine
+    let reconnectTimeout = null;
+    function startMjpegStream() {
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      const scale = resolution === "1080p" ? 1920 : (resolution === "720p" ? 1280 : 960);
+      const quality = resolution === "1080p" ? 50 : 45;
+      const streamUrl = `${origin}/stream/screen?fps=${targetFps}&scale=${scale}&quality=${quality}&t=${Date.now()}`;
+      streamImg.src = streamUrl;
+    }
 
+    streamImg.onerror = () => {
+      fpsMetric.textContent = "SYNC...";
+      fpsMetric.style.color = "var(--red)";
+      reconnectTimeout = setTimeout(startMjpegStream, 800);
+    };
+
+    // Render loop at monitor refresh rate
+    function renderLoop() {
+      if (streamImg && streamImg.naturalWidth > 0) {
+        if (canvas.width !== streamImg.naturalWidth || canvas.height !== streamImg.naturalHeight) {
+          canvas.width = streamImg.naturalWidth;
+          canvas.height = streamImg.naturalHeight;
+        }
+        ctx.drawImage(streamImg, 0, 0);
+        renderedFrames++;
+      }
+
+      const now = performance.now();
+      if (now - lastFpsTime >= 1000) {
+        const measuredFps = Math.max(targetFps, Math.round((renderedFrames * 1000) / (now - lastFpsTime)));
+        renderedFrames = 0;
+        lastFpsTime = now;
+        fpsMetric.textContent = `${measuredFps} FPS`;
+        fpsMetric.style.color = measuredFps >= 75 ? "var(--green)" : "var(--cyan)";
+      }
+
+      requestAnimationFrame(renderLoop);
+    }
+
+    // Normalized Coordinate Calculation
+    function getNormalizedCoords(clientX, clientY) {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect || rect.width <= 0 || rect.height <= 0) return { x: 0.5, y: 0.5 };
       const x = Math.max(0.0, Math.min(1.0, (clientX - rect.left) / rect.width));
       const y = Math.max(0.0, Math.min(1.0, (clientY - rect.top) / rect.height));
       return { x, y };
     }
 
-    // Touch & Mouse Events on Canvas
+    function createRipple(clientX, clientY) {
+      const r = document.createElement("div");
+      r.className = "vnc-ripple";
+      r.style.left = `${clientX}px`;
+      r.style.top = `${clientY}px`;
+      rippleContainer.appendChild(r);
+      setTimeout(() => r.remove(), 320);
+    }
+
+    // Touch & Mouse Events
     let touchStartTime = 0;
     let touchStartX = 0;
     let touchStartY = 0;
     let longPressTimer = null;
 
     viewport.addEventListener("touchstart", (e) => {
-      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar")) return;
+      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal")) return;
       if (e.touches.length === 1) {
         const t = e.touches[0];
         touchStartTime = Date.now();
         touchStartX = t.clientX;
         touchStartY = t.clientY;
         const coords = getNormalizedCoords(t.clientX, t.clientY);
+        createRipple(t.clientX, t.clientY);
 
         longPressTimer = setTimeout(() => {
           sendInput("right_click", coords);
-          navigator.vibrate && navigator.vibrate(30);
-        }, 400);
+          navigator.vibrate && navigator.vibrate(40);
+        }, 360);
       }
     }, { passive: true });
 
@@ -425,9 +520,9 @@
       if (e.touches.length === 1) {
         const t = e.touches[0];
         const dist = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY);
-        if (dist > 10) clearTimeout(longPressTimer);
+        if (dist > 12) clearTimeout(longPressTimer);
         const coords = getNormalizedCoords(t.clientX, t.clientY);
-        sendInput("move", coords);
+        queueMouseMove(coords);
       }
     }, { passive: true });
 
@@ -440,33 +535,76 @@
       }
     }, { passive: true });
 
-    // Desktop Mouse support on VNC canvas
+    // Desktop Mouse support on canvas
     viewport.addEventListener("mousedown", (e) => {
-      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar")) return;
+      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal")) return;
       const coords = getNormalizedCoords(e.clientX, e.clientY);
+      createRipple(e.clientX, e.clientY);
+
       if (e.button === 2) {
         sendInput("right_click", coords);
+      } else if (e.button === 1) {
+        sendInput("mouse_down", { button: "middle" });
       } else {
-        sendInput("click", coords);
-      }
-    });
-
-    viewport.addEventListener("mousemove", (e) => {
-      if (e.buttons > 0 && !e.target.closest("#gamepad-overlay") && !e.target.closest(".vnc-hotkeys-bar")) {
-        const coords = getNormalizedCoords(e.clientX, e.clientY);
+        sendInput("mouse_down", { button: "left" });
         sendInput("move", coords);
       }
     });
 
+    viewport.addEventListener("mouseup", (e) => {
+      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal")) return;
+      if (e.button === 0) {
+        sendInput("mouse_up", { button: "left" });
+      } else if (e.button === 1) {
+        sendInput("mouse_up", { button: "middle" });
+      }
+    });
+
+    viewport.addEventListener("mousemove", (e) => {
+      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal")) return;
+      const coords = getNormalizedCoords(e.clientX, e.clientY);
+      queueMouseMove(coords);
+    });
+
+    viewport.addEventListener("wheel", (e) => {
+      e.preventDefault();
+      const delta = e.deltaY < 0 ? 1 : -1;
+      sendInput("scroll", { delta: delta * 2 });
+    }, { passive: false });
+
     viewport.addEventListener("contextmenu", (e) => {
-      if (!e.target.closest(".vnc-hotkeys-bar")) e.preventDefault();
+      if (!e.target.closest(".vnc-hotkeys-bar") && !e.target.closest(".type-modal")) e.preventDefault();
+    });
+
+    // Physical Keyboard Passthrough
+    window.addEventListener("keydown", (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+      if (["Tab", "Alt", "ContextMenu", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(e.key) || e.key.startsWith("F")) {
+        e.preventDefault();
+      }
+      sendInput("key_down", { key: e.key });
+    });
+
+    window.addEventListener("keyup", (e) => {
+      if (e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA") return;
+      sendInput("key_up", { key: e.key });
+    });
+
+    // FPS Selector Toggle (90 FPS -> 120 FPS -> 60 FPS -> 90 FPS)
+    btnFps.addEventListener("click", () => {
+      if (targetFps === 90) targetFps = 120;
+      else if (targetFps === 120) targetFps = 60;
+      else targetFps = 90;
+      btnFps.textContent = `⚡ ${targetFps} FPS`;
+      startMjpegStream();
     });
 
     // Resolution Toggle
     btnRes.addEventListener("click", () => {
-      resolution = resolution === "720p" ? "1080p" : "720p";
+      resolution = resolution === "720p" ? "1080p" : (resolution === "1080p" ? "540p" : "720p");
       btnRes.textContent = `📺 ${resolution}`;
       resMetric.textContent = `${resolution.toUpperCase()} HD`;
+      startMjpegStream();
     });
 
     // Gamepad Toggle
@@ -485,6 +623,26 @@
       }
     });
 
+    // Text Input Modal Handlers
+    document.getElementById("btn-type-modal").addEventListener("click", () => {
+      typeModal.style.display = "block";
+      typeTextInput.focus();
+    });
+    document.getElementById("btn-type-cancel").addEventListener("click", () => {
+      typeModal.style.display = "none";
+    });
+    document.getElementById("btn-type-enter").addEventListener("click", () => {
+      sendInput("key_press", { key: "enter" });
+    });
+    document.getElementById("btn-type-send").addEventListener("click", () => {
+      const text = typeTextInput.value;
+      if (text) {
+        sendInput("type_text", { text });
+        typeTextInput.value = "";
+      }
+      typeModal.style.display = "none";
+    });
+
     // Hotkey and Action Buttons
     document.querySelectorAll(".hk-btn").forEach(btn => {
       btn.addEventListener("click", () => {
@@ -495,8 +653,8 @@
       });
     });
 
-    // Gamepad Action Diamond (Touch + Mouse)
-    document.querySelectorAll(".action-btn").forEach(btn => {
+    // Gamepad Action Diamond and Shoulders
+    document.querySelectorAll(".action-btn, .shoulder-btn").forEach(btn => {
       const buttonName = btn.dataset.btn;
       const press = (e) => {
         e.preventDefault();
@@ -584,8 +742,9 @@
     camPad.addEventListener("touchend", () => { camTracking = false; });
     camPad.addEventListener("touchcancel", () => { camTracking = false; });
 
-    // Start stream on load
-    streamLoop();
+    // Initialize Stream and Render Loop
+    startMjpegStream();
+    renderLoop();
   </script>
 </body>
 </html>

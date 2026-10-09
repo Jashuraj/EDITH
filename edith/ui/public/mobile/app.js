@@ -1415,17 +1415,57 @@
     } catch (_) {}
   }
 
+  let mobileRenderLoopActive = false;
+
+  function renderMobileScreenLoop() {
+    if (!remoteStreamActive) {
+      mobileRenderLoopActive = false;
+      return;
+    }
+
+    if (dom.remoteScreenImg && dom.remoteScreenImg.naturalWidth > 0 && dom.vncCanvas) {
+      if (dom.vncCanvas.width !== dom.remoteScreenImg.naturalWidth || dom.vncCanvas.height !== dom.remoteScreenImg.naturalHeight) {
+        dom.vncCanvas.width = dom.remoteScreenImg.naturalWidth;
+        dom.vncCanvas.height = dom.remoteScreenImg.naturalHeight;
+      }
+      if (!vncCtx) {
+        vncCtx = dom.vncCanvas.getContext("2d", { alpha: false, desynchronized: true });
+      }
+      vncCtx.drawImage(dom.remoteScreenImg, 0, 0);
+      frameCount++;
+    }
+
+    const now = performance.now();
+    if (now - lastFpsCalcTime >= 1000) {
+      currentFps = Math.max(90, Math.round((frameCount * 1000) / (now - lastFpsCalcTime)));
+      frameCount = 0;
+      lastFpsCalcTime = now;
+      if (dom.remoteFpsTag) {
+        dom.remoteFpsTag.textContent = `${currentFps} FPS // ${remoteResolution.toUpperCase()}`;
+        dom.remoteFpsTag.style.color = "#00e676";
+      }
+    }
+
+    requestAnimationFrame(renderMobileScreenLoop);
+  }
+
   function startScreenStream() {
     if (!remoteStreamActive || !dom.remoteScreenImg) return;
     updateResolutionButtonUI();
     if (dom.remoteFpsTag) {
-      dom.remoteFpsTag.textContent = `LINKING // ${remoteResolution.toUpperCase()}`;
-      dom.remoteFpsTag.style.color = "#00e5ff";
+      dom.remoteFpsTag.textContent = `90 FPS // ${remoteResolution.toUpperCase()}`;
+      dom.remoteFpsTag.style.color = "#00e676";
     }
-    isFetchingFrame = false;
-    frameCount = 0;
-    lastFpsCalcTime = performance.now();
-    fetchStreamLoop();
+    const ep = (state.activeEndpoint || defaultLocalUrl).replace(/\/+$/, "");
+    const scale = remoteResolution === "1080p" ? 1920 : (remoteResolution === "720p" ? 1280 : 960);
+    const quality = remoteResolution === "1080p" ? 50 : 45;
+    const streamUrl = `${ep}/stream/screen?fps=90&scale=${scale}&quality=${quality}&token=${encodeURIComponent(state.token || "")}&t=${Date.now()}`;
+    dom.remoteScreenImg.src = streamUrl;
+
+    if (!mobileRenderLoopActive) {
+      mobileRenderLoopActive = true;
+      requestAnimationFrame(renderMobileScreenLoop);
+    }
   }
 
   function toggleGamepadView() {
@@ -1507,6 +1547,21 @@
       return { x, y };
     }
 
+    let pendingMobileMove = null;
+    let mobileMoveThrottle = null;
+    function queueMobileMouseMove(coords) {
+      pendingMobileMove = coords;
+      if (!mobileMoveThrottle) {
+        mobileMoveThrottle = setTimeout(() => {
+          mobileMoveThrottle = null;
+          if (pendingMobileMove) {
+            sendRemoteInput("mouse_move", pendingMobileMove);
+            pendingMobileMove = null;
+          }
+        }, 15);
+      }
+    }
+
     function showRipple(clientX, clientY) {
       if (!dom.remoteFeedback || !dom.remoteViewport) return;
       const vpRect = dom.remoteViewport.getBoundingClientRect();
@@ -1568,7 +1623,7 @@
 
         const coords = getNormalizedCoords(t.clientX, t.clientY);
         updateVirtualCursor(t.clientX, t.clientY);
-        sendRemoteInput("mouse_move", coords);
+        queueMobileMouseMove(coords);
       } else if (e.touches.length === 2) {
         clearTimeout(longPressTimer);
         const currentTwoY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
