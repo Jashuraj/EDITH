@@ -89,15 +89,25 @@ class ClapDetector:
 
     @classmethod
     def _is_device_openable(cls, idx: Optional[int]) -> bool:
-        """Verify device can actually be opened for audio input."""
-        return cls._get_working_samplerate(idx) is not None
+        """Verify device can actually be opened for audio input without PortAudio crashes."""
+        rate = cls._get_working_samplerate(idx)
+        if rate is None:
+            return False
+        try:
+            stream = sd.InputStream(device=idx, samplerate=rate, channels=1, blocksize=256)
+            stream.start()
+            stream.stop()
+            stream.close()
+            return True
+        except Exception:
+            return False
 
     @classmethod
     def get_preferred_input_device(cls) -> Optional[int]:
         """Detect working Bluetooth/headset mic or working default input."""
         try:
             devs = sd.query_devices()
-            # 1. Prefer functional Bluetooth / headset microphone
+            # 1. Prefer functional Bluetooth / headset microphone that can actually stream
             for idx, d in enumerate(devs):
                 if d.get("max_input_channels", 0) > 0:
                     name = str(d.get("name", "")).lower()
