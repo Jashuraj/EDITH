@@ -1014,9 +1014,11 @@
       fetchWeather();
       loadActiveModels();
       loadProviderSettings();
+      loadMobileConfig();
       initStick();
       setInterval(updateClock, 1000);
       setInterval(fetchTelemetry, 3000);
+      setInterval(loadMobileConfig, 10000);
       setInterval(fetchWeather, 60000);
 
       // Load saved preferences
@@ -1594,9 +1596,25 @@
         document.exitFullscreen().catch(() => {});
       }
     }
+    async function loadMobileConfig() {
+      try {
+        const res = await fetch('/mobile/config');
+        if (!res.ok) return;
+        const d = await res.json();
+        const url = d.cloud_url || 'https://edith-jashu.loca.lt';
+        const el = document.getElementById('hud-cloud-url');
+        if (el) el.textContent = url;
+        const setEl = document.getElementById('settings-cloud-url');
+        if (setEl) setEl.value = url;
+        const tunEl = document.getElementById('val-tunnel-status');
+        if (tunEl) tunEl.textContent = (d.tunnel_status && d.tunnel_status.online) ? 'PINNED ONLINE' : 'READY';
+      } catch (_) {}
+    }
     function copyCloudLink() {
-      navigator.clipboard.writeText('https://edith-jashu.loca.lt');
-      addLog('Cloud tunnel link copied to clipboard.', 'success');
+      const urlEl = document.getElementById('hud-cloud-url');
+      const url = (urlEl && urlEl.textContent.trim()) || 'https://edith-jashu.loca.lt';
+      navigator.clipboard.writeText(url);
+      addLog(`Cloud tunnel link copied: ${url}`, 'success');
     }
     function syncClipboard() {
       fetch('/api/clipboard').then(r => r.json()).then(d => {
