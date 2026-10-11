@@ -24,6 +24,9 @@ from edith.core.state_machine import STATE, SystemState
 from edith.phone.protocol import PHONE_PROTOCOL
 from edith.phone.tunnel import TUNNEL_MANAGER
 from edith.providers.router import ROUTER, TaskCategory
+from edith.tools.airdrop import AIRDROP
+from edith.tools.audio_mixer import AUDIO_MIXER
+from edith.tools.face_sentinel import FACE_SENTINEL
 from edith.tools.gamestream import GAMESTREAM_ENGINE
 from edith.tools.reflex import REFLEX
 from edith.tools.registry import REGISTRY
@@ -31,6 +34,7 @@ from edith.tools.remote_input import REMOTE_INPUT
 from edith.tools.screen_stream import SCREEN_STREAMER
 from edith.tools.windows import WIN_TOOLS
 from edith.voice.speaker import SPEAKER
+from edith.voice.whisper_engine import WHISPER_ENGINE
 
 logger = logging.getLogger("edith.phone.gateway")
 
@@ -195,6 +199,75 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
             sync_res = PHONE_PROTOCOL.sync_clipboard_from_phone(text, device_id or "mobile")
             sync_res["laptop_clipboard"] = PHONE_PROTOCOL.get_current_clipboard()
             self._send_json(sync_res)
+            return
+
+        if parsed.path == "/api/clipboard":
+            text = str(data.get("text", data.get("clipboard", "")))
+            source = str(data.get("source", device_id or "mobile"))
+            ok = AIRDROP.set_clipboard_text(text, source=source)
+            self._send_json({"success": ok, "clipboard": text})
+            return
+
+        # AirDrop File Upload
+        if parsed.path == "/api/airdrop/upload":
+            content_type = self.headers.get("Content-Type", "")
+            if "json" in content_type:
+                filename = data.get("filename", f"upload_{int(time.time())}.bin")
+                b64 = data.get("data") or data.get("base64") or data.get("file_base64", "")
+                import base64
+                file_bytes = base64.b64decode(b64) if b64 else b""
+            else:
+                filename = self.headers.get("X-Filename") or f"upload_{int(time.time())}.bin"
+                file_bytes = raw_bytes
+
+            res = AIRDROP.save_uploaded_file(filename, file_bytes)
+            self._send_json(res)
+            return
+
+        # Biometric Face Sentinel Controls
+        if parsed.path == "/api/sentinel/toggle":
+            enabled = data.get("enabled", True)
+            timeout = data.get("timeout", 30.0)
+            res = FACE_SENTINEL.start(absence_timeout=float(timeout)) if enabled else FACE_SENTINEL.stop()
+            self._send_json(res)
+            return
+
+        if parsed.path == "/api/sentinel/config":
+            timeout = data.get("timeout", 30.0)
+            res = FACE_SENTINEL.set_timeout(float(timeout))
+            self._send_json(res)
+            return
+
+        # Audio Mixer Controls
+        if parsed.path == "/api/audio/master":
+            vol = data.get("volume")
+            mute = data.get("muted") if "muted" in data else data.get("mute")
+            if vol is not None:
+                res = AUDIO_MIXER.set_master_volume(int(vol))
+            elif mute is not None:
+                res = AUDIO_MIXER.set_master_mute(bool(mute))
+            else:
+                res = AUDIO_MIXER.get_master_volume()
+            self._send_json(res)
+            return
+
+        if parsed.path == "/api/audio/app":
+            app = data.get("app") or data.get("process") or data.get("process_name", "")
+            vol = data.get("volume")
+            mute = data.get("muted") if "muted" in data else data.get("mute")
+            if vol is not None:
+                res = AUDIO_MIXER.set_app_volume(app, int(vol))
+            elif mute is not None:
+                res = AUDIO_MIXER.set_app_mute(app, bool(mute))
+            else:
+                res = {"success": False, "error": "No volume or mute specified"}
+            self._send_json(res)
+            return
+
+        if parsed.path == "/api/audio/media":
+            action = data.get("action", "play_pause")
+            res = AUDIO_MIXER.media_control(action)
+            self._send_json(res)
             return
 
         # 5. PC Sends Command/Push Message to Connected Phone
@@ -482,7 +555,46 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
             return
 
         elif parsed.path == "/api/clipboard":
-            self._send_json({"clipboard": PHONE_PROTOCOL.get_current_clipboard()})
+            text = AIRDROP.get_clipboard_text()
+            self._send_json({"clipboard": text, "text": text})
+            return
+
+        # Biometric Face Sentinel Status
+        elif parsed.path == "/api/sentinel/status":
+            self._send_json(FACE_SENTINEL.get_status())
+            return
+
+        # AirDrop File Explorer & Download
+        elif parsed.path == "/api/airdrop/files":
+            self._send_json({"files": AIRDROP.list_shared_files()})
+            return
+
+        elif parsed.path.startswith("/api/airdrop/download/"):
+            filename = urllib.parse.unquote(parsed.path.replace("/api/airdrop/download/", ""))
+            file_bytes = AIRDROP.get_file_bytes(filename)
+            if file_bytes is None:
+                self.send_error(404, "File not found")
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "application/octet-stream")
+            self.send_header("Content-Disposition", f'attachment; filename="{filename}"')
+            self.send_header("Content-Length", str(len(file_bytes)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(file_bytes)
+            return
+
+        # Remote Per-App Audio Mixer Status
+        elif parsed.path == "/api/audio/status":
+            self._send_json({
+                "master": AUDIO_MIXER.get_master_volume(),
+                "apps": AUDIO_MIXER.get_app_sessions(),
+            })
+            return
+
+        # Offline Whisper Engine Status
+        elif parsed.path == "/api/whisper/status":
+            self._send_json(WHISPER_ENGINE.get_status())
             return
 
         elif parsed.path in ("/ping", "/health"):

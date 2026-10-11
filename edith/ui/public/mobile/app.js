@@ -147,6 +147,37 @@
     vitalBatBar: document.getElementById("vital-bat-bar"),
     vitalDiskVal: document.getElementById("vital-disk-val"),
     vitalDiskBar: document.getElementById("vital-disk-bar"),
+
+    // AirDrop & Clipboard DOM References
+    btnOpenAirDrop: document.getElementById("btn-open-airdrop"),
+    modalAirDrop: document.getElementById("modal-airdrop"),
+    btnCloseAirDrop: document.getElementById("btn-close-airdrop"),
+    airdropClipboardText: document.getElementById("airdrop-clipboard-text"),
+    btnClipPull: document.getElementById("btn-clip-pull"),
+    btnClipPush: document.getElementById("btn-clip-push"),
+    airdropFileInput: document.getElementById("airdrop-file-input"),
+    btnSelectFile: document.getElementById("btn-select-file"),
+    btnUploadFile: document.getElementById("btn-upload-file"),
+    airdropUploadStatus: document.getElementById("airdrop-upload-status"),
+    airdropFilesList: document.getElementById("airdrop-files-list"),
+    airdropFileCount: document.getElementById("airdrop-file-count"),
+
+    // Audio Mixer DOM References
+    btnOpenMixer: document.getElementById("btn-open-mixer"),
+    modalMixer: document.getElementById("modal-audio-mixer"),
+    btnCloseMixer: document.getElementById("btn-close-mixer"),
+    mixerMasterSlider: document.getElementById("mixer-master-slider"),
+    mixerMasterVal: document.getElementById("mixer-master-val"),
+    btnMixerMute: document.getElementById("btn-mixer-mute"),
+    btnMediaPrev: document.getElementById("btn-media-prev"),
+    btnMediaPlayPause: document.getElementById("btn-media-playpause"),
+    btnMediaNext: document.getElementById("btn-media-next"),
+    btnMediaStop: document.getElementById("btn-media-stop"),
+    btnRefreshMixer: document.getElementById("btn-refresh-mixer"),
+    mixerAppStreams: document.getElementById("mixer-app-streams"),
+
+    // Biometric Sentinel Reference
+    btnToggleSentinel: document.getElementById("btn-toggle-sentinel"),
   };
 
   // ---------------- Service Worker Setup ----------------
@@ -1864,8 +1895,330 @@
     });
   }
 
+  // ---------------- AirDrop & Clipboard Sync ----------------
+  function openAirDropModal() {
+    if (dom.modalAirDrop) {
+      dom.modalAirDrop.style.display = "flex";
+      fetchClipboardFromPC();
+      fetchAirDropFiles();
+      triggerHaptic(20);
+    }
+  }
+
+  function closeAirDropModal() {
+    if (dom.modalAirDrop) dom.modalAirDrop.style.display = "none";
+  }
+
+  async function fetchClipboardFromPC() {
+    if (!state.activeEndpoint) return;
+    try {
+      const ep = state.activeEndpoint.replace(/\/+$/, "");
+      const res = await fetch(`${ep}/api/clipboard`, {
+        headers: { "Bypass-Tunnel-Reminder": "true" }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.clipboard || data.text || "";
+        if (dom.airdropClipboardText) dom.airdropClipboardText.value = text;
+        logConsole("CLIPBOARD", `Pulled ${text.length} chars from laptop`);
+      }
+    } catch (e) {
+      logConsole("CLIPBOARD", `Failed to read laptop clipboard: ${e.message}`);
+    }
+  }
+
+  async function pushClipboardToPC() {
+    if (!state.activeEndpoint) return;
+    const text = dom.airdropClipboardText ? dom.airdropClipboardText.value : "";
+    try {
+      const ep = state.activeEndpoint.replace(/\/+$/, "");
+      const res = await fetch(`${ep}/api/clipboard`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Bypass-Tunnel-Reminder": "true" },
+        body: JSON.stringify({ text, source: "mobile_airdrop" })
+      });
+      if (res.ok) {
+        triggerHaptic(30);
+        logConsole("CLIPBOARD", "Pasted text to laptop clipboard!");
+        speakResponse("Clipboard synchronized to laptop.");
+      }
+    } catch (e) {
+      logConsole("CLIPBOARD", `Paste error: ${e.message}`);
+    }
+  }
+
+  async function fetchAirDropFiles() {
+    if (!state.activeEndpoint || !dom.airdropFilesList) return;
+    try {
+      const ep = state.activeEndpoint.replace(/\/+$/, "");
+      const res = await fetch(`${ep}/api/airdrop/files`, {
+        headers: { "Bypass-Tunnel-Reminder": "true" }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const files = data.files || [];
+        if (dom.airdropFileCount) dom.airdropFileCount.textContent = files.length;
+        if (files.length === 0) {
+          dom.airdropFilesList.innerHTML = `<div style="color:var(--text-dim);text-align:center;padding:8px;">No transfers yet.</div>`;
+          return;
+        }
+        dom.airdropFilesList.innerHTML = files.map(f => {
+          const sz = (f.size_bytes / 1024).toFixed(1) + " KB";
+          const dlUrl = `${ep}${f.download_url}`;
+          return `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:6px;border-bottom:1px solid rgba(255,255,255,0.06);">
+              <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px;" title="${f.filename}">📄 ${f.filename} (${sz})</span>
+              <a href="${dlUrl}" target="_blank" download style="color:var(--cyan);text-decoration:none;font-weight:bold;padding:2px 8px;border:1px solid var(--cyan);border-radius:4px;font-size:11px;">GET ⬇</a>
+            </div>
+          `;
+        }).join("");
+      }
+    } catch (e) {
+      console.warn("AirDrop files fetch notice:", e);
+    }
+  }
+
+  async function uploadAirDropFile(file) {
+    if (!state.activeEndpoint || !file) return;
+    if (dom.airdropUploadStatus) dom.airdropUploadStatus.textContent = `Uploading ${file.name}...`;
+    try {
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        const b64 = evt.target.result.split(",")[1];
+        const ep = state.activeEndpoint.replace(/\/+$/, "");
+        const res = await fetch(`${ep}/api/airdrop/upload`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Bypass-Tunnel-Reminder": "true" },
+          body: JSON.stringify({ filename: file.name, base64: b64 })
+        });
+        if (res.ok) {
+          triggerHaptic(40);
+          if (dom.airdropUploadStatus) dom.airdropUploadStatus.textContent = `Uploaded ${file.name} successfully!`;
+          speakResponse(`AirDrop transfer complete: ${file.name}`);
+          fetchAirDropFiles();
+        } else {
+          if (dom.airdropUploadStatus) dom.airdropUploadStatus.textContent = "Upload failed.";
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (e) {
+      if (dom.airdropUploadStatus) dom.airdropUploadStatus.textContent = `Upload error: ${e.message}`;
+    }
+  }
+
+  // ---------------- Audio Mixer & Media Controls ----------------
+  function openAudioMixerModal() {
+    if (dom.modalMixer) {
+      dom.modalMixer.style.display = "flex";
+      fetchAudioMixerStatus();
+      triggerHaptic(20);
+    }
+  }
+
+  function closeAudioMixerModal() {
+    if (dom.modalMixer) dom.modalMixer.style.display = "none";
+  }
+
+  async function fetchAudioMixerStatus() {
+    if (!state.activeEndpoint) return;
+    try {
+      const ep = state.activeEndpoint.replace(/\/+$/, "");
+      const res = await fetch(`${ep}/api/audio/status`, {
+        headers: { "Bypass-Tunnel-Reminder": "true" }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const master = data.master || {};
+        const apps = data.apps || [];
+        if (dom.mixerMasterSlider && master.volume !== undefined) {
+          dom.mixerMasterSlider.value = master.volume;
+        }
+        if (dom.mixerMasterVal && master.volume !== undefined) {
+          dom.mixerMasterVal.textContent = `${master.volume}%`;
+        }
+        if (dom.btnMixerMute) {
+          dom.btnMixerMute.textContent = master.muted ? "Unmute" : "Mute";
+          dom.btnMixerMute.style.borderColor = master.muted ? "#ff1744" : "var(--cyan)";
+        }
+        renderMixerAppStreams(apps);
+      }
+    } catch (e) {
+      console.warn("Mixer status fetch error:", e);
+    }
+  }
+
+  function renderMixerAppStreams(apps) {
+    if (!dom.mixerAppStreams) return;
+    if (!apps || apps.length === 0) {
+      dom.mixerAppStreams.innerHTML = `<div style="color:var(--text-dim);text-align:center;padding:12px;">No running sound apps detected.</div>`;
+      return;
+    }
+    dom.mixerAppStreams.innerHTML = apps.map(app => {
+      return `
+        <div style="background:var(--bg-card);border:1px solid var(--border-glass);border-radius:8px;padding:8px;display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-weight:bold;font-size:12px;color:var(--text-main);">🔊 ${app.process_name}</span>
+            <span id="app-vol-label-${app.pid}" style="color:var(--cyan);font-size:11px;">${app.volume}%</span>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <input type="range" min="0" max="100" value="${app.volume}" style="flex:1;accent-color:var(--cyan);"
+              oninput="document.getElementById('app-vol-label-${app.pid}').textContent = this.value + '%'"
+              onchange="window._setAppVolume('${app.process_name}', this.value)">
+            <button class="btn-secondary" style="padding:4px 8px;font-size:11px;${app.muted ? 'border-color:#ff1744;color:#ff1744;' : ''}"
+              onclick="window._toggleAppMute('${app.process_name}', ${!app.muted})">${app.muted ? 'Unmute' : 'Mute'}</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+  }
+
+  window._setAppVolume = async (appName, volume) => {
+    if (!state.activeEndpoint) return;
+    try {
+      const ep = state.activeEndpoint.replace(/\/+$/, "");
+      await fetch(`${ep}/api/audio/app`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Bypass-Tunnel-Reminder": "true" },
+        body: JSON.stringify({ app: appName, volume: parseInt(volume) })
+      });
+    } catch (_) {}
+  };
+
+  window._toggleAppMute = async (appName, muted) => {
+    if (!state.activeEndpoint) return;
+    try {
+      const ep = state.activeEndpoint.replace(/\/+$/, "");
+      await fetch(`${ep}/api/audio/app`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Bypass-Tunnel-Reminder": "true" },
+        body: JSON.stringify({ app: appName, muted })
+      });
+      fetchAudioMixerStatus();
+    } catch (_) {}
+  };
+
+  async function sendMediaControl(action) {
+    if (!state.activeEndpoint) return;
+    triggerHaptic(20);
+    try {
+      const ep = state.activeEndpoint.replace(/\/+$/, "");
+      await fetch(`${ep}/api/audio/media`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Bypass-Tunnel-Reminder": "true" },
+        body: JSON.stringify({ action })
+      });
+      logConsole("MEDIA", `Dispatched media key: ${action}`);
+    } catch (e) {
+      logConsole("MEDIA", `Media action error: ${e.message}`);
+    }
+  }
+
+  async function toggleFaceSentinel() {
+    if (!state.activeEndpoint) return;
+    triggerHaptic(30);
+    try {
+      const ep = state.activeEndpoint.replace(/\/+$/, "");
+      const sRes = await fetch(`${ep}/api/sentinel/status`, {
+        headers: { "Bypass-Tunnel-Reminder": "true" }
+      });
+      let active = false;
+      if (sRes.ok) {
+        const sData = await sRes.json();
+        active = !sData.active;
+      } else {
+        active = true;
+      }
+      const tRes = await fetch(`${ep}/api/sentinel/toggle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Bypass-Tunnel-Reminder": "true" },
+        body: JSON.stringify({ enabled: active, timeout: 30.0 })
+      });
+      if (tRes.ok) {
+        const msg = active ? "Biometric face sentinel activated. Workstation will auto-lock if you leave." : "Biometric face sentinel deactivated.";
+        logConsole("SENTINEL", msg);
+        speakResponse(msg);
+        if (dom.btnToggleSentinel) {
+          dom.btnToggleSentinel.style.borderColor = active ? "var(--cyan)" : "";
+          dom.btnToggleSentinel.style.color = active ? "var(--cyan)" : "";
+        }
+      }
+    } catch (e) {
+      logConsole("SENTINEL", `Sentinel toggle error: ${e.message}`);
+    }
+  }
+
   // ---------------- Settings & UI Event Listeners ----------------
   function initEvents() {
+    // AirDrop & Clipboard Modal
+    if (dom.btnOpenAirDrop) dom.btnOpenAirDrop.addEventListener("click", openAirDropModal);
+    if (dom.btnCloseAirDrop) dom.btnCloseAirDrop.addEventListener("click", closeAirDropModal);
+    if (dom.modalAirDrop) {
+      dom.modalAirDrop.addEventListener("click", (e) => {
+        if (e.target === dom.modalAirDrop) closeAirDropModal();
+      });
+    }
+    if (dom.btnClipPull) dom.btnClipPull.addEventListener("click", fetchClipboardFromPC);
+    if (dom.btnClipPush) dom.btnClipPush.addEventListener("click", pushClipboardToPC);
+    if (dom.btnSelectFile) {
+      dom.btnSelectFile.addEventListener("click", () => {
+        if (dom.airdropFileInput) dom.airdropFileInput.click();
+      });
+    }
+    if (dom.airdropFileInput) {
+      dom.airdropFileInput.addEventListener("change", (e) => {
+        if (e.target.files && e.target.files[0]) {
+          uploadAirDropFile(e.target.files[0]);
+        }
+      });
+    }
+
+    // Audio Mixer & Media Controls
+    if (dom.btnOpenMixer) dom.btnOpenMixer.addEventListener("click", openAudioMixerModal);
+    if (dom.btnCloseMixer) dom.btnCloseMixer.addEventListener("click", closeAudioMixerModal);
+    if (dom.modalMixer) {
+      dom.modalMixer.addEventListener("click", (e) => {
+        if (e.target === dom.modalMixer) closeAudioMixerModal();
+      });
+    }
+    if (dom.mixerMasterSlider) {
+      dom.mixerMasterSlider.addEventListener("input", (e) => {
+        if (dom.mixerMasterVal) dom.mixerMasterVal.textContent = `${e.target.value}%`;
+      });
+      dom.mixerMasterSlider.addEventListener("change", async (e) => {
+        if (!state.activeEndpoint) return;
+        try {
+          const ep = state.activeEndpoint.replace(/\/+$/, "");
+          await fetch(`${ep}/api/audio/master`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Bypass-Tunnel-Reminder": "true" },
+            body: JSON.stringify({ volume: parseInt(e.target.value) })
+          });
+        } catch (_) {}
+      });
+    }
+    if (dom.btnMixerMute) {
+      dom.btnMixerMute.addEventListener("click", async () => {
+        if (!state.activeEndpoint) return;
+        try {
+          const ep = state.activeEndpoint.replace(/\/+$/, "");
+          await fetch(`${ep}/api/audio/master`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Bypass-Tunnel-Reminder": "true" },
+            body: JSON.stringify({ muted: dom.btnMixerMute.textContent === "Mute" })
+          });
+          fetchAudioMixerStatus();
+        } catch (_) {}
+      });
+    }
+    if (dom.btnMediaPrev) dom.btnMediaPrev.addEventListener("click", () => sendMediaControl("prev"));
+    if (dom.btnMediaPlayPause) dom.btnMediaPlayPause.addEventListener("click", () => sendMediaControl("play_pause"));
+    if (dom.btnMediaNext) dom.btnMediaNext.addEventListener("click", () => sendMediaControl("next"));
+    if (dom.btnMediaStop) dom.btnMediaStop.addEventListener("click", () => sendMediaControl("stop"));
+    if (dom.btnRefreshMixer) dom.btnRefreshMixer.addEventListener("click", fetchAudioMixerStatus);
+
+    // Biometric Face Sentinel
+    if (dom.btnToggleSentinel) dom.btnToggleSentinel.addEventListener("click", toggleFaceSentinel);
+
     // Input Submissions
     dom.btnSend.addEventListener("click", () => {
       executeCommand(dom.cmdInput.value);

@@ -249,3 +249,80 @@ def register_builtin_tools(registry) -> None:
         risk=RiskLevel.LOW,
         fn=lambda **kwargs: __import__("edith.tools.system_optimizer", fromlist=["optimize_system"]).optimize_system(),
     )
+
+    # Biometric Face Presence Sentinel Pack
+    registry.register(
+        name="start_face_sentinel",
+        description="Activate webcam biometric face sentinel for workstation auto-lock",
+        action_pack="WINDOWS_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda timeout=30, **kwargs: __import__("edith.tools.face_sentinel", fromlist=["FACE_SENTINEL"]).FACE_SENTINEL.start(absence_timeout=float(timeout or 30)),
+        parameters_schema={"type": "object", "properties": {"timeout": {"type": "integer"}}},
+    )
+    registry.register(
+        name="stop_face_sentinel",
+        description="Deactivate webcam biometric face sentinel",
+        action_pack="WINDOWS_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda **kwargs: __import__("edith.tools.face_sentinel", fromlist=["FACE_SENTINEL"]).FACE_SENTINEL.stop(),
+    )
+    registry.register(
+        name="get_face_sentinel_status",
+        description="Query status and absence metrics of biometric face sentinel",
+        action_pack="WINDOWS_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda **kwargs: __import__("edith.tools.face_sentinel", fromlist=["FACE_SENTINEL"]).FACE_SENTINEL.get_status(),
+    )
+
+    # Clipboard & AirDrop Pack
+    registry.register(
+        name="get_clipboard",
+        description="Read current text from Windows clipboard",
+        action_pack="WINDOWS_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda **kwargs: __import__("edith.tools.airdrop", fromlist=["AIRDROP"]).AIRDROP.get_clipboard_text(),
+    )
+    registry.register(
+        name="set_clipboard",
+        description="Write text to Windows clipboard",
+        action_pack="WINDOWS_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda text="", **kwargs: __import__("edith.tools.airdrop", fromlist=["AIRDROP"]).AIRDROP.set_clipboard_text(text or kwargs.get("content") or ""),
+        parameters_schema={"type": "object", "properties": {"text": {"type": "string"}}, "required": ["text"]},
+    )
+    registry.register(
+        name="list_airdrop_files",
+        description="List shared files available in AirDrop transfers folder",
+        action_pack="FILES_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda **kwargs: __import__("edith.tools.airdrop", fromlist=["AIRDROP"]).AIRDROP.list_shared_files(),
+    )
+
+    # Remote Per-App Audio Mixer Pack
+    registry.register(
+        name="get_audio_mixer_status",
+        description="Query master volume and active application sound mixer streams",
+        action_pack="WINDOWS_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda **kwargs: {
+            "master": __import__("edith.tools.audio_mixer", fromlist=["AUDIO_MIXER"]).AUDIO_MIXER.get_master_volume(),
+            "apps": __import__("edith.tools.audio_mixer", fromlist=["AUDIO_MIXER"]).AUDIO_MIXER.get_app_sessions(),
+        },
+    )
+    registry.register(
+        name="set_master_volume",
+        description="Set exact Windows master audio volume percentage (0-100)",
+        action_pack="WINDOWS_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda volume=50, **kwargs: __import__("edith.tools.audio_mixer", fromlist=["AUDIO_MIXER"]).AUDIO_MIXER.set_master_volume(int(volume or kwargs.get("level") or 50)),
+        parameters_schema={"type": "object", "properties": {"volume": {"type": "integer"}}, "required": ["volume"]},
+    )
+    registry.register(
+        name="set_app_volume",
+        description="Adjust volume percentage (0-100) for a specific app process (spotify, chrome, game)",
+        action_pack="WINDOWS_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda app="", volume=50, **kwargs: __import__("edith.tools.audio_mixer", fromlist=["AUDIO_MIXER"]).AUDIO_MIXER.set_app_volume(app or kwargs.get("process") or "", int(volume or kwargs.get("level") or 50)),
+        parameters_schema={"type": "object", "properties": {"app": {"type": "string"}, "volume": {"type": "integer"}}, "required": ["app", "volume"]},
+    )
+

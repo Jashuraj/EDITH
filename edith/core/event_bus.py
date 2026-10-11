@@ -59,6 +59,31 @@ class EventBus:
 
         return event
 
+    def publish_sync(self, topic: str, data: Optional[Dict[str, Any]] = None, source: str = "core") -> Event:
+        """Synchronous event publisher for non-async modules and tools."""
+        event = Event(topic=topic, data=data or {}, source=source)
+        self._history.append(event)
+        if len(self._history) > self._max_history:
+            self._history.pop(0)
+
+        handlers = list(self._subscribers.get(topic, []))
+        if topic != "*":
+            handlers.extend(self._subscribers.get("*", []))
+
+        try:
+            loop = asyncio.get_running_loop()
+            if loop.is_running():
+                for h in handlers:
+                    loop.create_task(self._safe_invoke(h, event))
+        except RuntimeError:
+            pass
+
+        return event
+
+    def emit(self, topic: str, data: Optional[Dict[str, Any]] = None, source: str = "core") -> Event:
+        """Alias for synchronous event emission."""
+        return self.publish_sync(topic=topic, data=data, source=source)
+
     async def _safe_invoke(self, handler: EventHandler, event: Event) -> None:
         try:
             await handler(event)

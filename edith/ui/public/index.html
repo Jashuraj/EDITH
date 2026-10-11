@@ -204,6 +204,8 @@
         <button class="action-btn btn-vision" id="btn-vision" onclick="triggerVision()" title="EDITH screen perception analysis">SEE SCREEN</button>
         <button class="action-btn btn-gesture" id="btn-gestures" onclick="window.toggleGestures ? window.toggleGestures() : logEntry('Gestures module loading...', 'system')">GESTURE: OFF</button>
         <button class="action-btn btn-mouse" id="btn-os-mouse" onclick="window.toggleOsMouse ? window.toggleOsMouse() : logEntry('OS Mouse requires gestures active', 'system')" title="Toggle Full-Screen OS Desktop Mouse Control">OS MOUSE: OFF</button>
+        <button class="action-btn" id="btn-sentinel" onclick="window.toggleFaceSentinel && window.toggleFaceSentinel()" title="Biometric Face Presence Auto-Lock Sentinel">SENTINEL: OFF</button>
+        <button class="action-btn" id="btn-airdrop" onclick="runChip('get clipboard')" title="AirDrop Clipboard & File Gateway">AIRDROP</button>
         <button class="action-btn btn-clap" id="btn-clap" onclick="toggleClapWelcome()" title="Toggle Double-Clap Welcome Protocol">CLAP: OFF</button>
         <button class="action-btn btn-undo" id="btn-undo" onclick="executeUndo()" title="Undo last state action" style="display:none;">UNDO</button>
         <button class="action-btn btn-emergency" id="btn-stop" onclick="toggleEmergencyStop()">&#x2715; STOP</button>
@@ -1289,6 +1291,30 @@
       }
     }
     window.toggleClapWelcome = toggleClapWelcome;
+
+    let isSentinelActive = false;
+    async function toggleFaceSentinel() {
+      try {
+        const res = await fetch('/api/sentinel/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: !isSentinelActive, timeout: 30.0 })
+        });
+        const data = await res.json();
+        const stat = data.status || {};
+        isSentinelActive = stat.active !== undefined ? stat.active : !isSentinelActive;
+        const btn = document.getElementById('btn-sentinel');
+        if (btn) {
+          btn.innerText = isSentinelActive ? 'SENTINEL: ON' : 'SENTINEL: OFF';
+          if (isSentinelActive) btn.classList.add('active');
+          else btn.classList.remove('active');
+        }
+        logEntry(`Biometric Sentinel: ${isSentinelActive ? 'ACTIVE (Webcam auto-lock armed)' : 'DISARMED'}`, 'system');
+      } catch (e) {
+        console.error('[Sentinel toggle error]', e);
+      }
+    }
+    window.toggleFaceSentinel = toggleFaceSentinel;
 
     function updateClapUI(active) {
       const btn = document.getElementById('btn-clap');

@@ -126,8 +126,20 @@ class ReflexEngine:
         self.register(r"^(?:hey\s+edith[,\s]*)?unmute(?:\s+audio|\s+sound|\s+volume)?$", "unmute", "windows", {"action": "unmute"})
         self.register(r"^(?:hey\s+edith[,\s]*)?volume\s+up$", "volume_up", "windows", {"delta": 5})
         self.register(r"^(?:hey\s+edith[,\s]*)?volume\s+down$", "volume_down", "windows", {"delta": -5})
+        self.register(app_prefix + r"(?:set\s+)?volume\s+(?:to\s+)?(?P<volume>\d{1,3})(?:%|percent)?$", "set_master_volume", "windows", {})
         self.register(app_prefix + r"(?:pause|resume|play|stop)\s+(?:the\s+)?(?:music|song|track|playback|video)$", "media_action", "windows", {"kind": "play_pause"})
         self.register(app_prefix + r"(?:next|skip)\s+(?:the\s+)?(?:song|track|music)$", "media_action", "windows", {"kind": "next"})
+        self.register(app_prefix + r"(?:previous|prev)\s+(?:the\s+)?(?:song|track|music)$", "media_action", "windows", {"kind": "prev"})
+
+        # Biometric Face Sentinel Reflexes (<15ms)
+        self.register(app_prefix + r"(?:start|enable|activate)\s+face(?:\s+sentinel|\s+presence|\s+lock)?$", "start_face_sentinel", "windows", {})
+        self.register(app_prefix + r"(?:stop|disable|deactivate)\s+face(?:\s+sentinel|\s+presence|\s+lock)?$", "stop_face_sentinel", "windows", {})
+        self.register(app_prefix + r"face(?:\s+sentinel)?\s+status$", "get_face_sentinel_status", "windows", {})
+
+        # Clipboard & AirDrop Reflexes (<15ms)
+        self.register(app_prefix + r"(?:get|read|show)\s+(?:the\s+)?clipboard$", "get_clipboard", "windows", {})
+        self.register(app_prefix + r"(?:list|show)\s+(?:airdrop\s+|shared\s+)?files$", "list_airdrop_files", "files", {})
+
         # Voice Mute & JARVIS Speech Synthesis Toggle (<15ms)
         self.register(app_prefix + r"(?:mute|turn\s+off|disable|stop)\s+(?:jarvis\s+|edith\s+)?(?:voice|speech|speaker)$", "mute_voice", "voice", {})
         self.register(app_prefix + r"(?:unmute|turn\s+on|enable|start)\s+(?:jarvis\s+|edith\s+)?(?:voice|speech|speaker)$", "unmute_voice", "voice", {})

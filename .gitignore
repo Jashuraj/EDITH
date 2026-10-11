@@ -39,3 +39,4 @@ build/
 # Signing tools and APK idsig files
 scripts/tools/
 *.idsig
+EDith sol test/
