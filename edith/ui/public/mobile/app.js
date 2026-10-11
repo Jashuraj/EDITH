@@ -1573,9 +1573,30 @@
       const rect = el.getBoundingClientRect();
       if (!rect || rect.width <= 1 || rect.height <= 1) return { x: 0.5, y: 0.5 };
 
-      const x = Math.max(0.0, Math.min(1.0, (clientX - rect.left) / rect.width));
-      const y = Math.max(0.0, Math.min(1.0, (clientY - rect.top) / rect.height));
-      return { x, y };
+      const naturalW = (isImg && el.naturalWidth) ? el.naturalWidth : (el.width || 1920);
+      const naturalH = (isImg && el.naturalHeight) ? el.naturalHeight : (el.height || 1080);
+      const naturalAspect = naturalW / naturalH;
+      const elemAspect = rect.width / rect.height;
+
+      let renderW, renderH, offsetX, offsetY;
+      if (elemAspect > naturalAspect) {
+        renderH = rect.height;
+        renderW = rect.height * naturalAspect;
+        offsetX = (rect.width - renderW) / 2;
+        offsetY = 0;
+      } else {
+        renderW = rect.width;
+        renderH = rect.width / naturalAspect;
+        offsetX = 0;
+        offsetY = (rect.height - renderH) / 2;
+      }
+
+      const touchX = clientX - rect.left - offsetX;
+      const touchY = clientY - rect.top - offsetY;
+
+      const normX = Math.max(0.0, Math.min(1.0, touchX / renderW));
+      const normY = Math.max(0.0, Math.min(1.0, touchY / renderH));
+      return { x: normX, y: normY };
     }
 
     let pendingMobileMove = null;

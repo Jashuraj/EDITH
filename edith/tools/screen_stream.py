@@ -255,12 +255,18 @@ class ScreenStreamer:
         self._worker_thread.start()
 
     def _worker_loop(self, scale_width: Optional[int], quality: int) -> None:
-        """Continuously capture desktop frames in background thread."""
+        """Continuously capture desktop frames in background thread at target 90 FPS."""
+        target_delay = 1.0 / 90.0
         while self._worker_running:
+            t0 = time.perf_counter()
             try:
                 self._capture_frame_internal(scale_width, quality)
             except Exception:
                 time.sleep(0.005)
+            dt = time.perf_counter() - t0
+            rem = target_delay - dt
+            if rem > 0.001:
+                time.sleep(rem)
 
     def _capture_frame_internal(
         self,
@@ -346,12 +352,15 @@ class ScreenStreamer:
                 logger.error("MJPEG streaming frame capture error: %s", ex)
 
             now = time.perf_counter()
-            diff = next_time - now
-            if diff > 0.002:
-                time.sleep(diff - 0.001)
-            while time.perf_counter() < next_time:
-                pass
-            next_time += interval
+            if next_time < now:
+                next_time = now + interval
+            else:
+                diff = next_time - now
+                if diff > 0.002:
+                    time.sleep(diff - 0.001)
+                while time.perf_counter() < next_time:
+                    pass
+                next_time += interval
 
     def get_stats(self) -> Dict[str, Any]:
         """Return screen streamer telemetry."""
