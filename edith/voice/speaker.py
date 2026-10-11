@@ -267,7 +267,7 @@ class SpeechSynthesizer:
                     chunks = [c["data"] async for c in communicate.stream() if c["type"] == "audio"]
                     return b"".join(chunks)
 
-                audio_bytes = loop.run_until_complete(_stream_audio())
+                audio_bytes = loop.run_until_complete(asyncio.wait_for(_stream_audio(), timeout=2.5))
                 if audio_bytes and len(audio_bytes) > 100:
                     return audio_bytes, "audio/mpeg"
             finally:

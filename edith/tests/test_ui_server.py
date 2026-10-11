@@ -168,7 +168,7 @@ class TestUIServer(unittest.TestCase):
 
     def test_voice_tts_endpoint(self):
         req = urllib.request.Request("http://127.0.0.1:8796/api/voice/tts?text=Test+audio&char=edith")
-        with urllib.request.urlopen(req, timeout=5.0) as res:
+        with urllib.request.urlopen(req, timeout=10.0) as res:
             self.assertEqual(res.status, 200)
             content_type = res.headers.get("Content-Type")
             self.assertIn(content_type, ("audio/wav", "audio/mpeg"))

@@ -2885,6 +2885,76 @@
       consecutiveOfflineFailures = 0;
       await resolveActiveEndpoint();
     });
+
+    // Window bridge for inline HTML onclick handlers
+    let remoteZoomVal = 1.0;
+    window.setMobileTheme = (theme) => setMobileTheme(theme, true);
+    window.sendMobileCommand = (cmd) => executeCommand(cmd);
+    window.submitMobileInput = () => {
+      if (dom.cmdInput && dom.cmdInput.value.trim()) {
+        executeCommand(dom.cmdInput.value.trim());
+        dom.cmdInput.value = "";
+      }
+    };
+    window.toggleMobileMic = () => toggleSpeech();
+    window.openRemoteOverlay = (gameMode = false) => openRemoteDesktop(gameMode);
+    window.closeRemoteOverlay = () => closeRemoteDesktop();
+    window.openGamepadOverlay = () => openRemoteDesktop(true);
+    window.closeGamepadOverlay = () => closeRemoteDesktop();
+    window.refreshMobileRemoteStream = () => refreshScreenStream();
+    window.openModal = (name) => {
+      const el = document.getElementById(`modal-${name}`);
+      if (el) el.style.display = "flex";
+    };
+    window.closeModal = (name) => {
+      const el = document.getElementById(`modal-${name}`);
+      if (el) el.style.display = "none";
+    };
+    window.switchNavTab = (tab) => {
+      document.querySelectorAll(".nav-tab-btn").forEach(b => b.classList.remove("active"));
+      const b = document.getElementById(`nav-btn-${tab}`);
+      if (b) b.classList.add("active");
+      if (tab === "remote") openRemoteDesktop(false);
+      else if (tab === "gamepad") openRemoteDesktop(true);
+      else if (tab === "guide") window.openModal("guide");
+      else if (tab === "settings") window.openModal("settings");
+    };
+    window.zoomMobileRemote = (factor) => {
+      remoteZoomVal = Math.max(0.5, Math.min(3.0, remoteZoomVal * factor));
+      const img = document.getElementById("mobile-remote-img");
+      if (img) img.style.transform = `scale(${remoteZoomVal})`;
+      const lbl = document.getElementById("lbl-mobile-zoom");
+      if (lbl) lbl.textContent = `${Math.round(remoteZoomVal * 100)}%`;
+    };
+    window.resetMobileZoom = () => {
+      remoteZoomVal = 1.0;
+      const img = document.getElementById("mobile-remote-img");
+      if (img) img.style.transform = "scale(1.0)";
+      const lbl = document.getElementById("lbl-mobile-zoom");
+      if (lbl) lbl.textContent = "100%";
+    };
+    window.handleMobileRemoteClick = (e) => {
+      const img = e.target;
+      const rect = img.getBoundingClientRect();
+      const xNorm = (e.clientX - rect.left) / rect.width;
+      const yNorm = (e.clientY - rect.top) / rect.height;
+      sendRemoteInput("click", { x: Math.max(0, Math.min(1, xNorm)), y: Math.max(0, Math.min(1, yNorm)), button: "left" });
+    };
+    window.dispatchGamepadKey = (keyName, action) => {
+      sendRemoteInput(action === "down" ? "key_down" : "key_up", { key: keyName });
+    };
+    window.saveHostSettings = async () => {
+      const inp = document.getElementById("setting-host-url");
+      if (inp && inp.value.trim()) {
+        state.localUrl = inp.value.trim();
+        localStorage.setItem(STORAGE_KEYS.LOCAL_URL, state.localUrl);
+        window.closeModal("settings");
+        await resolveActiveEndpoint();
+        await pollLaptopVitals();
+      }
+    };
+    window.syncClipboard = () => executeCommand("get clipboard");
+    window.toggleEmergencyStop = () => executeCommand("emergency stop");
   }
 
   window.addEventListener("DOMContentLoaded", init);

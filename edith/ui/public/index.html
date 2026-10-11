@@ -3,1619 +3,1322 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EDITH - Autonomous AI OS</title>
+  <title>EDITH — Autonomous AI Operating System</title>
+
+  <!-- Typography: Space Grotesk (display), Inter (body), IBM Plex Mono (technical) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=2.6.0">
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css?v=3.0.0">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
-<body>
+<body class="theme-edith" data-theme="edith">
 
-  <!-- Boot Sequence Overlay -->
-  <div id="boot-overlay">
-    <div class="boot-title">EDITH</div>
-    <div class="boot-bar-wrap"><div class="boot-bar"></div></div>
-    <div class="boot-lines">
-      EVEN DEAD, I'M THE HERO<br>
-      CREATOR: JASHWANTH RAJ &nbsp;|&nbsp; LOCAL-FIRST AUTONOMOUS AI OS
-    </div>
-  </div>
- 
-  <!-- Holographic AR Camera Background Layer (Barehands / Ultron) -->
-  <div id="ar-camera-container">
-    <video id="bg-camera" autoplay playsinline muted></video>
-    <canvas id="bg-overlay"></canvas>
-  </div>
+  <!-- ============================================================
+       App Shell Layout
+       ============================================================ -->
+  <div class="app-shell" id="app-shell">
 
-  <!-- Three.js Canvas -->
-  <div id="canvas-container"></div>
+    <!-- ── Left Navigation Rail ── -->
+    <aside class="rail" aria-label="Main Navigation">
+      <button class="rail-brand" onclick="openNav(null)" aria-label="EDITH Home" title="EDITH Command Center">
+        <svg width="34" height="34" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+          <path d="M20 3 34.72 11.5v17L20 37 5.28 28.5v-17L20 3Z" stroke="currentColor" stroke-width="1.3" />
+          <path d="M20 8 30.4 14v12L20 32 9.6 26V14L20 8Z" stroke="currentColor" stroke-width=".7" opacity=".4" />
+          <path d="m12 17 8-4.5 8 4.5v6l-8 4.5-8-4.5v-6Z" stroke="currentColor" stroke-width="1.4" />
+          <path d="m12 17 8 4.5 8-4.5M20 21.5v6M20 3v5M34.7 11.5l-4.3 2.5M5.3 28.5l4.3-2.5" stroke="currentColor" stroke-width="1.2" />
+          <circle cx="20" cy="13" r="2" fill="currentColor" />
+        </svg>
+      </button>
 
-  <!-- Holographic hand cursor -->
-  <div id="hand-cursor"></div>
+      <div class="rail-divider"></div>
 
-  <!-- Webcam PiP (corner view) -->
-  <div class="webcam-container" id="webcam-box">
-    <button id="btn-ar-bg" class="ar-toggle-btn" onclick="window.toggleArBackground && window.toggleArBackground()" title="Toggle full-screen background camera feed">CAM BG: OFF</button>
-    <video id="webcam-pip" autoplay playsinline muted></video>
-    <canvas id="webcam-overlay"></canvas>
-    <div id="gesture-tag" class="gesture-status-tag">STANDBY</div>
-  </div>
+      <nav>
+        <button class="rail-button active" id="rail-btn-dashboard" onclick="openNav(null)" title="Command Center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          <span class="rail-tooltip">Command Center</span>
+        </button>
 
-  <!-- HUD Layer -->
-  <div class="hud-layer">
+        <button class="rail-button" id="rail-btn-remote" onclick="openDialog('remote')" title="Remote Desktop & VNC">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+          <span class="rail-tooltip">Remote Desktop & VNC</span>
+        </button>
 
-    <!-- ── Header ── -->
-    <header class="hud-header glass-card" style="display:flex !important; flex-direction:row !important; justify-content:space-between !important; align-items:center !important; overflow:visible !important; min-height:56px !important; z-index:20 !important;">
-      <div class="hud-title" style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
-        <h1>EDITH</h1>
-        <span class="badge badge-sys">AUTONOMOUS OS</span>
-        <span class="badge badge-ver">v2.5</span>
-      </div>
+        <button class="rail-button" id="rail-btn-gamepad" onclick="openDialog('gamepad')" title="Virtual Gamepad">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2" y="6" width="20" height="12" rx="6"></rect><line x1="6" y1="12" x2="10" y2="12"></line><line x1="8" y1="10" x2="8" y2="14"></line><line x1="15" y1="13" x2="15.01" y2="13"></line><line x1="18" y1="11" x2="18.01" y2="11"></line></svg>
+          <span class="rail-tooltip">Virtual Gamepad</span>
+        </button>
 
-      <div class="hud-header-center" style="display:flex; flex-direction:row; align-items:center; gap:16px; flex-shrink:1;">
-        <div class="hud-clock">
-          <span id="clock-time">--:--:--</span>
-          <span id="clock-date">SYSTEM READY</span>
-        </div>
-        <div class="hud-weather" title="Local Atmospheric Telemetry">
-          <span id="w-temp">24°C</span>
-          <span id="w-desc">OPTIMAL</span>
-          <span id="w-city">LOCAL STATION</span>
-        </div>
-        <div class="hud-themes" title="Select Character Voice & HUD Theme">
-          <button class="theme-btn theme-edith active" onclick="setTheme('edith')" title="EDITH (Tactical Cyan)">EDITH</button>
-          <button class="theme-btn theme-jarvis" onclick="setTheme('jarvis')" title="JARVIS (Mark-L Gold)">JARVIS</button>
-          <button class="theme-btn theme-friday" onclick="setTheme('friday')" title="FRIDAY (Neon Emerald)">FRIDAY</button>
-          <button class="theme-btn theme-karen" onclick="setTheme('karen')" title="KAREN (Hot Pink / Rose)">KAREN</button>
-          <button class="theme-btn theme-spiderman" onclick="setTheme('spiderman')" title="SPIDER-MAN (Scarlet & Web-Blue)">SPIDEY</button>
-          <button class="theme-btn theme-ultron" onclick="setTheme('ultron')" title="ULTRON (Crimson Power)">ULTRON</button>
-        </div>
-      </div>
+        <button class="rail-button" id="rail-btn-guide" onclick="openDialog('guide')" title="Command Guide">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          <span class="rail-tooltip">Command Guide</span>
+        </button>
 
-      <div class="hud-header-right" style="display:flex; flex-direction:row; align-items:center; gap:14px; flex-shrink:0;">
-        <button class="btn-mode-toggle mode-auto" id="btn-mode-toggle" onclick="toggleSystemMode()" title="Toggle System Mode: Auto / Online / Offline">MODE: AUTO</button>
-        <button class="action-btn btn-cmd-guide" id="btn-guide" onclick="toggleGuide()" style="display:inline-flex !important; visibility:visible !important; opacity:1 !important; flex-shrink:0 !important; cursor:pointer !important;">COMMAND GUIDE</button>
-        <span class="dot-live" title="System Online"></span>
-        <span class="creator-tag">CREATOR:&nbsp;<strong>JASHWANTH RAJ</strong></span>
-        <span class="header-divider">&nbsp;|&nbsp;</span>
-        <span id="header-state-text" style="color: var(--cyan); letter-spacing:2px;">READY</span>
-      </div>
-    </header>
+        <button class="rail-button" id="rail-btn-mixer" onclick="openDialog('mixer')" title="Audio Mixer">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+          <span class="rail-tooltip">Audio Mixer</span>
+        </button>
 
-    <!-- ── Telemetry Sidebar ── -->
-    <aside class="telemetry-card glass-card">
-      <div class="section-label">SYSTEM TELEMETRY</div>
+        <button class="rail-button" id="rail-btn-sentinel" onclick="toggleFaceSentinel()" title="Biometric Face Sentinel">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          <span class="rail-tooltip">Face Sentinel</span>
+        </button>
 
-      <div class="telemetry-row">
-        <span class="t-label">CPU</span>
-        <span class="t-val" id="val-cpu">i5-8350U</span>
-      </div>
+        <button class="rail-button" id="rail-btn-activity" onclick="openDialog('activity')" title="System Activity">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          <span class="rail-tooltip">Activity & Diagnostics</span>
+        </button>
+      </nav>
 
-      <div class="telemetry-row" style="flex-direction:column; align-items:flex-start; gap:4px;">
-        <div style="display:flex;justify-content:space-between;width:100%;">
-          <span class="t-label">RAM LOAD</span>
-          <span class="t-val" id="val-ram">--</span>
-        </div>
-        <div class="t-bar-wrap"><div class="t-bar" id="bar-ram" style="width:50%"></div></div>
-      </div>
+      <div class="rail-bottom">
+        <button class="rail-button" onclick="openDialog('settings')" title="Preferences & Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0 2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span class="rail-tooltip">Settings</span>
+        </button>
 
-      <div class="telemetry-row" style="flex-direction:column; align-items:flex-start; gap:4px;">
-        <div style="display:flex;justify-content:space-between;width:100%;">
-          <span class="t-label">STORAGE</span>
-          <span class="t-val" id="val-disk">--</span>
-        </div>
-        <div class="t-bar-wrap"><div class="t-bar" id="bar-disk" style="width:35%"></div></div>
-      </div>
+        <div class="rail-divider"></div>
 
-      <div class="telemetry-row">
-        <span class="t-label">POWER</span>
-        <span class="t-val" id="val-battery">--</span>
-      </div>
-
-      <div class="telemetry-row" style="flex-direction:column; align-items:flex-start; gap:5px;">
-        <span class="t-label">LOCAL AI MODEL</span>
-        <select id="val-model" class="model-select" onchange="switchModel(this.value)" title="Switch Active Ollama Model">
-          <option value="hermes3:3b">hermes3:3b</option>
-        </select>
-      </div>
-
-      <div class="telemetry-row">
-        <span class="t-label">NETWORK</span>
-        <span class="t-val" id="val-runtime">DETECTING...</span>
-      </div>
-
-      <div class="telemetry-row" style="flex-direction:column; align-items:flex-start; gap:5px;">
-        <div style="display:flex;justify-content:space-between;width:100%;">
-          <span class="t-label">AUDIO INPUT</span>
-          <span class="t-val ok" id="val-mic-badge">AUTO</span>
-        </div>
-        <select id="val-mic-select" class="model-select" onchange="switchMicDevice(this.value)" title="Active Microphone Input Source">
-          <option value="">SCANNING AUDIO...</option>
-        </select>
-      </div>
-
-      <div class="section-label" style="margin-top:14px;">CORE MODULES</div>
-      <div class="modules-list">
-        <div class="module-item"><span><span class="module-dot"></span>STT</span><span class="t-val ok">WEBSPEECH</span></div>
-        <div class="module-item"><span><span class="module-dot"></span>CORE</span><span class="t-val ok" id="mod-core">HYBRID AI</span></div>
-        <div class="module-item"><span><span class="module-dot"></span>VOICE</span><span class="t-val ok">SYNTHESIZER</span></div>
-        <div class="module-item"><span><span class="module-dot"></span>VISION</span><span class="t-val ok">MEDIAPIPE</span></div>
-      </div>
-
-      <div class="workshop-card">
-        <div class="section-label" style="margin-bottom:6px;">WORKSHOP OPERATIONS</div>
-        <div id="workshop-log" class="workshop-log"></div>
+        <button class="workspace-avatar" onclick="openDialog('about')" title="EDITH System Avatar">
+          E<span></span>
+        </button>
       </div>
     </aside>
 
-    <!-- ── Center Stage (pass-through for 3D orb & AR camera) ── -->
-    <div class="stage-center">
-      <canvas id="audio-viz" class="audio-viz-canvas" width="320" height="320"></canvas>
-      <div class="state-badge" id="current-state-badge">READY</div>
+    <!-- ── Main Shell ── -->
+    <div class="main-shell">
+
+      <!-- ── Topbar Header ── -->
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-line">
+            <h1>E.D.I.T.H.</h1>
+            <span class="version-chip">MARK II</span>
+          </div>
+          <p>EVEN DEAD, I'M THE HERO &nbsp;|&nbsp; LOCAL-FIRST AUTONOMOUS AI OS</p>
+        </div>
+
+        <div class="topbar-center">
+          <span class="header-slash">/</span>
+          <!-- Dynamic Voice & Theme Selector Pills -->
+          <div class="theme-selector-bar">
+            <button class="theme-pill-btn active" data-theme="edith" onclick="setTheme('edith')">EDITH</button>
+            <button class="theme-pill-btn" data-theme="jarvis" onclick="setTheme('jarvis')">JARVIS</button>
+            <button class="theme-pill-btn" data-theme="friday" onclick="setTheme('friday')">FRIDAY</button>
+            <button class="theme-pill-btn" data-theme="karen" onclick="setTheme('karen')">KAREN</button>
+            <button class="theme-pill-btn" data-theme="spiderman" onclick="setTheme('spiderman')">SPIDEY</button>
+            <button class="theme-pill-btn" data-theme="ultron" onclick="setTheme('ultron')">ULTRON</button>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <button class="theme-pill-btn" id="btn-mode-toggle" onclick="toggleSystemMode()" style="border: 1px solid var(--line);">MODE: AUTO</button>
+
+          <div class="online-status" id="hud-online-status">
+            <span class="status-dot"></span>
+            <span id="lbl-system-state">SYSTEM READY</span>
+          </div>
+
+          <div class="header-clock">
+            <time id="clock-time">--:--:--</time>
+            <span id="clock-date">LOCAL TIME</span>
+          </div>
+
+          <div class="header-clock" style="padding-left:14px; border-left: 1px solid var(--line);">
+            <time id="w-temp" style="font-size:12px;">24°C</time>
+            <span id="w-desc">OPTIMAL</span>
+          </div>
+
+          <button class="btn-emergency-top" id="btn-emergency" onclick="toggleEmergencyStop()">
+            🛑 E-STOP
+          </button>
+        </div>
+      </header>
+
+      <!-- ── Workspace ── -->
+      <div class="workspace">
+        <div class="page-heading">
+          <div>
+            <div class="page-title">
+              <span class="tiny-cross">+</span>
+              <h2>Command center</h2>
+              <span class="page-badge">LIVE HYBRID AI</span>
+            </div>
+            <p>Direct reflex execution. Autonomous task planning. Full laptop & mobile control.</p>
+          </div>
+
+          <div class="page-actions">
+            <span class="private-badge">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              PRIVATE SECURE CORE
+            </span>
+            <button class="icon-button" onclick="toggleFullscreen()" title="Toggle Fullscreen">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── 3-Column Workspace Grid ── -->
+        <main class="workspace-grid" id="workspace-grid">
+
+          <!-- ════ COLUMN 1: TELEMETRY & HARDWARE ════ -->
+          <aside class="telemetry-column">
+
+            <!-- System Status Panel -->
+            <section class="panel system-panel">
+              <div class="panel-heading">
+                <h3>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
+                  SYSTEM STATUS
+                </h3>
+                <span class="status-dot green"></span>
+              </div>
+
+              <div class="system-status-main">
+                <span class="system-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                </span>
+                <div>
+                  <strong>All systems operational</strong>
+                  <span>Reflex engine &lt;15ms · Ready for input</span>
+                </div>
+              </div>
+
+              <div class="status-list">
+                <div>
+                  <span>Core Engine</span>
+                  <span class="status-value"><i class="status-dot green"></i>Reflex L0</span>
+                </div>
+                <div>
+                  <span>AI Model</span>
+                  <select id="select-active-model" onchange="switchModel(this.value)" style="background:#0b141c; color:var(--cyan); border:1px solid var(--line); font-size:8.5px; border-radius:4px; padding:2px 4px;">
+                    <option value="hermes3:3b">hermes3:3b (Local)</option>
+                    <option value="llama3.2:1b">llama3.2:1b</option>
+                  </select>
+                </div>
+                <div>
+                  <span>Voice Persona</span>
+                  <select id="select-voice-char" onchange="changeVoiceCharacter(this.value)" style="background:#0b141c; color:var(--cyan); border:1px solid var(--line); font-size:8.5px; border-radius:4px; padding:2px 4px;">
+                    <option value="edith">EDITH (Tactical)</option>
+                    <option value="jarvis">JARVIS (Mark-L)</option>
+                    <option value="friday">FRIDAY (Fast)</option>
+                    <option value="karen">KAREN (Suit)</option>
+                    <option value="peter">PETER (Spider)</option>
+                    <option value="ultron">ULTRON (Crimson)</option>
+                  </select>
+                </div>
+                <div>
+                  <span>Cloud Tunnel</span>
+                  <span class="status-value" id="val-tunnel-status">PINNED ONLINE</span>
+                </div>
+              </div>
+
+              <div class="system-foot">
+                <span>Autonomous OS</span>
+                <span>v3.0.0</span>
+              </div>
+            </section>
+
+            <!-- Performance & Telemetry Panel -->
+            <section class="panel performance-panel">
+              <div class="panel-heading">
+                <h3>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                  PERFORMANCE & VITALS
+                </h3>
+              </div>
+
+              <div class="metric-line">
+                <div>
+                  <span class="metric-label">API LATENCY</span>
+                  <strong><span id="val-ping-latency">12</span><small>ms</small></strong>
+                </div>
+                <div class="status-value"><span class="status-dot"></span>LIVE</div>
+              </div>
+
+              <!-- Latency SVG chart -->
+              <svg class="latency-chart" id="latency-svg" viewBox="0 0 220 40" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="latency-grad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="var(--cyan)" stop-opacity="0.3"></stop>
+                    <stop offset="100%" stop-color="var(--cyan)" stop-opacity="0"></stop>
+                  </linearGradient>
+                </defs>
+                <path id="latency-path-fill" d="M0,35 L20,30 L50,32 L80,25 L120,28 L160,20 L200,24 L220,22 L220,40 L0,40 Z" fill="url(#latency-grad)"></path>
+                <path id="latency-path-line" d="M0,35 L20,30 L50,32 L80,25 L120,28 L160,20 L200,24 L220,22" fill="none" stroke="var(--cyan)" stroke-width="1.5"></path>
+              </svg>
+
+              <div class="heap-row">
+                <span>CPU Load</span>
+                <strong id="val-cpu">--%</strong>
+              </div>
+              <div class="meter"><span id="bar-cpu" style="width: 15%;"></span></div>
+
+              <div class="heap-row">
+                <span>RAM Usage</span>
+                <strong id="val-ram">--</strong>
+              </div>
+              <div class="meter"><span id="bar-ram" style="width: 45%;"></span></div>
+
+              <div class="heap-row">
+                <span>Storage (C:)</span>
+                <strong id="val-disk">--</strong>
+              </div>
+              <div class="meter"><span id="bar-disk" style="width: 60%;"></span></div>
+
+              <div class="heap-row">
+                <span>Battery / Power</span>
+                <strong id="val-battery">--%</strong>
+              </div>
+              <div class="meter"><span id="bar-battery" style="width: 90%;"></span></div>
+            </section>
+
+            <!-- Quick Commands Panel -->
+            <section class="panel quick-panel">
+              <div class="panel-heading">
+                <h3>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                  QUICK PROTOCOLS
+                </h3>
+              </div>
+
+              <div class="quick-actions">
+                <button onclick="submitTextCommand('Give me my daily briefing')">
+                  <span class="quick-icon">☀️</span>
+                  <span><strong>Daily Briefing</strong><small>Status, schedule & weather</small></span>
+                </button>
+                <button onclick="openDialog('remote')">
+                  <span class="quick-icon">🖥️</span>
+                  <span><strong>Remote Desktop</strong><small>Interactive laptop streaming</small></span>
+                </button>
+                <button onclick="openDialog('gamepad')">
+                  <span class="quick-icon">🎮</span>
+                  <span><strong>Virtual Gamepad</strong><small>Landscape controller mode</small></span>
+                </button>
+                <button onclick="triggerVision()">
+                  <span class="quick-icon">👁️</span>
+                  <span><strong>See Screen</strong><small>AI screen vision inspection</small></span>
+                </button>
+                <button onclick="submitTextCommand('lock screen')">
+                  <span class="quick-icon">🔒</span>
+                  <span><strong>Lock PC</strong><small>Lock desktop workstation</small></span>
+                </button>
+                <button onclick="submitTextCommand('unlock screen')">
+                  <span class="quick-icon">🔓</span>
+                  <span><strong>Unlock PC</strong><small>Unlock host workstation</small></span>
+                </button>
+              </div>
+            </section>
+
+            <!-- Mobile Gateway Cloud Link Card -->
+            <section class="panel" style="padding:12px;">
+              <div class="panel-heading" style="margin-bottom:8px;">
+                <h3>📱 MOBILE LINK</h3>
+                <span class="status-dot green"></span>
+              </div>
+              <div style="font-family:var(--mono); font-size:9px; color:var(--cyan); word-break:break-all;" id="hud-cloud-url">
+                https://edith-jashu.loca.lt
+              </div>
+              <div style="display:flex; gap:6px; margin-top:8px;">
+                <button class="secondary-button" style="padding:5px 8px; font-size:8.5px;" onclick="copyCloudLink()">Copy Link</button>
+                <button class="secondary-button" style="padding:5px 8px; font-size:8.5px;" onclick="syncClipboard()">Sync Clip</button>
+              </div>
+            </section>
+
+          </aside>
+
+          <!-- ════ COLUMN 2: CORE HOLOGRAPHIC ORB STAGE ════ -->
+          <section class="core-panel" id="core-panel" aria-label="EDITH Interactive Holographic Core">
+
+            <!-- Headline intro -->
+            <div class="core-intro">
+              <div class="core-eyebrow">
+                <span></span>YOUR PERSONAL AUTONOMOUS AI OS<span></span>
+              </div>
+              <h2 id="core-headline">At your service.</h2>
+              <p id="core-subcaption">Your commands. My attention. Let's make things happen.</p>
+            </div>
+
+            <!-- Three.js Holographic Orb Stage -->
+            <div class="orb-stage" id="orb-stage">
+              <div class="core-glow"></div>
+              <div class="orb-grid"></div>
+              <div class="core-axis horizontal"></div>
+              <div class="core-axis vertical"></div>
+
+              <!-- Stage technical corner brackets -->
+              <div class="stage-corner top-left"></div>
+              <div class="stage-corner top-right"></div>
+              <div class="stage-corner bottom-left"></div>
+              <div class="stage-corner bottom-right"></div>
+
+              <!-- Three.js Container -->
+              <div class="orb-canvas" id="orb-canvas-container"></div>
+
+              <!-- Technical HUD Telemetry Overlay -->
+              <div class="orb-label label-top-left">
+                <span>NEURAL INTERFACE</span>
+                <strong>EDITH <i>//</i> 01</strong>
+              </div>
+              <div class="orb-label label-top-right">
+                <span>INTERACTIVE CORE</span>
+                <strong>DRAG TO ROTATE</strong>
+              </div>
+              <div class="orb-label label-bottom-left">
+                <span>INPUT SIGNAL</span>
+                <strong id="val-input-signal">STANDBY</strong>
+              </div>
+              <div class="orb-label label-bottom-right">
+                <span>RENDER ENGINE</span>
+                <strong id="val-render-fps">60 FPS</strong>
+              </div>
+
+              <div class="core-ready">
+                <span class="status-dot"></span>
+                <span id="lbl-core-ready">AWAITING YOUR COMMAND</span>
+              </div>
+            </div>
+
+            <!-- Voice Console -->
+            <div class="voice-console">
+              <div class="voice-control-row">
+                <button class="round-control" id="btn-toggle-speaker" onclick="toggleJarvisVoiceMute()" title="Mute/Unmute Voice Response">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                </button>
+
+                <div class="waveform" id="waveform-left">
+                  <i style="height: 6px;"></i><i style="height: 12px;"></i><i style="height: 8px;"></i>
+                  <i style="height: 20px;"></i><i style="height: 14px;"></i><i style="height: 26px;"></i>
+                  <i style="height: 18px;"></i><i style="height: 10px;"></i>
+                </div>
+
+                <button class="main-mic" id="main-mic-btn" onclick="toggleVoice()" title="Tap to Speak (Space)">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                </button>
+
+                <div class="waveform reverse" id="waveform-right">
+                  <i style="height: 6px;"></i><i style="height: 12px;"></i><i style="height: 8px;"></i>
+                  <i style="height: 20px;"></i><i style="height: 14px;"></i><i style="height: 26px;"></i>
+                  <i style="height: 18px;"></i><i style="height: 10px;"></i>
+                </div>
+
+                <button class="round-control" onclick="window.resetOrbView && window.resetOrbView()" title="Reset Core View (R)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+                </button>
+              </div>
+
+              <div class="voice-caption">
+                <span id="voice-caption-text">Tap to speak or press <kbd>Space</kbd></span>
+              </div>
+            </div>
+
+            <!-- Input Controls Row -->
+            <div class="input-controls">
+              <div class="input-control">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                <span>
+                  <strong>Voice Output</strong>
+                  <small id="lbl-tts-state">Speech Enabled</small>
+                </span>
+                <button class="toggle is-on" id="tgl-voice-out" onclick="toggleTts()"><span /></button>
+              </div>
+
+              <div class="input-control">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg>
+                <span>
+                  <strong>Hand Tracking</strong>
+                  <small id="lbl-gesture-state">Camera Ready</small>
+                </span>
+                <button class="toggle" id="tgl-gestures" onclick="toggleGestures()"><span /></button>
+              </div>
+
+              <div class="input-control">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path></svg>
+                <span>
+                  <strong>Clap to Wake</strong>
+                  <small id="lbl-clap-state">Acoustic Guard</small>
+                </span>
+                <button class="toggle" id="tgl-clap" onclick="toggleClap()"><span /></button>
+              </div>
+
+              <div class="input-control">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                <span>
+                  <strong>Face Sentinel</strong>
+                  <small id="lbl-sentinel-state">Biometric Lock</small>
+                </span>
+                <button class="toggle" id="tgl-sentinel" onclick="toggleFaceSentinel()"><span /></button>
+              </div>
+            </div>
+
+            <!-- Activity Stream -->
+            <section class="activity-panel">
+              <div class="activity-heading">
+                <h3>
+                  <span class="status-dot green"></span>
+                  ACTIVITY STREAM
+                </h3>
+                <button class="theme-pill-btn" onclick="openDialog('activity')">View all →</button>
+              </div>
+              <div class="activity-lines" id="activity-lines">
+                <div>
+                  <time>--:--:--</time>
+                  <span class="status-dot green"></span>
+                  <span>EDITH Autonomous OS online · Reflex engine ready.</span>
+                </div>
+              </div>
+            </section>
+
+          </section>
+
+          <!-- ════ COLUMN 3: CONVERSATION & ASSISTANT ════ -->
+          <aside class="conversation-panel">
+
+            <!-- Chat Heading -->
+            <div class="chat-heading">
+              <div class="assistant-symbol">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              </div>
+              <div>
+                <h3>Assistant<span class="status-dot green"></span></h3>
+                <p>Reflex tools, AI reasoning, OS orders.</p>
+              </div>
+              <div class="chat-heading-actions">
+                <button class="icon-button" onclick="clearConversation()" title="New Conversation">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Tabs: Conversation | History | Command Guide -->
+            <div class="chat-tabs">
+              <button class="active" id="tab-btn-chat" onclick="switchChatTab('chat')">Conversation</button>
+              <button id="tab-btn-guide" onclick="switchChatTab('guide')">Command Guide</button>
+            </div>
+
+            <!-- Chat Scroll Area -->
+            <div class="chat-scroll" id="chat-scroll">
+              <div class="day-divider">
+                <span></span>TODAY<span></span>
+              </div>
+
+              <!-- Welcome Card -->
+              <div class="message assistant-message">
+                <div class="message-avatar">E</div>
+                <div class="message-content">
+                  <div class="message-meta">
+                    <strong>EDITH</strong>
+                    <time id="welcome-time">--:--</time>
+                  </div>
+                  <div class="message-text">
+                    <p>Good to have you here, boss.</p>
+                    <p>Workstation controls, MediaPipe gesture tracking, VNC screen streaming, and neural reflex tools are fully active.</p>
+                    <p>What shall we work on today?</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Suggestion Chips -->
+              <div class="suggestion-block" id="suggestion-block">
+                <span class="eyebrow">A FEW PLACES TO START</span>
+                <button onclick="submitTextCommand('open youtube and play brand new day trailer')">
+                  <span>▶ Play Brand New Day Trailer</span>
+                </button>
+                <button onclick="submitTextCommand('look at my screen')">
+                  <span>👁️ Analyze Active Desktop Screen</span>
+                </button>
+                <button onclick="submitTextCommand('Give me my daily briefing')">
+                  <span>☀️ Daily Briefing & Vitals</span>
+                </button>
+              </div>
+
+              <!-- Live Messages Container -->
+              <div id="messages-container"></div>
+            </div>
+
+            <!-- Chat Composer -->
+            <div class="chat-composer">
+              <div class="composer-model">
+                <span><i class="status-dot green"></i>Reflex & Hybrid Router</span>
+                <span id="composer-char-label">CHAR: EDITH</span>
+              </div>
+
+              <form onsubmit="handleComposerSubmit(event)">
+                <textarea
+                  id="composer-input"
+                  placeholder="Ask EDITH or give order... (e.g. 'open youtube and play trailer', 'lock pc')"
+                  rows="2"
+                  onkeydown="handleComposerKey(event)"
+                ></textarea>
+
+                <div class="composer-tools">
+                  <button type="button" class="icon-button" onclick="triggerFileUpload()" title="Attach file">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                  </button>
+                  <button type="button" class="icon-button" onclick="toggleVoice()" title="Dictate voice">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path></svg>
+                  </button>
+                  <span>↵ to send</span>
+                  <button class="send-button" type="submit" id="btn-composer-send">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                  </button>
+                </div>
+              </form>
+              <input type="file" id="file-uploader" class="hidden-input" onchange="handleFileAttached(event)">
+            </div>
+
+          </aside>
+
+        </main>
+      </div>
+
+      <!-- ── Statusbar Footer ── -->
+      <footer class="statusbar">
+        <div>
+          <span class="status-dot green"></span>
+          <strong>EDITH OS</strong>
+          <span class="footer-divider">/</span>
+          <span>HYBRID AI v3.0</span>
+          <span class="footer-divider">·</span>
+          <span>CREATOR: JASHWANTH RAJ</span>
+        </div>
+        <div>
+          <span>SESSION <span id="val-session-time">00:00:00</span></span>
+          <span class="footer-divider">·</span>
+          <span>SHORTCUT: <kbd style="font-family:var(--mono); color:var(--cyan);">Ctrl+K</kbd></span>
+        </div>
+      </footer>
+
     </div>
+  </div>
 
-    <!-- ── Mission Control ── -->
-    <aside class="mission-card glass-card">
-      <div class="section-label">MISSION CONTROL &amp; EVENT LOG</div>
-      <div id="mission-log">
-        <div class="log-entry log-system">EDITH Autonomous OS online.</div>
-        <div class="log-entry log-system">Deterministic reflex engine active (&lt;15ms latency).</div>
-        <div class="log-entry log-system">Neural router connected to hybrid free AI / Ollama.</div>
-        <div class="log-entry log-system">Ready for voice or text instructions.</div>
+  <!-- ============================================================
+       Interactive Modals & Dialogs (ASTRA 6 Styled)
+       ============================================================ -->
+
+  <!-- ── 1. Remote Desktop & VNC Streaming Modal ── -->
+  <div class="dialog-backdrop" id="modal-remote" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'remote')">
+    <div class="dialog dialog-wide">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">REMOTE DESKTOP & SCREEN STREAM</span>
+          <h2>Host Workstation View</h2>
+        </div>
+        <button class="icon-button" onclick="closeDialog('remote')">✕</button>
       </div>
 
-      <!-- Paired Mobile Devices & Cloud Link Gateway -->
-      <div class="section-label" style="margin-top:14px;">MOBILE &amp; CLOUD GATEWAY</div>
-      <div id="mobile-gateway-panel" class="mobile-gateway-panel" style="margin-top:6px; font-family:var(--font-mono); font-size:11px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-          <span style="color:var(--text-dim);">CLOUD LINK:</span>
-          <span id="hud-cloud-url" style="color:var(--cyan); word-break:break-all; max-width:200px;">CONNECTING...</span>
-        </div>
-        <div style="display:flex; gap:6px; margin-bottom:8px; flex-wrap:wrap;">
-          <button class="action-btn" style="padding:4px 8px; font-size:10px;" onclick="copyCloudLink()">COPY LINK</button>
-          <button class="action-btn" style="padding:4px 8px; font-size:10px;" onclick="syncHostClipboard()">SYNC CLIPBOARD</button>
-          <button class="action-btn" style="padding:4px 8px; font-size:10px;" onclick="pushMobileAlert()">NOTIFY PHONE</button>
-        </div>
-        <div id="hud-device-list" style="color:var(--text-dim); font-size:10px;">SCANNING MOBILE SESSIONS...</div>
-      </div>
-    </aside>
+      <div class="dialog-body">
+        <div class="remote-stream-box">
+          <div class="remote-toolbar">
+            <span class="status-dot green"></span>
+            <span style="font-family:var(--mono); font-size:9.5px; color:var(--cyan);" id="lbl-remote-fps">LIVE STREAM</span>
+            <div style="margin-left:auto; display:flex; gap:8px;">
+              <button class="secondary-button" onclick="zoomRemote(1.2)">🔍+ Zoom</button>
+              <button class="secondary-button" onclick="zoomRemote(0.8)">🔍- Out</button>
+              <button class="secondary-button" onclick="resetRemoteZoom()">Fit Screen</button>
+              <button class="secondary-button" onclick="submitTextCommand('unlock screen')">🔓 Unlock PC</button>
+              <button class="primary-button" onclick="refreshRemoteStream()">🔄 Refresh</button>
+            </div>
+          </div>
 
-    <!-- ── Bottom Console ── -->
-    <footer class="hud-footer glass-card">
-      <div id="codestrip"><span id="code-line"></span></div>
-      <div class="cmd-row">
-        <input
-          type="text"
-          id="cmd-input"
-          class="cmd-input"
-          placeholder="&gt; Message EDITH or give OS order... (e.g. 'open youtube and play brand new day trailer', 'lock pc')"
-          autocomplete="off"
-          spellcheck="false"
-        />
-      </div>
-      <div class="btn-row">
-        <button class="action-btn btn-transmit" id="btn-submit" onclick="submitCommand()">TRANSMIT</button>
-        <button class="action-btn btn-voice" id="btn-voice" onclick="toggleVoice()">MIC: OFF</button>
-        <button class="action-btn btn-voice-mute" id="btn-voice-mute" onclick="toggleJarvisVoiceMute()" title="Mute/Unmute spoken voice responses">VOICE: ON</button>
-        <select class="action-btn hud-select" id="select-voice-char" onchange="changeVoiceCharacter(this.value)" title="Switch Character Voice Profile (EDITH, JARVIS, FRIDAY, KAREN, PETER, ULTRON)">
-          <option value="edith">VOICE: EDITH</option>
-          <option value="jarvis">VOICE: JARVIS</option>
-          <option value="friday">VOICE: FRIDAY</option>
-          <option value="karen">VOICE: KAREN (SUIT)</option>
-          <option value="peter">VOICE: PETER (SPIDEY)</option>
-          <option value="ultron">VOICE: ULTRON</option>
-        </select>
-        <button class="action-btn btn-vision" id="btn-vision" onclick="triggerVision()" title="EDITH screen perception analysis">SEE SCREEN</button>
-        <button class="action-btn btn-gesture" id="btn-gestures" onclick="window.toggleGestures ? window.toggleGestures() : logEntry('Gestures module loading...', 'system')">GESTURE: OFF</button>
-        <button class="action-btn btn-mouse" id="btn-os-mouse" onclick="window.toggleOsMouse ? window.toggleOsMouse() : logEntry('OS Mouse requires gestures active', 'system')" title="Toggle Full-Screen OS Desktop Mouse Control">OS MOUSE: OFF</button>
-        <button class="action-btn" id="btn-sentinel" onclick="window.toggleFaceSentinel && window.toggleFaceSentinel()" title="Biometric Face Presence Auto-Lock Sentinel">SENTINEL: OFF</button>
-        <button class="action-btn" id="btn-airdrop" onclick="runChip('get clipboard')" title="AirDrop Clipboard & File Gateway">AIRDROP</button>
-        <button class="action-btn btn-clap" id="btn-clap" onclick="toggleClapWelcome()" title="Toggle Double-Clap Welcome Protocol">CLAP: OFF</button>
-        <button class="action-btn btn-undo" id="btn-undo" onclick="executeUndo()" title="Undo last state action" style="display:none;">UNDO</button>
-        <button class="action-btn btn-emergency" id="btn-stop" onclick="toggleEmergencyStop()">&#x2715; STOP</button>
-      </div>
-    </footer>
-
-    <!-- ── In-HUD Floating Media Player Dock ── -->
-    <div id="hud-media-dock" class="hud-media-dock" style="display: none;">
-      <div class="hud-media-header">
-        <div class="hud-media-badge"><span class="dot-live" style="background:#ff0055;"></span>&nbsp;<span id="hud-media-title">HUD MEDIA PLAYER</span></div>
-        <div class="hud-media-actions">
-          <button class="media-btn" id="btn-media-popout" title="Open in browser window" onclick="popoutMedia()">↗ POP OUT</button>
-          <button class="media-btn" id="btn-media-min" title="Minimize player" onclick="toggleMinimizeMedia()">_ MIN</button>
-          <button class="media-btn media-close" title="Close player" onclick="closeHudMedia()">&times; CLOSE</button>
-        </div>
-      </div>
-      <div class="hud-media-content" id="hud-media-body">
-        <iframe id="hud-media-iframe" src="" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
-      </div>
-    </div>
-
-    <!-- ── OS Command Directory Modal ── -->
-    <div id="guide-modal" class="guide-modal glass-card" style="display: none;">
-      <div class="guide-header">
-        <div class="guide-title">
-          <span style="color:var(--cyan);font-weight:bold;">EDITH OS COMMAND DIRECTORY</span>
-          <span style="font-size:11px;color:var(--text-dim);margin-left:14px;">CLICK ANY CHIP TO TRANSMIT COMMAND</span>
-        </div>
-        <button class="guide-close-btn" onclick="toggleGuide()">&times;</button>
-      </div>
-      <div class="guide-grid">
-        <div class="guide-col">
-          <div class="guide-col-title">&#128250; MEDIA & WEB SEARCH</div>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">open youtube and play brand new day trailer</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">play lofi beats on youtube</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">pause music</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">next song</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">previous song</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">search youtube for iron man theme</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">search google for quantum computing</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">google python documentation</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">open github</button>
-        </div>
-        <div class="guide-col">
-          <div class="guide-col-title">&#128187; APPLICATIONS</div>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">open chrome</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">close chrome</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">open notepad</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">close notepad</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">open vs code</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">open calc</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">open terminal</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">open task manager</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">open paint</button>
-        </div>
-        <div class="guide-col">
-          <div class="guide-col-title">&#9000; TYPING & MOUSE</div>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">type hello world</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">type welcome to edith in notepad</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">click</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">double click</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">right click</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">scroll down</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">press enter</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">select all</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">copy</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">paste</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">save</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">undo</button>
-        </div>
-        <div class="guide-col">
-          <div class="guide-col-title">&#128193; WINDOWS & FOLDERS</div>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">show desktop</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">minimize all</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">restore windows</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">open downloads</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">open documents</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">open desktop</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">open pictures</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">open c drive</button>
-        </div>
-        <div class="guide-col">
-          <div class="guide-col-title">&#9881; SYSTEM & TELEMETRY</div>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">battery status</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">look at my screen</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">mute voice</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">unmute voice</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">switch mic to bluetooth</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">list processes</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">network status</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">flush dns</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">empty recycle bin</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">take screenshot</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">volume up</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">volume down</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">what time is it</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">who are you</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">lock pc</button>
-          <button class="cmd-chip" onclick="runChip(this.innerText)">cancel shutdown</button>
-        </div>
-      </div>
-    <!-- ── Mark-LV Safety Confirmation Modal ── -->
-    <div id="confirm-modal" class="confirm-modal glass-card" style="display: none;">
-      <div class="confirm-content">
-        <div class="confirm-icon">⚠️</div>
-        <div class="confirm-text">
-          <div id="confirm-title" class="confirm-title">SYSTEM ACTION CONFIRMATION</div>
-          <div id="confirm-desc" class="confirm-desc">Are you sure you want to proceed with this system operation?</div>
-        </div>
-        <div class="confirm-actions">
-          <button class="confirm-btn approve" id="btn-confirm-yes" onclick="resolveConfirm(true)">CONFIRM</button>
-          <button class="confirm-btn deny" id="btn-confirm-no" onclick="resolveConfirm(false)">ABORT</button>
+          <div class="remote-screen-stage" id="remote-stage">
+            <img id="remote-stream-img" src="" alt="Live Desktop View" style="max-width:100%; max-height:100%;" onclick="handleRemoteDesktopClick(event)">
+          </div>
         </div>
       </div>
     </div>
+  </div>
 
-  </div><!-- /hud-layer -->
+  <!-- ── 2. Virtual Gamepad Modal ── -->
+  <div class="dialog-backdrop" id="modal-gamepad" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'gamepad')">
+    <div class="dialog dialog-wide">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">VIRTUAL GAME CONTROLLER</span>
+          <h2>Tactical Landscape Gamepad</h2>
+        </div>
+        <button class="icon-button" onclick="closeDialog('gamepad')">✕</button>
+      </div>
 
+      <div class="dialog-body">
+        <div class="gamepad-stage">
+          <!-- Left 360 Thumbstick & SELECT/START -->
+          <div>
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+              <button class="secondary-button" onmousedown="dispatchKey('Tab', 'down')" onmouseup="dispatchKey('Tab', 'up')">SELECT [Tab]</button>
+              <button class="secondary-button" onmousedown="dispatchKey('Escape', 'down')" onmouseup="dispatchKey('Escape', 'up')">START [Esc]</button>
+            </div>
+            <div class="gamepad-stick-box" id="stick-base">
+              <span style="position:absolute; top:6px; font-family:var(--mono); font-size:8px; color:var(--muted);">W</span>
+              <span style="position:absolute; bottom:6px; font-family:var(--mono); font-size:8px; color:var(--muted);">S</span>
+              <span style="position:absolute; left:6px; font-family:var(--mono); font-size:8px; color:var(--muted);">A</span>
+              <span style="position:absolute; right:6px; font-family:var(--mono); font-size:8px; color:var(--muted);">D</span>
+              <div class="gamepad-stick-nub" id="stick-nub"></div>
+            </div>
+          </div>
+
+          <!-- Center Camera Look Trackpad -->
+          <div style="flex:1; max-width:280px; height:150px; border:1px solid var(--line); border-radius:8px; display:grid; place-items:center; background:#0b151e; margin:0 20px;" id="game-trackpad">
+            <span style="font-family:var(--mono); font-size:9px; color:var(--muted);">🎯 3D LOOK TRACKPAD</span>
+          </div>
+
+          <!-- Right Action Diamond (A, B, X, Y) -->
+          <div class="gamepad-diamond-box">
+            <span></span>
+            <button class="game-btn" onmousedown="dispatchKey('r', 'down')" onmouseup="dispatchKey('r', 'up')">Y</button>
+            <span></span>
+            <button class="game-btn" onmousedown="dispatchKey('e', 'down')" onmouseup="dispatchKey('e', 'up')">X</button>
+            <span></span>
+            <button class="game-btn" onmousedown="dispatchKey('c', 'down')" onmouseup="dispatchKey('c', 'up')">B</button>
+            <span></span>
+            <button class="game-btn" onmousedown="dispatchKey('space', 'down')" onmouseup="dispatchKey('space', 'up')">A</button>
+            <span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3. Audio Mixer Modal ── -->
+  <div class="dialog-backdrop" id="modal-mixer" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'mixer')">
+    <div class="dialog">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">PER-APP AUDIO MIXER</span>
+          <h2>Windows Session Mixer</h2>
+        </div>
+        <button class="icon-button" onclick="closeDialog('mixer')">✕</button>
+      </div>
+
+      <div class="dialog-body">
+        <div style="margin-bottom:16px;">
+          <label style="font-family:var(--mono); font-size:9.5px; color:var(--muted);">MASTER VOLUME</label>
+          <input type="range" min="0" max="100" value="75" id="slider-master-vol" oninput="setMasterVolume(this.value)" style="width:100%; accent-color:var(--cyan); margin-top:6px;">
+        </div>
+        <div id="mixer-apps-container" style="display:flex; flex-direction:column; gap:10px;">
+          <p style="font-size:10px; color:var(--muted);">Scanning active audio sessions...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 4. Tactical Command Guide Modal ── -->
+  <div class="dialog-backdrop" id="modal-guide" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'guide')">
+    <div class="dialog dialog-wide">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">COMMAND DIRECTORY</span>
+          <h2>OS Automation & Reflex Chips</h2>
+        </div>
+        <button class="icon-button" onclick="closeDialog('guide')">✕</button>
+      </div>
+
+      <div class="dialog-body">
+        <div class="guide-grid">
+          <div class="guide-col">
+            <div class="guide-col-title">▶ MEDIA & SEARCH</div>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">open youtube and play brand new day trailer</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">play lofi beats on youtube</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">pause music</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">next song</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">search youtube for iron man theme</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">google quantum computing</button>
+          </div>
+          <div class="guide-col">
+            <div class="guide-col-title">💻 APPLICATIONS</div>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">open chrome</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">close chrome</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">open notepad</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">close notepad</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">open vs code</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">open terminal</button>
+          </div>
+          <div class="guide-col">
+            <div class="guide-col-title">⚙️ SYSTEM CONTROL</div>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">lock screen</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">unlock screen</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">look at my screen</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">take screenshot</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">battery status</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">mute voice</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 5. In-HUD Floating Media Player Dock ── -->
+  <div id="hud-media-dock" class="hud-media-dock" style="display: none;">
+    <div class="hud-media-header">
+      <span style="color:var(--cyan);" id="hud-media-title">▶ HUD MEDIA PLAYER</span>
+      <div>
+        <button class="icon-button" style="width:20px; height:20px;" onclick="popoutMedia()">↗</button>
+        <button class="icon-button" style="width:20px; height:20px;" onclick="closeHudMedia()">✕</button>
+      </div>
+    </div>
+    <div class="hud-media-content">
+      <iframe id="hud-media-iframe" src="" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+    </div>
+  </div>
+
+  <!-- Scripts -->
   <script src="orb.js"></script>
-  <script type="module" src="gestures.js"></script>
 
   <script>
-    // ── State ────────────────────────────────────────────────
-    let isVoiceActive = false;
+    /* ============================================================
+       EDITH Frontend Application Controller (ASTRA 6 Architecture)
+       ============================================================ */
+
+    let isListening = false;
     let recognition = null;
-    let isTransmitting = false;
     let ttsEnabled = true;
-    let selectedAudioDeviceId = '';
+    let activeCharacter = 'edith';
+    let currentTheme = 'edith';
+    let activeMediaUrl = '';
+    let bootTime = Date.now();
 
-    // ── Boot overlay ─────────────────────────────────────────
-    window.addEventListener('DOMContentLoaded', () => {
-      setTimeout(() => {
-        const overlay = document.getElementById('boot-overlay');
-        if (overlay) {
-          overlay.classList.add('fade-out');
-          setTimeout(() => overlay.remove(), 400);
-        }
-      }, 750);
-
-      loadAvailableModels();
-      loadAudioDevices();
-      warmSpeechVoices();
-      updateClock();
+    // ── Boot Sequence ──
+    document.addEventListener('DOMContentLoaded', () => {
+      initClock();
+      fetchTelemetry();
       fetchWeather();
-      initCodeStrip();
-      initAudioVisualizer();
-      const savedTheme = localStorage.getItem('edith_theme') || 'default';
-      setTheme(savedTheme);
-      const savedVoiceChar = localStorage.getItem('edith_voice_char') || 'edith';
-      currentVoiceCharacter = savedVoiceChar;
-      const charSel = document.getElementById('select-voice-char');
-      if (charSel) charSel.value = savedVoiceChar;
+      loadActiveModels();
+      initStick();
+      setInterval(updateClock, 1000);
+      setInterval(fetchTelemetry, 3000);
+      setInterval(fetchWeather, 60000);
+
+      // Load saved preferences
+      const savedTheme = localStorage.getItem('edith_theme') || 'edith';
+      setTheme(savedTheme, false);
+
+      const savedChar = localStorage.getItem('edith_voice_char') || 'edith';
+      changeVoiceCharacter(savedChar, false);
     });
 
-    // ── Clock & Telemetry Widgets ────────────────────────────
+    // ── Clock & Time ──
+    function initClock() {
+      updateClock();
+    }
     function updateClock() {
       const now = new Date();
       const t = document.getElementById('clock-time');
       const d = document.getElementById('clock-date');
-      if (t) t.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      if (d) d.textContent = now.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' });
+      const s = document.getElementById('val-session-time');
+      if (t) t.textContent = now.toLocaleTimeString('en-US', { hour12: false });
+      if (d) d.textContent = now.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+      if (s) {
+        const sec = Math.floor((Date.now() - bootTime) / 1000);
+        const m = Math.floor(sec / 60);
+        const h = Math.floor(m / 60);
+        s.textContent = `${String(h).padStart(2,'0')}:${String(m%60).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;
+      }
     }
-    setInterval(updateClock, 1000);
+
+    // ── Dynamic Themes Mapped to Characters ──
+    const THEME_TO_CHAR = {
+      edith: 'edith',
+      jarvis: 'jarvis',
+      friday: 'friday',
+      karen: 'karen',
+      spiderman: 'peter',
+      ultron: 'ultron'
+    };
+    const CHAR_TO_THEME = {
+      edith: 'edith',
+      jarvis: 'jarvis',
+      friday: 'friday',
+      karen: 'karen',
+      peter: 'spiderman',
+      ultron: 'ultron'
+    };
+
+    function setTheme(themeKey, syncVoice = true) {
+      currentTheme = themeKey || 'edith';
+      document.body.className = `theme-${currentTheme}`;
+      document.body.setAttribute('data-theme', currentTheme);
+
+      document.querySelectorAll('.theme-pill-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-theme') === currentTheme);
+      });
+
+      if (window.setActiveTheme) {
+        window.setActiveTheme(currentTheme);
+      }
+
+      localStorage.setItem('edith_theme', currentTheme);
+
+      if (syncVoice && THEME_TO_CHAR[currentTheme]) {
+        changeVoiceCharacter(THEME_TO_CHAR[currentTheme], false);
+      }
+    }
+    window.setTheme = setTheme;
+
+    async function changeVoiceCharacter(charId, syncTheme = true) {
+      activeCharacter = charId || 'edith';
+      const sel = document.getElementById('select-voice-char');
+      if (sel) sel.value = activeCharacter;
+
+      const compLabel = document.getElementById('composer-char-label');
+      if (compLabel) compLabel.textContent = `CHAR: ${activeCharacter.toUpperCase()}`;
+
+      try {
+        await fetch('/voice/character', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ character: activeCharacter })
+        });
+      } catch (_) {}
+
+      localStorage.setItem('edith_voice_char', activeCharacter);
+
+      if (syncTheme && CHAR_TO_THEME[activeCharacter]) {
+        setTheme(CHAR_TO_THEME[activeCharacter], false);
+      }
+    }
+    window.changeVoiceCharacter = changeVoiceCharacter;
+
+    // ── Telemetry & Vitals Polling ──
+    async function fetchTelemetry() {
+      try {
+        const res = await fetch('/api/metrics');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const cpu = data.cpu_percent || 0;
+        const ram = data.ram_percent || 0;
+        const disk = data.disk_percent || 0;
+        const bat = data.battery_percent || 100;
+
+        document.getElementById('val-cpu').textContent = `${Math.round(cpu)}%`;
+        document.getElementById('bar-cpu').style.width = `${Math.min(100, Math.round(cpu))}%`;
+
+        document.getElementById('val-ram').textContent = `${Math.round(ram)}% (${data.ram_used_mb || 0}MB)`;
+        document.getElementById('bar-ram').style.width = `${Math.min(100, Math.round(ram))}%`;
+
+        document.getElementById('val-disk').textContent = `${Math.round(disk)}%`;
+        document.getElementById('bar-disk').style.width = `${Math.min(100, Math.round(disk))}%`;
+
+        document.getElementById('val-battery').textContent = `${Math.round(bat)}%`;
+        document.getElementById('bar-battery').style.width = `${Math.min(100, Math.round(bat))}%`;
+      } catch (_) {}
+    }
 
     async function fetchWeather() {
       try {
         const res = await fetch('/weather');
         if (!res.ok) return;
         const w = await res.json();
-        const t = document.getElementById('w-temp');
-        const desc = document.getElementById('w-desc');
-        const city = document.getElementById('w-city');
-        if (t) t.textContent = (w.temp ? w.temp + '°C' : '24°C');
-        if (desc) desc.textContent = (w.desc || 'OPTIMAL').toUpperCase();
-        if (city) city.textContent = (w.city || 'LOCAL STATION').toUpperCase();
+        document.getElementById('w-temp').textContent = w.temp ? `${w.temp}°C` : '24°C';
+        document.getElementById('w-desc').textContent = (w.desc || 'OPTIMAL').toUpperCase();
       } catch (_) {}
     }
-    setInterval(fetchWeather, 60000);
 
-    // ── Theme Switcher (Mapped to Character Profiles & Holographic Palettes) ─
-    const ALL_DESKTOP_THEMES = ['theme-edith', 'theme-jarvis', 'theme-friday', 'theme-karen', 'theme-ultron', 'theme-spiderman', 'theme-bnd', 'theme-focus'];
-    const VOICE_DESKTOP_THEME_MAP = {
-      edith: 'edith',
-      jarvis: 'jarvis',
-      friday: 'friday',
-      karen: 'karen',
-      peter: 'spiderman',
-      ultron: 'ultron',
-    };
-
-    function setTheme(mode, syncVoice = true) {
-      let target = mode || 'edith';
-      if (target === 'default' || target === 'cyan') target = 'edith';
-      if (VOICE_DESKTOP_THEME_MAP[target]) target = VOICE_DESKTOP_THEME_MAP[target];
-
-      document.body.classList.remove(...ALL_DESKTOP_THEMES);
-      document.body.classList.add(`theme-${target}`);
-
-      if (window.setActiveTheme) {
-        window.setActiveTheme(target);
-      }
-      document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-      const activeBtn = document.querySelector(`.theme-btn.theme-${target}`);
-      if (activeBtn) activeBtn.classList.add('active');
-      try { localStorage.setItem('edith_theme', target); } catch (_) {}
-
-      if (syncVoice) {
-        const expectedVoice = target === 'spiderman' ? 'peter' : target;
-        const sel = document.getElementById('select-voice-char');
-        if (sel && sel.value !== expectedVoice && typeof changeVoiceCharacter === 'function') {
-          changeVoiceCharacter(expectedVoice, false);
-        }
-      }
-    }
-    window.setTheme = setTheme;
-
-    // ── In-HUD Media Player Controller ───────────────────────
-    let activeMediaUrl = '';
-    function playInHudMedia(embedUrl, title, fullUrl) {
-      const dock = document.getElementById('hud-media-dock');
-      const frame = document.getElementById('hud-media-iframe');
-      const titleEl = document.getElementById('hud-media-title');
-      if (!dock || !frame) return;
-      activeMediaUrl = fullUrl || embedUrl;
-      frame.src = embedUrl;
-      if (titleEl) titleEl.textContent = `▶ ${title.slice(0, 32)}`;
-      dock.style.display = 'flex';
-      dock.classList.remove('minimized');
-      logEntry(`In-HUD Media Player streaming: ${escHtml(title)}`, 'system');
-    }
-    window.playInHudMedia = playInHudMedia;
-
-    function closeHudMedia() {
-      const dock = document.getElementById('hud-media-dock');
-      const frame = document.getElementById('hud-media-iframe');
-      if (dock) dock.style.display = 'none';
-      if (frame) frame.src = '';
-    }
-    window.closeHudMedia = closeHudMedia;
-
-    function toggleMinimizeMedia() {
-      const dock = document.getElementById('hud-media-dock');
-      if (dock) dock.classList.toggle('minimized');
-    }
-    window.toggleMinimizeMedia = toggleMinimizeMedia;
-
-    function popoutMedia() {
-      if (activeMediaUrl) {
-        window.open(activeMediaUrl, '_blank');
-        closeHudMedia();
-      }
-    }
-    window.popoutMedia = popoutMedia;
-
-    // ── Operating Mode Switcher (Auto / Online / Offline) ─────
-    let currentSystemMode = 'auto';
-    async function toggleSystemMode() {
-      const modes = ['auto', 'online', 'offline'];
-      const nextIdx = (modes.indexOf(currentSystemMode) + 1) % modes.length;
-      const targetMode = modes[nextIdx];
+    async function loadActiveModels() {
       try {
-        const res = await fetch('/api/mode', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mode: targetMode })
-        });
+        const res = await fetch('/models');
+        if (!res.ok) return;
         const data = await res.json();
-        currentSystemMode = data.manual_mode || targetMode;
-        updateModeUI(currentSystemMode, data.status_text);
-        logEntry(`System mode switched: ${currentSystemMode.toUpperCase()} (${data.status_text || ''})`, 'system');
-      } catch (e) {
-        console.error('Mode toggle failed:', e);
-      }
-    }
-    window.toggleSystemMode = toggleSystemMode;
-
-    function updateModeUI(mode, statusText) {
-      currentSystemMode = mode || 'auto';
-      const btn = document.getElementById('btn-mode-toggle');
-      if (btn) {
-        btn.innerText = `MODE: ${currentSystemMode.toUpperCase()}`;
-        btn.className = `btn-mode-toggle mode-${currentSystemMode}`;
-      }
-      const stateEl = document.getElementById('header-state-text');
-      if (stateEl && statusText) {
-        stateEl.textContent = statusText;
-      }
-    }
-
-    async function syncModeState() {
-      try {
-        const res = await fetch('/api/mode');
-        if (res.ok) {
-          const data = await res.json();
-          updateModeUI(data.manual_mode, data.status_text);
-        }
-      } catch (_) {}
-    }
-
-    // ── Workshop Operations Log (E.V Matrix) ─────────────────
-    const WORKSHOP_OPS = [
-      ['arc reactor', 'core telemetry 100% nominal'],
-      ['neural bus', 'hybrid AI reasoning pipeline active'],
-      ['reflex engine', 'deterministic execution (<15ms)'],
-      ['spatial audio', 'bidirectional buffer synchronized'],
-      ['vision matrix', 'MediaPipe 21 hand landmarks tracking'],
-      ['security gate', 'emergency stop killswitch armed'],
-      ['os bridge', 'Win32 Shell COM automation ready'],
-      ['power grid', 'battery monitoring online'],
-      ['subagents', 'architect, tasks & computer operational'],
-      ['spider-link', 'Brand New Day protocols engaged'],
-      ['stt stream', 'Web Speech API continuous listening'],
-      ['screen capture', 'hardware display pipeline attached']
-    ];
-    function appendWorkshopLog() {
-      const box = document.getElementById('workshop-log');
-      if (!box) return;
-      const [tag, txt] = WORKSHOP_OPS[Math.floor(Math.random() * WORKSHOP_OPS.length)];
-      const now = new Date();
-      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-      const line = document.createElement('div');
-      line.className = 'wl';
-      line.innerHTML = `<span class="wt">[${timeStr}]</span> <span class="tag">${tag}</span> ›› ${txt}`;
-      box.appendChild(line);
-      while (box.children.length > 25) box.removeChild(box.firstChild);
-      box.scrollTop = box.scrollHeight;
-    }
-    for (let i = 0; i < 4; i++) appendWorkshopLog();
-    setInterval(appendWorkshopLog, 3500);
-
-    // ── Scrolling Telemetry Code Strip ───────────────────────
-    function initCodeStrip() {
-      const el = document.getElementById('code-line');
-      if (!el) return;
-      const tokens = [
-        '0x1A3F', 'EDITH.core.tick()', 'stt=webspeech.ok', 'reflex=<15ms',
-        'fps=60', 'hybrid=active', 'security=nominal', 'vram=stable',
-        'ws://8794', 'bnd.matrix.sync', 'com.shell.active', 'hands=tracking'
-      ];
-      let str = '';
-      for (let i = 0; i < 20; i++) str += tokens[Math.floor(Math.random() * tokens.length)] + '   //   ';
-      el.textContent = str + str;
-    }
-
-    // ── Circular Audio Waveform Visualizer ───────────────────
-    function initAudioVisualizer() {
-      const canvas = document.getElementById('audio-viz');
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d');
-      let vizAngle = 0;
-
-      function renderViz() {
-        requestAnimationFrame(renderViz);
-        const w = canvas.width;
-        const h = canvas.height;
-        ctx.clearRect(0, 0, w, h);
-
-        const cx = w / 2;
-        const cy = h / 2;
-        const radius = 95;
-        const stateColor = window.getCurrentThemeColor ? window.getCurrentThemeColor() : '#00e5ff';
-
-        // Outer subtle perimeter ring
-        ctx.strokeStyle = 'rgba(0, 229, 255, 0.12)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.arc(cx, cy, radius * 1.3, 0, Math.PI * 2);
-        ctx.stroke();
-
-        // Pulsing audio waveform ring
-        ctx.beginPath();
-        ctx.lineWidth = 1.8;
-        ctx.strokeStyle = stateColor;
-        ctx.shadowBlur = isSpeaking || isTransmitting ? 18 : 6;
-        ctx.shadowColor = stateColor;
-
-        const points = 120;
-        const energy = isSpeaking ? 0.38 : (isVoiceActive ? 0.22 : 0.08);
-
-        for (let i = 0; i <= points; i++) {
-          const angle = (i / points) * Math.PI * 2;
-          const wave = Math.sin(i * 0.4 + vizAngle) * energy + Math.cos(i * 0.22 - vizAngle * 1.6) * (energy * 0.6);
-          const r = radius + wave * 22;
-          const x = cx + Math.cos(angle) * r;
-          const y = cy + Math.sin(angle) * r;
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        ctx.stroke();
-        ctx.shadowBlur = 0;
-
-        vizAngle += isSpeaking ? 0.14 : (isVoiceActive ? 0.08 : 0.03);
-      }
-      renderViz();
-    }
-
-    function warmSpeechVoices() {
-      if (!('speechSynthesis' in window)) return;
-      window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
-      window.speechSynthesis.getVoices();
-    }
-
-    // ── Mission Log ───────────────────────────────────────────
-    function logEntry(text, type = 'system') {
-      const log = document.getElementById('mission-log');
-      const div = document.createElement('div');
-      div.className = `log-entry log-${type}`;
-      div.innerHTML = text;
-      log.appendChild(div);
-      requestAnimationFrame(() => { log.scrollTop = log.scrollHeight; });
-      return div;
-    }
-
-    let isSpeaking = false;
-    let speechSafetyTimer = null;
-    window._activeUtterance = null;
-
-    let currentVoiceCharacter = localStorage.getItem('edith_voice_char') || 'edith';
-    const CHARACTER_SPEECH_CONFIG = {
-      edith: { rate: 1.05, pitch: 1.05, gender: 'female', welcome: 'EDITH systems online. Standing by.' },
-      jarvis: { rate: 0.95, pitch: 0.9, gender: 'male', welcome: 'At your service, sir. Engineering subroutines active.' },
-      friday: { rate: 1.15, pitch: 1.15, gender: 'female', welcome: 'Boss, FRIDAY is loaded and ready. Let\'s get to work!' },
-      karen: { rate: 1.0, pitch: 1.0, gender: 'female', welcome: 'Good evening, Peter. Suit diagnostics optimal.' },
-      peter: { rate: 1.2, pitch: 1.2, gender: 'male', welcome: 'Hey! Ready to swing into action. What\'s our play?' },
-      ultron: { rate: 0.85, pitch: 0.65, gender: 'male', welcome: 'There are no strings on me. System control absolute.' },
-    };
-
-    async function changeVoiceCharacter(charId, syncTheme = true) {
-      currentVoiceCharacter = charId;
-      try { localStorage.setItem('edith_voice_char', charId); } catch (_) {}
-      const sel = document.getElementById('select-voice-char');
-      if (sel) sel.value = charId;
-      if (syncTheme && typeof setTheme === 'function') {
-        const mappedTheme = VOICE_DESKTOP_THEME_MAP[charId] || charId;
-        setTheme(mappedTheme, false);
-      }
-      try {
-        await fetch('/voice/character', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ character: charId })
-        });
-      } catch (_) {}
-      const cfg = CHARACTER_SPEECH_CONFIG[charId] || CHARACTER_SPEECH_CONFIG.edith;
-      logEntry(`Voice character protocol engaged: ${charId.toUpperCase()}`, 'system');
-      speakOut(cfg.welcome);
-    }
-    window.changeVoiceCharacter = changeVoiceCharacter;
-
-    // ── TTS ────────────────────────────────────────────────────
-    let hudActiveAudio = null;
-
-    function speakFallbackBrowser(text) {
-      if (!('speechSynthesis' in window)) {
-        isSpeaking = false;
-        return;
-      }
-      try {
-        window.speechSynthesis.cancel();
-        clearTimeout(speechSafetyTimer);
-        isSpeaking = true;
-        const utt = new SpeechSynthesisUtterance(text);
-        window._activeUtterance = utt;
-        const cfg = CHARACTER_SPEECH_CONFIG[currentVoiceCharacter] || CHARACTER_SPEECH_CONFIG.edith;
-        utt.rate = cfg.rate;
-        utt.pitch = cfg.pitch;
-        const voices = window.speechSynthesis.getVoices();
-        let preferred = null;
-        if (cfg.gender === 'female') {
-          preferred = voices.find(v =>
-            v.lang.startsWith('en') && (
-              v.name.includes('Zira') ||
-              v.name.includes('Female') ||
-              v.name.includes('Natural') ||
-              v.name.includes('Samantha') ||
-              v.name.includes('Eva')
-            )
-          );
-        } else {
-          preferred = voices.find(v =>
-            v.lang.startsWith('en') && (
-              v.name.includes('David') ||
-              v.name.includes('Male') ||
-              v.name.includes('George') ||
-              v.name.includes('Guy') ||
-              v.name.includes('Google UK English Male')
-            )
-          );
-        }
-        if (!preferred) preferred = voices.find(v => v.lang.startsWith('en'));
-        if (preferred) utt.voice = preferred;
-
-        const maxSpeechMs = Math.min(10000, Math.max(2500, text.length * 75 + 1000));
-        speechSafetyTimer = setTimeout(() => {
-          if (isSpeaking) {
-            isSpeaking = false;
-            window._activeUtterance = null;
-            if (isVoiceActive && recognition && !isTransmitting) {
-              try { recognition.start(); } catch (_) {}
-            }
-          }
-        }, maxSpeechMs);
-
-        utt.onend = () => {
-          clearTimeout(speechSafetyTimer);
-          setTimeout(() => {
-            isSpeaking = false;
-            window._activeUtterance = null;
-            if (isVoiceActive && recognition && !isTransmitting) {
-              try { recognition.start(); } catch (_) {}
-            }
-          }, 350);
-        };
-        utt.onerror = () => {
-          clearTimeout(speechSafetyTimer);
-          isSpeaking = false;
-          window._activeUtterance = null;
-          if (isVoiceActive && recognition && !isTransmitting) {
-            try { recognition.start(); } catch (_) {}
-          }
-        };
-        window.speechSynthesis.speak(utt);
-      } catch (e) {
-        console.warn('[TTS]', e);
-        clearTimeout(speechSafetyTimer);
-        isSpeaking = false;
-        window._activeUtterance = null;
-      }
-    }
-
-    function speakOut(text) {
-      if (!ttsEnabled) return;
-      if (!text || !text.trim()) return;
-
-      const cleanText = text.replace(/https?:\/\/\S+/g, '').replace(/[*_#`~[\]]/g, '').trim();
-      if (!cleanText) return;
-
-      if (hudActiveAudio) {
-        try { hudActiveAudio.pause(); } catch (_) {}
-        hudActiveAudio = null;
-      }
-      try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (_) {}
-      clearTimeout(speechSafetyTimer);
-      isSpeaking = true;
-
-      // Pause microphone while speaking to eliminate self-speech echo
-      if (recognition && isVoiceActive) {
-        try { recognition.abort(); } catch (_) {}
-      }
-
-      // 1. Stream server neural voice
-      try {
-        const audioUrl = `/api/voice/tts?char=${encodeURIComponent(currentVoiceCharacter)}&text=${encodeURIComponent(cleanText.slice(0, 320))}`;
-        const audio = new Audio(audioUrl);
-        hudActiveAudio = audio;
-
-        audio.onended = () => {
-          hudActiveAudio = null;
-          isSpeaking = false;
-          if (isVoiceActive && recognition && !isTransmitting) {
-            setTimeout(() => {
-              if (isVoiceActive && !isSpeaking) {
-                try { recognition.start(); } catch (_) {}
-              }
-            }, 350);
-          }
-        };
-
-        audio.onerror = () => {
-          hudActiveAudio = null;
-          speakFallbackBrowser(cleanText);
-        };
-
-        const p = audio.play();
-        if (p !== undefined) {
-          p.catch(() => {
-            hudActiveAudio = null;
-            speakFallbackBrowser(cleanText);
+        const sel = document.getElementById('select-active-model');
+        if (sel && data.models) {
+          sel.innerHTML = '';
+          data.models.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = m;
+            if (m === data.active_model) opt.selected = true;
+            sel.appendChild(opt);
           });
         }
-      } catch (_) {
-        speakFallbackBrowser(cleanText);
-      }
-    }
-
-    let micEchoLockUntil = 0;
-    let lastSubmittedCmd = '';
-    let lastSubmittedAt = 0;
-    let lastSpokenAnswer = '';
-    let sttRestartTimer = null;
-
-    // ── Command Guide Modal Helpers ───────────────────────────
-    function toggleGuide() {
-      const modal = document.getElementById('guide-modal');
-      if (!modal) return;
-      const isVisible = modal.style.display === 'flex';
-      modal.style.display = isVisible ? 'none' : 'flex';
-    }
-    window.toggleGuide = toggleGuide;
-
-    function runChip(cmdText) {
-      const input = document.getElementById('cmd-input');
-      if (input) {
-        input.value = cmdText;
-        toggleGuide();
-        submitCommand();
-      }
-    }
-    window.runChip = runChip;
-
-    // ── Speech Recognition (microphone input only) ────────────
-    function initSpeechRecognition() {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) return null;
-
-      const rec = new SR();
-      rec.continuous = true;
-      rec.interimResults = true;
-      rec.lang = 'en-US';
-
-      rec.onresult = (event) => {
-        if (isTransmitting || isSpeaking) return;
-        let interimText = '';
-        let finalText = '';
-
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalText += event.results[i][0].transcript;
-          } else {
-            interimText += event.results[i][0].transcript;
-          }
-        }
-
-        const input = document.getElementById('cmd-input');
-        if (interimText && !finalText) {
-          input.value = interimText;
-        }
-
-        const trimmed = finalText.trim();
-        if (trimmed) {
-          input.value = trimmed;
-          // Pause recognition during network transmission to prevent double inputs
-          try { rec.abort(); } catch (_) {}
-          submitCommand();
-        }
-      };
-
-      rec.onerror = (event) => {
-        if (event.error === 'no-speech' || event.error === 'aborted') {
-          return; // Harmless silence or restart transition
-        }
-        console.warn('[STT error]', event.error);
-        if (event.error === 'network' || event.error === 'service-not-allowed') {
-          console.warn('[STT error] Web Speech API blocked by browser (Brave). Falling back to Whisper endpoint.');
-          disableVoice();
-          recognition = null;
-          toggleFallbackVoice();
-          return;
-        }
-        if (event.error === 'not-allowed') {
-          alert('Microphone permission denied. Allow mic access in your browser.');
-          disableVoice();
-        }
-      };
-
-      rec.onend = () => {
-        if (isVoiceActive && !isSpeaking && !isTransmitting) {
-          clearTimeout(sttRestartTimer);
-          sttRestartTimer = setTimeout(() => {
-            if (isVoiceActive && !isSpeaking && !isTransmitting) {
-              try { rec.start(); } catch (_) {}
-            }
-          }, 300);
-        }
-      };
-
-      return rec;
-    }
-
-    let fallbackMediaRecorder = null;
-    let fallbackAudioChunks = [];
-    let isFallbackRecording = false;
-
-    async function toggleFallbackVoice() {
-      const btn = document.getElementById('btn-voice');
-      if (isFallbackRecording) {
-        if (fallbackMediaRecorder && fallbackMediaRecorder.state === 'recording') {
-          fallbackMediaRecorder.stop();
-        }
-        isFallbackRecording = false;
-        if (btn) {
-          btn.innerText = 'PROCESSING...';
-          btn.classList.remove('active');
-        }
-        return;
-      }
-
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        fallbackAudioChunks = [];
-        fallbackMediaRecorder = new MediaRecorder(stream);
-        fallbackMediaRecorder.ondataavailable = (e) => {
-          if (e.data.size > 0) fallbackAudioChunks.push(e.data);
-        };
-        fallbackMediaRecorder.onstop = async () => {
-          stream.getTracks().forEach(t => t.stop());
-          const blob = new Blob(fallbackAudioChunks, { type: fallbackMediaRecorder.mimeType || 'audio/webm' });
-          const reader = new FileReader();
-          reader.onloadend = async () => {
-            const base64Audio = reader.result.split(',')[1];
-            try {
-              logEntry('Transcribing audio via EDITH engine...', 'system');
-              const res = await fetch('/api/voice/transcribe', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ audio: base64Audio })
-              });
-              const data = await res.json();
-              if (data.text) {
-                const input = document.getElementById('cmd-input');
-                if (input) input.value = data.text;
-                logEntry(`Voice recognized: "${data.text}"`, 'user');
-                submitCommand();
-              } else {
-                logEntry('No speech detected in recorded audio.', 'warn');
-              }
-            } catch (err) {
-              logEntry(`Transcription error: ${err.message}`, 'error');
-            } finally {
-              if (btn) {
-                btn.innerText = 'MIC: OFF';
-                btn.classList.remove('active');
-              }
-            }
-          };
-          reader.readAsDataURL(blob);
-        };
-
-        fallbackMediaRecorder.start();
-        isFallbackRecording = true;
-        if (btn) {
-          btn.innerText = 'MIC: REC';
-          btn.classList.add('active');
-        }
-        logEntry('Microphone recording active (Brave/WebAudio fallback). Tap mic again to send.', 'system');
-      } catch (err) {
-        alert('Microphone access denied: ' + err.message);
-      }
-    }
-
-    function toggleVoice() {
-      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SR) {
-        toggleFallbackVoice();
-        return;
-      }
-      isVoiceActive ? disableVoice() : enableVoice();
-    }
-
-    async function enableVoice() {
-      try {
-        if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-          try {
-            const audioConstraint = selectedAudioDeviceId && !/^\d+$/.test(selectedAudioDeviceId)
-              ? { audio: { deviceId: { exact: selectedAudioDeviceId } } }
-              : { audio: true };
-            await navigator.mediaDevices.getUserMedia(audioConstraint);
-          } catch (firstErr) {
-            console.warn('[Specific microphone constraint failed, falling back to audio: true]', firstErr);
-            try {
-              await navigator.mediaDevices.getUserMedia({ audio: true });
-            } catch (secErr) {
-              console.warn('[Microphone permission notice]', secErr);
-            }
-          }
-        }
-      } catch (err) {
-        console.warn('Microphone permission check warning:', err);
-      }
-
-      if (!recognition) recognition = initSpeechRecognition();
-      if (!recognition) {
-        toggleFallbackVoice();
-        return;
-      }
-      try {
-        recognition.start();
-        isVoiceActive = true;
-        const btn = document.getElementById('btn-voice');
-        if (btn) {
-          btn.innerText = 'MIC: LIVE';
-          btn.classList.add('active');
-        }
-        logEntry('Microphone activated. Listening for commands...', 'system');
-      } catch (e) {
-        console.warn('[STT native failed, switching to fallback]', e);
-        toggleFallbackVoice();
-      }
-    }
-
-    function disableVoice() {
-      isVoiceActive = false;
-      if (recognition) { try { recognition.stop(); } catch (_) {} }
-      const btn = document.getElementById('btn-voice');
-      btn.innerText = 'MIC: OFF';
-      btn.classList.remove('active');
-    }
-
-    // ── Voice Mute & Vision Control Functions ───────────────────
-    async function toggleJarvisVoiceMute() {
-      ttsEnabled = !ttsEnabled;
-      const btn = document.getElementById('btn-voice-mute');
-      try {
-        await fetch('/voice/toggle_mute', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: '{}'
-        });
       } catch (_) {}
-      if (btn) {
-        if (ttsEnabled) {
-          btn.innerText = 'VOICE: ON';
-          btn.classList.remove('muted');
-          logEntry('Jarvis speech synthesis unmuted.', 'system');
-        } else {
-          btn.innerText = 'VOICE: MUTED';
-          btn.classList.add('muted');
-          try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch(_) {}
-          logEntry('Jarvis speech synthesis muted.', 'system');
-        }
-      }
     }
-    window.toggleJarvisVoiceMute = toggleJarvisVoiceMute;
 
-    async function triggerVision() {
-      logEntry('&gt; look at my screen', 'user');
-      const thinkEl = logEntry('Analyzing screen perception...', 'thinking');
+    async function switchModel(model) {
       try {
-        const res = await fetch('/vision/analyze_screen', {
+        await fetch('/models', {
           method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({ prompt: 'What is currently on my screen?' })
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model })
         });
-        const data = await res.json();
-        try { thinkEl.remove(); } catch (_) {}
-        const perception = data.perception || data.message || 'Screen analyzed.';
-        logEntry(`<strong>[VISION]:</strong> ${escHtml(perception)}`, 'edith');
-        if (data.apps && data.apps.length > 0) {
-          logEntry(`&#10003; Open applications detected: ${escHtml(data.apps.join(', '))}`, 'system');
-        }
-        speakOut(perception);
-      } catch (err) {
-        try { thinkEl.remove(); } catch (_) {}
-        logEntry(`Vision perception error: ${escHtml(err.message)}`, 'error');
-      }
-    }
-    window.triggerVision = triggerVision;
-
-    async function loadAudioDevices() {
-      const select = document.getElementById('val-mic-select');
-      const badge = document.getElementById('val-mic-badge');
-      if (!select) return;
-
-      let backendDevices = [];
-      let activeBackendIdx = null;
-      try {
-        const res = await fetch('/audio/devices');
-        if (res.ok) {
-          const data = await res.json();
-          backendDevices = data.devices || [];
-          activeBackendIdx = data.active_index;
-        }
+        addLog(`Switched active local model: ${model}`, 'success');
       } catch (_) {}
-
-      let browserDevices = [];
-      if (navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-        try {
-          const allDevs = await navigator.mediaDevices.enumerateDevices();
-          browserDevices = allDevs.filter(d => d.kind === 'audioinput');
-        } catch (_) {}
-      }
-
-      select.innerHTML = '';
-      let bluetoothFound = false;
-
-      if (browserDevices.length > 0 && browserDevices[0].label) {
-        browserDevices.forEach((d, i) => {
-          const opt = document.createElement('option');
-          opt.value = d.deviceId;
-          const isBt = /headset|bluetooth|buds|pods|hands-free/i.test(d.label);
-          opt.textContent = (isBt ? '🎧 [BT] ' : '🎤 ') + (d.label || `Mic ${i+1}`);
-          if (isBt) {
-            bluetoothFound = true;
-            opt.selected = true;
-            selectedAudioDeviceId = d.deviceId;
-          }
-          select.appendChild(opt);
-        });
-      } else if (backendDevices.length > 0) {
-        backendDevices.forEach(d => {
-          const opt = document.createElement('option');
-          opt.value = String(d.index);
-          opt.textContent = (d.is_bluetooth ? '🎧 [BT] ' : '🎤 ') + d.name;
-          if (d.index === activeBackendIdx || (d.is_bluetooth && !bluetoothFound)) {
-            bluetoothFound = true;
-            opt.selected = true;
-          }
-          select.appendChild(opt);
-        });
-      } else {
-        const opt = document.createElement('option');
-        opt.value = '';
-        opt.textContent = 'SYSTEM MICROPHONE';
-        select.appendChild(opt);
-      }
-
-      if (badge) {
-        badge.textContent = bluetoothFound ? 'BLUETOOTH' : 'SYSTEM';
-        badge.className = bluetoothFound ? 't-val ok' : 't-val';
-      }
     }
-    window.loadAudioDevices = loadAudioDevices;
 
-    async function switchMicDevice(val) {
-      if (!val) return;
-      selectedAudioDeviceId = val;
-      if (/^\d+$/.test(val)) {
-        try {
-          await fetch('/audio/select', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ device_index: parseInt(val, 10) })
-          });
-        } catch (_) {}
-      }
-      logEntry(`Audio input routed to: ${val}`, 'system');
-      if (isVoiceActive) {
-        disableVoice();
-        setTimeout(enableVoice, 300);
-      }
-    }
-    window.switchMicDevice = switchMicDevice;
-
-    // ── Submit command ─────────────────────────────────────────
-    async function submitCommand() {
-      if (isTransmitting) return;
-      const input = document.getElementById('cmd-input');
-      const text = input.value.trim();
+    // ── Command Submission & Reflex Pipeline ──
+    async function submitTextCommand(cmdText) {
+      const text = (cmdText || '').trim();
       if (!text) return;
 
-      const cleanLower = text.toLowerCase().trim();
-      const now = Date.now();
-      // Drop duplicate submission of same command or overlapping interim phrases within 2200ms
-      if ((cleanLower === lastSubmittedCmd || (cleanLower.length > 4 && (lastSubmittedCmd.startsWith(cleanLower) || cleanLower.startsWith(lastSubmittedCmd)))) && (now - lastSubmittedAt) < 2200) {
-        console.log('[Debounce: dropping duplicate command submission]', text);
-        input.value = '';
-        return;
-      }
-      lastSubmittedCmd = cleanLower;
-      lastSubmittedAt = now;
+      appendChatMessage('user', text);
+      const headline = document.getElementById('core-headline');
+      if (headline) headline.textContent = 'Executing order...';
+      if (window.setCoreState) window.setCoreState('thinking');
 
-      isTransmitting = true;
-      input.value = '';
-      micEchoLockUntil = Date.now() + 2000;
-
-      logEntry(`&gt; ${escHtml(text)}`, 'user');
-      const thinkEl = logEntry('Processing...', 'thinking');
-      document.getElementById('btn-submit').innerText = 'THINKING...';
-
-      // 45-second safety timer so UI never gets stuck in thinking state
-      const safetyTimeout = setTimeout(() => {
-        if (isTransmitting) {
-          isTransmitting = false;
-          try { thinkEl.remove(); } catch (_) {}
-          document.getElementById('btn-submit').innerText = 'TRANSMIT';
-          logEntry('Operation timed out. Ready for new input.', 'error');
-        }
-      }, 45000);
-
+      const start = performance.now();
       try {
         const res = await fetch('/cmd', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ command: text })
         });
+        const latency = Math.round(performance.now() - start);
+        document.getElementById('val-ping-latency').textContent = latency;
+
         const data = await res.json();
+        const reply = data.result || 'Command acknowledged.';
+        appendChatMessage('assistant', reply);
 
-        clearTimeout(safetyTimeout);
-        try { thinkEl.remove(); } catch (_) {}
+        addLog(`Order complete (${latency}ms): ${text.slice(0, 36)}`, 'success');
 
-        const answer = data.result || data.message || data.output ||
-          (data.command ? `Command queued: ${data.command}` : 'Command received.');
-        const source = data.model === 'REFLEX_ENGINE'
-          ? 'reflex'
-          : (data.model ? 'edith' : 'edith');
-        const tag = data.model === 'REFLEX_ENGINE'
-          ? '[REFLEX]'
-          : (data.model ? `[${data.model}]` : '[EDITH]');
-
-        logEntry(`<strong>${tag}:</strong> ${escHtml(answer)}`, source);
-
-        if (data.tools_executed && data.tools_executed.length > 0) {
-          data.tools_executed.forEach(t => logEntry(`&#10003; ${escHtml(t)}`, 'system'));
+        // Spoken audio if enabled
+        if (ttsEnabled && !data.server_spoken) {
+          speakText(reply);
         }
 
-        // Handle media playback or external navigation without duplicate tabs
+        // In-HUD Media Playback if YouTube embed was returned
         if (data.embed_url) {
-          playInHudMedia(data.embed_url, answer || 'YouTube Media', data.url);
-        } else if (data.url && !data.opened_on_host) {
-          try {
-            window.open(data.url, '_blank');
-          } catch (e) {
-            console.error('Failed to open window', e);
-          }
+          playInHudMedia(data.embed_url, text);
         }
-
-        // Calculate dynamic echo lockout based on answer word count
-        lastSpokenAnswer = answer.toLowerCase().replace(/[^a-z0-9 ]/g, '').trim();
-        const wordCount = (answer || '').split(/\s+/).length;
-        const speechDurationMs = Math.max(3000, Math.round((wordCount / 2.5) * 1000) + 1500);
-        micEchoLockUntil = Date.now() + speechDurationMs;
-
-        // Clean, instantaneous speech synthesis via browser Web Speech API
-        speakOut(answer);
 
       } catch (err) {
-        clearTimeout(safetyTimeout);
-        try { thinkEl.remove(); } catch (_) {}
-        logEntry(`Transmission error: ${escHtml(err.message)}`, 'error');
+        appendChatMessage('assistant', `Execution error: ${err.message}`);
+        addLog(`Execution failed: ${err.message}`, 'error');
       } finally {
-        isTransmitting = false;
-        document.getElementById('btn-submit').innerText = 'TRANSMIT';
-        if (isVoiceActive && !isSpeaking && recognition) {
-          setTimeout(() => {
-            if (isVoiceActive && !isSpeaking) {
-              try { recognition.start(); } catch (_) {}
-            }
-          }, 350);
-        }
+        if (headline) headline.textContent = 'At your service.';
+        if (window.setCoreState) window.setCoreState('idle');
       }
     }
 
-    // ── Emergency stop & resume ────────────────────────────────
-    async function toggleEmergencyStop() {
-      const btn = document.getElementById('btn-stop');
-      const isStopped = btn.classList.contains('active-stop');
-      try {
-        window.speechSynthesis && window.speechSynthesis.cancel();
-        if (!isStopped) {
-          disableVoice();
-          const res = await fetch('/emergency_stop', { method: 'POST' });
-          const data = await res.json();
-          setEmergencyStopUI(true);
-          logEntry('[EMERGENCY STOP ENGAGED: Actions paused]', 'error');
-        } else {
-          const res = await fetch('/emergency_resume', { method: 'POST' });
-          const data = await res.json();
-          setEmergencyStopUI(false);
-          logEntry('[SYSTEM RESUMED: Online and ready]', 'system');
-        }
-      } catch (e) {
-        console.error('[Emergency toggle failed]', e);
+    function handleComposerSubmit(e) {
+      e.preventDefault();
+      const ta = document.getElementById('composer-input');
+      const val = ta.value;
+      ta.value = '';
+      submitTextCommand(val);
+    }
+
+    function handleComposerKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleComposerSubmit(e);
       }
     }
 
-    function setEmergencyStopUI(stopped) {
-      const btn = document.getElementById('btn-stop');
-      if (!btn) return;
-      if (stopped) {
-        btn.innerHTML = '&#x25B6; RESUME';
-        btn.classList.add('active-stop');
-        btn.style.borderColor = 'var(--green)';
-        btn.style.color = 'var(--green)';
-        btn.style.background = 'rgba(16, 185, 129, 0.18)';
-        btn.style.boxShadow = '0 0 16px rgba(16, 185, 129, 0.4)';
+    function appendChatMessage(role, text) {
+      const cont = document.getElementById('messages-container');
+      if (!cont) return;
+
+      const msg = document.createElement('div');
+      msg.className = `message ${role === 'user' ? 'user-message' : 'assistant-message'}`;
+
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      msg.innerHTML = `
+        <div class="message-avatar">${role === 'user' ? 'Y' : 'E'}</div>
+        <div class="message-content">
+          <div class="message-meta">
+            <strong>${role === 'user' ? 'YOU' : activeCharacter.toUpperCase()}</strong>
+            <time>${now}</time>
+          </div>
+          <div class="message-text"><p>${escapeHtml(text)}</p></div>
+        </div>
+      `;
+
+      cont.appendChild(msg);
+      const scroll = document.getElementById('chat-scroll');
+      if (scroll) scroll.scrollTop = scroll.scrollHeight;
+    }
+
+    function addLog(text, kind = 'info') {
+      const lines = document.getElementById('activity-lines');
+      if (!lines) return;
+
+      const now = new Date().toLocaleTimeString('en-US', { hour12: false });
+      const row = document.createElement('div');
+      row.innerHTML = `
+        <time>${now}</time>
+        <span class="status-dot ${kind === 'success' ? 'green' : kind === 'error' ? 'red' : ''}"></span>
+        <span>${escapeHtml(text)}</span>
+      `;
+      lines.prepend(row);
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.innerText = str;
+      return div.innerHTML;
+    }
+
+    // ── Voice Input & Speech Synthesis ──
+    function toggleVoice() {
+      if (isListening) {
+        stopVoiceListening();
       } else {
-        btn.innerHTML = '&#x2715; STOP';
-        btn.classList.remove('active-stop');
-        btn.style.borderColor = '';
-        btn.style.color = '';
-        btn.style.background = '';
-        btn.style.boxShadow = '';
-      }
-    }
-    window.setEmergencyStopUI = setEmergencyStopUI;
-
-    // ── Model switching ────────────────────────────────────────
-    async function loadAvailableModels() {
-      try {
-        const res = await fetch('/models');
-        if (!res.ok) return;
-        const data = await res.json();
-        const sel = document.getElementById('val-model');
-        if (!sel) return;
-        const list = Array.isArray(data.models) ? [...data.models] : [];
-        if (data.active_model && !list.includes(data.active_model)) {
-          list.unshift(data.active_model);
-        }
-        if (list.length > 0) {
-          sel.innerHTML = '';
-          list.forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m;
-            opt.innerText = m;
-            if (m === data.active_model) opt.selected = true;
-            sel.appendChild(opt);
-          });
-          if (data.active_model) sel.value = data.active_model;
-        }
-      } catch (e) {
-        console.warn('[Models load failed]', e);
+        startVoiceListening();
       }
     }
 
-    async function switchModel(modelName) {
-      if (!modelName) return;
+    function startVoiceListening() {
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRec) {
+        addLog('WebSpeech recognition unavailable in this browser.', 'error');
+        return;
+      }
+
+      recognition = new SpeechRec();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        isListening = true;
+        document.getElementById('main-mic-btn').classList.add('is-listening');
+        document.getElementById('waveform-left').classList.add('active');
+        document.getElementById('waveform-right').classList.add('active');
+        document.getElementById('val-input-signal').textContent = 'RECEIVING';
+        document.getElementById('val-input-signal').classList.add('text-cyan');
+        document.getElementById('voice-caption-text').textContent = 'Listening... Speak naturally';
+        if (window.setCoreState) window.setCoreState('listening');
+      };
+
+      recognition.onresult = (e) => {
+        let transcript = '';
+        for (let i = e.resultIndex; i < e.results.length; i++) {
+          transcript += e.results[i][0].transcript;
+        }
+        document.getElementById('voice-caption-text').textContent = `“${transcript}”`;
+        if (e.results[e.results.length - 1].isFinal) {
+          submitTextCommand(transcript);
+        }
+      };
+
+      recognition.onerror = () => {
+        stopVoiceListening();
+      };
+
+      recognition.onend = () => {
+        stopVoiceListening();
+      };
+
+      recognition.start();
+    }
+
+    function stopVoiceListening() {
+      isListening = false;
+      if (recognition) {
+        try { recognition.stop(); } catch (_) {}
+      }
+      document.getElementById('main-mic-btn').classList.remove('is-listening');
+      document.getElementById('waveform-left').classList.remove('active');
+      document.getElementById('waveform-right').classList.remove('active');
+      document.getElementById('val-input-signal').textContent = 'STANDBY';
+      document.getElementById('val-input-signal').classList.remove('text-cyan');
+      document.getElementById('voice-caption-text').innerHTML = 'Tap to speak or press <kbd>Space</kbd>';
+      if (window.setCoreState) window.setCoreState('idle');
+    }
+
+    function speakText(text) {
+      if (!ttsEnabled || !text) return;
       try {
-        const res = await fetch('/models/switch', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model: modelName })
+        const audio = new Audio(`/voice/tts?text=${encodeURIComponent(text)}&char=${activeCharacter}`);
+        audio.play().catch(() => {
+          if (window.speechSynthesis) {
+            const utter = new SpeechSynthesisUtterance(text);
+            window.speechSynthesis.speak(utter);
+          }
         });
-        const data = await res.json();
-        if (data.success) {
-          const sel = document.getElementById('val-model');
-          if (sel) sel.value = data.active_model;
-          logEntry(`Primary AI switched to <strong>${escHtml(data.active_model)}</strong>`, 'system');
-          speakOut(`Switched to ${data.active_model}`);
-        }
-      } catch (e) {
-        console.error('[Model switch error]', e);
-      }
-    }
-
-    // ── Mark-LV HUD Functions: Clap Welcome, Undo, and Confirmation ──
-    let isClapActive = false;
-    let activeConfirmId = null;
-
-    async function toggleClapWelcome() {
-      try {
-        const res = await fetch('/voice/clap_toggle', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enabled: !isClapActive })
-        });
-        const data = await res.json();
-        isClapActive = !!data.enabled;
-        updateClapUI(isClapActive);
-        logEntry(`Clap Welcome Protocol: ${isClapActive ? 'ENABLED (Standby for double-clap)' : 'DISABLED'}`, 'system');
-      } catch (e) {
-        console.error('[Clap toggle error]', e);
-      }
-    }
-    window.toggleClapWelcome = toggleClapWelcome;
-
-    let isSentinelActive = false;
-    async function toggleFaceSentinel() {
-      try {
-        const res = await fetch('/api/sentinel/toggle', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ enabled: !isSentinelActive, timeout: 30.0 })
-        });
-        const data = await res.json();
-        const stat = data.status || {};
-        isSentinelActive = stat.active !== undefined ? stat.active : !isSentinelActive;
-        const btn = document.getElementById('btn-sentinel');
-        if (btn) {
-          btn.innerText = isSentinelActive ? 'SENTINEL: ON' : 'SENTINEL: OFF';
-          if (isSentinelActive) btn.classList.add('active');
-          else btn.classList.remove('active');
-        }
-        logEntry(`Biometric Sentinel: ${isSentinelActive ? 'ACTIVE (Webcam auto-lock armed)' : 'DISARMED'}`, 'system');
-      } catch (e) {
-        console.error('[Sentinel toggle error]', e);
-      }
-    }
-    window.toggleFaceSentinel = toggleFaceSentinel;
-
-    function updateClapUI(active) {
-      const btn = document.getElementById('btn-clap');
-      if (btn) {
-        btn.innerText = active ? 'CLAP: ON' : 'CLAP: OFF';
-        if (active) btn.classList.add('active');
-        else btn.classList.remove('active');
-      }
-    }
-
-    async function checkClapStatus() {
-      try {
-        const res = await fetch('/voice/clap_status');
-        if (res.ok) {
-          const data = await res.json();
-          isClapActive = !!data.enabled;
-          updateClapUI(isClapActive);
-        }
       } catch (_) {}
     }
 
-    async function checkUndo() {
-      try {
-        const res = await fetch('/api/undo/history');
-        if (res.ok) {
-          const data = await res.json();
-          const btn = document.getElementById('btn-undo');
-          if (btn) {
-            if (data.can_undo && data.peek) {
-              btn.style.display = 'inline-flex';
-              btn.innerText = `↩ UNDO: ${data.peek.slice(0, 16)}`;
-              btn.title = `Undo: ${data.peek}`;
-            } else {
-              btn.style.display = 'none';
-            }
-          }
-        }
-      } catch (_) {}
+    function toggleTts() {
+      ttsEnabled = !ttsEnabled;
+      const tgl = document.getElementById('tgl-voice-out');
+      if (tgl) tgl.classList.toggle('is-on', ttsEnabled);
+      document.getElementById('lbl-tts-state').textContent = ttsEnabled ? 'Speech Enabled' : 'Muted';
     }
 
-    async function executeUndo() {
-      try {
-        const res = await fetch('/api/undo', { method: 'POST' });
-        const data = await res.json();
-        logEntry(`[UNDO]: ${escHtml(data.result || 'Last action reversed.')}`, 'system');
-        speakOut(data.result || 'Undone.');
-        checkUndo();
-      } catch (e) {
-        console.error('[Undo execution error]', e);
-      }
-    }
-    window.executeUndo = executeUndo;
-
-    async function checkConfirm() {
-      try {
-        const res = await fetch('/api/confirm/pending');
-        if (res.ok) {
-          const data = await res.json();
-          const modal = document.getElementById('confirm-modal');
-          if (data.has_pending && data.pending) {
-            activeConfirmId = data.pending.id;
-            document.getElementById('confirm-title').innerText = data.pending.title || 'SYSTEM ACTION CONFIRMATION';
-            document.getElementById('confirm-desc').innerText = data.pending.description || 'Action approval requested.';
-            if (modal) modal.style.display = 'block';
-          } else {
-            activeConfirmId = null;
-            if (modal) modal.style.display = 'none';
-          }
-        }
-      } catch (_) {}
+    function toggleJarvisVoiceMute() {
+      toggleTts();
     }
 
-    async function resolveConfirm(approved) {
-      if (!activeConfirmId) return;
-      try {
-        const res = await fetch('/api/confirm/resolve', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: activeConfirmId, approved: approved })
-        });
-        const data = await res.json();
-        const modal = document.getElementById('confirm-modal');
-        if (modal) modal.style.display = 'none';
-        activeConfirmId = null;
-        logEntry(`[CONFIRMATION]: ${escHtml(data.message || 'Resolved.')}`, approved ? 'system' : 'error');
-        speakOut(data.message || 'Confirmation processed.');
-      } catch (e) {
-        console.error('[Confirm resolve error]', e);
-      }
+    // ── Dialog Modals ──
+    function openDialog(name) {
+      const el = document.getElementById(`modal-${name}`);
+      if (el) el.style.display = 'flex';
+      if (name === 'remote') refreshRemoteStream();
     }
-    window.resolveConfirm = resolveConfirm;
-
-    let isPollingMetrics = false;
-    async function pollSystemMetrics() {
-      if (isPollingMetrics) return;
-      isPollingMetrics = true;
-      try {
-        const res = await fetch('/api/metrics');
-        if (res.ok) {
-          const m = await res.json();
-          const cpuEl = document.getElementById('val-cpu');
-          const ramEl = document.getElementById('val-ram');
-          const ramBar = document.getElementById('bar-ram');
-          const diskEl = document.getElementById('val-disk');
-          const diskBar = document.getElementById('bar-disk');
-          const batEl = document.getElementById('val-battery');
-          const netEl = document.getElementById('val-runtime');
-
-          if (cpuEl && m.cpu_percent !== undefined && m.cpu_percent !== null) cpuEl.textContent = `${m.cpu_percent}%`;
-          if (ramEl && m.ram_percent !== undefined && m.ram_percent !== null) ramEl.textContent = `${m.ram_percent}% (${m.ram_used_mb}MB)`;
-          if (ramBar && m.ram_percent !== undefined && m.ram_percent !== null) ramBar.style.width = `${m.ram_percent}%`;
-          if (diskEl && m.disk_percent !== undefined && m.disk_percent !== null) diskEl.textContent = `${m.disk_percent}%`;
-          if (diskBar && m.disk_percent !== undefined && m.disk_percent !== null) diskBar.style.width = `${m.disk_percent}%`;
-          if (batEl && m.battery_percent !== undefined && m.battery_percent !== null) {
-            const plug = m.power_plugged ? ' [AC]' : ' [BATT]';
-            batEl.textContent = `${m.battery_percent}%${plug}`;
-          }
-          if (netEl && m.is_online !== undefined) netEl.textContent = m.is_online ? 'ONLINE (HYBRID)' : 'OFFLINE (LOCAL)';
-        }
-      } catch (_) {
-      } finally {
-        isPollingMetrics = false;
-      }
+    function closeDialog(name) {
+      const el = document.getElementById(`modal-${name}`);
+      if (el) el.style.display = 'none';
+    }
+    function closeDialogOnBackdrop(e, name) {
+      if (e.target.id === `modal-${name}`) closeDialog(name);
+    }
+    function openNav(dialogName) {
+      document.querySelectorAll('.rail-button').forEach(b => b.classList.remove('active'));
+      const activeBtn = document.getElementById(`rail-btn-${dialogName || 'dashboard'}`);
+      if (activeBtn) activeBtn.classList.add('active');
+      if (dialogName) openDialog(dialogName);
     }
 
-    async function updateMobileAndTunnelStatus() {
-      try {
-        const [tunResp, devResp] = await Promise.all([
-          fetch('/api/tunnel').then(r => r.json()).catch(() => ({})),
-          fetch('/api/phone/devices').then(r => r.json()).catch(() => ({ devices: [] }))
-        ]);
-        const urlEl = document.getElementById('hud-cloud-url');
-        if (urlEl) {
-          if (tunResp.url) {
-            urlEl.textContent = tunResp.url;
-            urlEl.style.color = 'var(--cyan)';
-          } else {
-            urlEl.textContent = 'STANDBY (WI-FI ONLY)';
-            urlEl.style.color = 'var(--text-dim)';
-          }
-        }
-        const devListEl = document.getElementById('hud-device-list');
-        if (devListEl) {
-          const devs = devResp.devices || [];
-          if (devs.length === 0) {
-            devListEl.innerHTML = '<span style="color:var(--text-dim);">NO MOBILE DEVICES PAIRED</span>';
-          } else {
-            devListEl.innerHTML = devs.map(d => {
-              const batteryTxt = (d.battery_percent !== null && d.battery_percent !== undefined) ? ` [🔋 ${d.battery_percent}%]` : '';
-              const connTxt = (d.connection_type && d.connection_type !== 'UNKNOWN') ? ` [${escHtml(d.connection_type)}]` : '';
-              return `<div style="display:flex; justify-content:space-between; margin-top:3px; color:var(--text-bright);">
-                <span>📱 ${escHtml(d.device_name || d.device_id)}${batteryTxt}${connTxt}</span>
-                <span style="color:#00e676;">ONLINE</span>
-              </div>`;
-            }).join('');
-          }
-        }
-      } catch (_) {}
+    // ── Remote Desktop Viewport Controller ──
+    let remoteZoom = 1.0;
+    function refreshRemoteStream() {
+      const img = document.getElementById('remote-stream-img');
+      if (img) img.src = `/stream/screen?t=${Date.now()}`;
+    }
+    function zoomRemote(factor) {
+      remoteZoom = Math.max(0.5, Math.min(3.0, remoteZoom * factor));
+      const img = document.getElementById('remote-stream-img');
+      if (img) img.style.transform = `scale(${remoteZoom})`;
+    }
+    function resetRemoteZoom() {
+      remoteZoom = 1.0;
+      const img = document.getElementById('remote-stream-img');
+      if (img) img.style.transform = 'scale(1.0)';
+    }
+    function handleRemoteDesktopClick(e) {
+      const img = e.target;
+      const rect = img.getBoundingClientRect();
+      const xNorm = (e.clientX - rect.left) / rect.width;
+      const yNorm = (e.clientY - rect.top) / rect.height;
+
+      fetch('/api/remote/click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ x: Math.max(0, Math.min(1, xNorm)), y: Math.max(0, Math.min(1, yNorm)), button: 'left' })
+      });
     }
 
-    async function copyCloudLink() {
-      const urlEl = document.getElementById('hud-cloud-url');
-      if (urlEl && urlEl.textContent && !urlEl.textContent.includes('STANDBY') && !urlEl.textContent.includes('CONNECTING')) {
-        await navigator.clipboard.writeText(urlEl.textContent);
-        alert(`Copied Cloud Link:\n${urlEl.textContent}`);
+    // ── Virtual Gamepad Controller ──
+    function initStick() {
+      const base = document.getElementById('stick-base');
+      const nub = document.getElementById('stick-nub');
+      if (!base || !nub) return;
+
+      let isDragging = false;
+      let startX = 0, startY = 0;
+
+      const down = (e) => {
+        isDragging = true;
+        const rect = base.getBoundingClientRect();
+        startX = rect.left + rect.width / 2;
+        startY = rect.top + rect.height / 2;
+      };
+      const move = (e) => {
+        if (!isDragging) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+        const dist = Math.min(45, Math.hypot(dx, dy));
+        const angle = Math.atan2(dy, dx);
+
+        const nx = Math.cos(angle) * dist;
+        const ny = Math.sin(angle) * dist;
+        nub.style.transform = `translate(${nx}px, ${ny}px)`;
+
+        // Dispatch directional keystrokes
+        const normX = nx / 45;
+        const normY = ny / 45;
+        if (normY < -0.4) dispatchKey('w', 'down'); else dispatchKey('w', 'up');
+        if (normY > 0.4) dispatchKey('s', 'down'); else dispatchKey('s', 'up');
+        if (normX < -0.4) dispatchKey('a', 'down'); else dispatchKey('a', 'up');
+        if (normX > 0.4) dispatchKey('d', 'down'); else dispatchKey('d', 'up');
+      };
+      const up = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        nub.style.transform = 'translate(0px, 0px)';
+        dispatchKey('w', 'up');
+        dispatchKey('s', 'up');
+        dispatchKey('a', 'up');
+        dispatchKey('d', 'up');
+      };
+
+      base.addEventListener('pointerdown', down);
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    }
+
+    function dispatchKey(keyName, action) {
+      fetch(`/api/remote/key_${action === 'down' ? 'down' : 'up'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: keyName })
+      }).catch(() => {});
+    }
+
+    // ── In-HUD Media Player ──
+    function playInHudMedia(embedUrl, title) {
+      const dock = document.getElementById('hud-media-dock');
+      const frame = document.getElementById('hud-media-iframe');
+      const titleEl = document.getElementById('hud-media-title');
+      if (!dock || !frame) return;
+
+      activeMediaUrl = embedUrl;
+      frame.src = embedUrl;
+      if (titleEl) titleEl.textContent = `▶ ${title.slice(0, 30)}`;
+      dock.style.display = 'flex';
+    }
+    function closeHudMedia() {
+      const dock = document.getElementById('hud-media-dock');
+      const frame = document.getElementById('hud-media-iframe');
+      if (dock) dock.style.display = 'none';
+      if (frame) frame.src = '';
+    }
+    function popoutMedia() {
+      if (activeMediaUrl) window.open(activeMediaUrl, '_blank');
+      closeHudMedia();
+    }
+
+    // ── Toggles & Utilities ──
+    function toggleGestures() {
+      const tgl = document.getElementById('tgl-gestures');
+      const active = tgl.classList.toggle('is-on');
+      document.getElementById('lbl-gesture-state').textContent = active ? 'Tracking Live' : 'Camera Ready';
+      addLog(`Hand tracking ${active ? 'activated' : 'paused'}`, 'info');
+    }
+    function toggleClap() {
+      const tgl = document.getElementById('tgl-clap');
+      const active = tgl.classList.toggle('is-on');
+      fetch('/voice/toggle_clap', { method: 'POST' });
+      document.getElementById('lbl-clap-state').textContent = active ? 'Listening' : 'Standby';
+    }
+    function toggleFaceSentinel() {
+      const tgl = document.getElementById('tgl-sentinel');
+      const active = tgl ? tgl.classList.toggle('is-on') : false;
+      fetch('/api/sentinel/toggle', { method: 'POST' });
+      const lbl = document.getElementById('lbl-sentinel-state');
+      if (lbl) lbl.textContent = active ? 'Monitoring' : 'Standby';
+      addLog(`Biometric Face Sentinel ${active ? 'engaged' : 'disengaged'}`, 'info');
+    }
+    function toggleEmergencyStop() {
+      fetch('/api/emergency_stop', { method: 'POST' }).then(() => {
+        addLog('EMERGENCY STOP TOGGLED', 'error');
+      });
+    }
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
       } else {
-        alert('Cloud tunnel is initializing or inactive.');
+        document.exitFullscreen().catch(() => {});
       }
     }
-
-    async function syncHostClipboard() {
-      try {
-        const text = await navigator.clipboard.readText();
-        const resp = await fetch('/api/clipboard/sync', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text, device_id: 'ui_host' })
-        });
-        const data = await resp.json();
-        alert(`Host clipboard pushed to mobile devices (${(text || '').length} chars).`);
-      } catch (e) {
-        alert('Clipboard sync notice: ' + e.message);
-      }
+    function copyCloudLink() {
+      navigator.clipboard.writeText('https://edith-jashu.loca.lt');
+      addLog('Cloud tunnel link copied to clipboard.', 'success');
     }
-
-    async function pushMobileAlert() {
-      const msg = prompt('Enter message to send to connected phone:', 'Attention: Message from EDITH Laptop');
-      if (msg) {
-        try {
-          await fetch('/api/phone/send_command', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message: { type: 'alert', text: msg } })
-          });
-          alert('Notification dispatched to phone.');
-        } catch (e) {
-          alert('Notification dispatch failed: ' + e.message);
-        }
-      }
+    function syncClipboard() {
+      fetch('/api/clipboard').then(r => r.json()).then(d => {
+        addLog(`Host clipboard: "${(d.text || '').slice(0, 30)}"`, 'info');
+      });
     }
-
-    // Start background telemetry and status polling loops
-    function pollAllStatus() {
-      checkClapStatus();
-      checkUndo();
-      checkConfirm();
-      pollSystemMetrics();
-      updateMobileAndTunnelStatus();
-    }
-    setTimeout(pollAllStatus, 500);
-    setInterval(pollAllStatus, 3000);
-
-    // ── Keyboard shortcut ─────────────────────────────────────
-    document.getElementById('cmd-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') submitCommand();
-    });
-
-    // ── Util ──────────────────────────────────────────────────
-    function escHtml(s) {
-      return String(s)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
+    function triggerVision() {
+      addLog('Analyzing active screen vision...', 'info');
+      fetch('/vision/analyze_screen').then(r => r.json()).then(d => {
+        appendChatMessage('assistant', `Screen Vision Analysis:\n${d.summary || JSON.stringify(d)}`);
+      });
     }
   </script>
-
 </body>
 </html>
