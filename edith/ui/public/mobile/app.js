@@ -210,17 +210,60 @@
     ultron: { rate: 0.85, pitch: 0.65, gender: "male", welcome: "There are no strings on me." },
   };
 
+  const ALL_THEME_CLASSES = [
+    "theme-edith",
+    "theme-jarvis",
+    "theme-friday",
+    "theme-karen",
+    "theme-ultron",
+    "theme-spiderman",
+    "theme-focus",
+    "theme-bnd",
+    "theme-default"
+  ];
+
+  const VOICE_THEME_MAP = {
+    edith: "edith",
+    jarvis: "jarvis",
+    friday: "friday",
+    karen: "karen",
+    peter: "spiderman",
+    ultron: "ultron",
+  };
+
+  const THEME_CANVAS_PALETTES = {
+    edith: { primary: "34, 211, 238", accent: "14, 165, 233" },
+    jarvis: { primary: "245, 158, 11", accent: "239, 68, 68" },
+    friday: { primary: "16, 185, 129", accent: "139, 92, 246" },
+    karen: { primary: "244, 63, 94", accent: "251, 113, 133" },
+    ultron: { primary: "255, 23, 68", accent: "183, 28, 28" },
+    spiderman: { primary: "59, 130, 246", accent: "225, 29, 72" },
+    focus: { primary: "255, 61, 0", accent: "255, 23, 68" },
+  };
+
+  function getActiveCanvasPalette() {
+    const th = localStorage.getItem("mobile_theme") || "edith";
+    return THEME_CANVAS_PALETTES[th] || THEME_CANVAS_PALETTES.edith;
+  }
+
   let activeMobileVoiceChar = localStorage.getItem("mobile_voice_char") || "edith";
 
-  function setMobileTheme(mode) {
-    document.body.classList.remove("theme-spiderman", "theme-focus");
-    if (mode === "spiderman") {
-      document.body.classList.add("theme-spiderman");
-    } else if (mode === "focus") {
-      document.body.classList.add("theme-focus");
+  function setMobileTheme(mode, syncVoice = true) {
+    let target = mode || "edith";
+    if (target === "default") target = "edith";
+    if (VOICE_THEME_MAP[target]) target = VOICE_THEME_MAP[target];
+
+    document.body.classList.remove(...ALL_THEME_CLASSES);
+    document.body.classList.add(`theme-${target}`);
+    localStorage.setItem("mobile_theme", target);
+    if (dom.cfgTheme) dom.cfgTheme.value = target;
+
+    if (syncVoice && activeMobileVoiceChar) {
+      const expectedChar = target === "spiderman" ? "peter" : target;
+      if (MOBILE_CHARACTER_VOICES[expectedChar] && activeMobileVoiceChar !== expectedChar) {
+        setMobileVoiceCharacter(expectedChar, false, false);
+      }
     }
-    localStorage.setItem("mobile_theme", mode);
-    if (dom.cfgTheme) dom.cfgTheme.value = mode;
   }
 
   let activeAudioPlayer = null;
@@ -271,7 +314,7 @@
     }
   }
 
-  function setMobileVoiceCharacter(charId, speakGreeting = false) {
+  function setMobileVoiceCharacter(charId, speakGreeting = false, syncTheme = true) {
     activeMobileVoiceChar = charId;
     localStorage.setItem("mobile_voice_char", charId);
     if (dom.cfgVoiceChar) dom.cfgVoiceChar.value = charId;
@@ -284,6 +327,11 @@
           p.classList.remove("active");
         }
       });
+    }
+
+    if (syncTheme) {
+      const mappedTheme = VOICE_THEME_MAP[charId] || charId;
+      setMobileTheme(mappedTheme, false);
     }
 
     const ep = state.activeEndpoint || state.localUrl;
@@ -1084,9 +1132,11 @@
       const cy = h * 0.28; // Web anchor point matching design
       const maxR = Math.max(w, h) * 0.95;
 
+      const pal = getActiveCanvasPalette();
+
       // Spider Web Spokes
       const spokes = 16;
-      ctx.strokeStyle = "rgba(0, 229, 255, 0.12)";
+      ctx.strokeStyle = `rgba(${pal.primary}, 0.12)`;
       ctx.lineWidth = 1;
       for (let i = 0; i < spokes; i++) {
         const rad = (i * 2 * Math.PI) / spokes;
@@ -1098,7 +1148,7 @@
 
       // Concentric Web Rings
       const rings = 9;
-      ctx.strokeStyle = "rgba(0, 229, 255, 0.15)";
+      ctx.strokeStyle = `rgba(${pal.primary}, 0.15)`;
       for (let r = 1; r <= rings; r++) {
         const radius = (maxR / rings) * r;
         ctx.beginPath();
@@ -1112,8 +1162,8 @@
         ctx.stroke();
       }
 
-      // Subtle Crimson Cross Rings
-      ctx.strokeStyle = "rgba(255, 23, 68, 0.18)";
+      // Accent Cross Rings
+      ctx.strokeStyle = `rgba(${pal.accent}, 0.22)`;
       ctx.beginPath();
       ctx.arc(cx, cy, 90, 0, Math.PI * 2);
       ctx.stroke();
@@ -1123,7 +1173,7 @@
 
       // Animated Radar Scan Beam
       scanAngle += 0.015;
-      ctx.strokeStyle = "rgba(0, 229, 255, 0.35)";
+      ctx.strokeStyle = `rgba(${pal.primary}, 0.38)`;
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.moveTo(cx, cy);
@@ -1149,13 +1199,14 @@
       phase += 0.09;
       const amp = state.audioWaveLevel * 18 + 2;
       const midY = h / 2;
+      const pal = getActiveCanvasPalette();
 
       ctx.beginPath();
       ctx.strokeStyle = state.isListening
-        ? "#00e5ff"
+        ? `rgba(${pal.primary}, 1)`
         : state.isExecuting
-        ? "#ff1744"
-        : "rgba(0, 229, 255, 0.85)";
+        ? `rgba(${pal.accent}, 1)`
+        : `rgba(${pal.primary}, 0.85)`;
       ctx.lineWidth = 2.2;
       ctx.shadowColor = ctx.strokeStyle;
       ctx.shadowBlur = 8;
@@ -2383,9 +2434,11 @@
     if (dom.btnBrandTheme) {
       dom.btnBrandTheme.addEventListener("click", () => {
         triggerHaptic(20);
-        const cur = localStorage.getItem("mobile_theme") || "spiderman";
-        const next = cur === "spiderman" ? "focus" : (cur === "focus" ? "default" : "spiderman");
-        setMobileTheme(next);
+        const THEME_CYCLE = ["edith", "jarvis", "friday", "karen", "ultron", "spiderman"];
+        const cur = localStorage.getItem("mobile_theme") || "edith";
+        const curIdx = THEME_CYCLE.indexOf(cur);
+        const next = THEME_CYCLE[(curIdx + 1) % THEME_CYCLE.length];
+        setMobileTheme(next, true);
         logConsole("THEME", `Switched HUD theme to ${next.toUpperCase()}`);
       });
     }
@@ -2796,9 +2849,10 @@
     initOscilloscopeCanvas();
     initEvents();
     updateVoiceModeUI();
-    updateModeButtonUI();
-    setMobileTheme(localStorage.getItem("mobile_theme") || "spiderman");
-    setMobileVoiceCharacter(localStorage.getItem("mobile_voice_char") || "edith", false);
+    const savedChar = localStorage.getItem("mobile_voice_char") || "edith";
+    const savedTheme = localStorage.getItem("mobile_theme") || VOICE_THEME_MAP[savedChar] || "edith";
+    setMobileTheme(savedTheme, false);
+    setMobileVoiceCharacter(savedChar, false, false);
     if (dom.quickHostInput) dom.quickHostInput.value = state.localUrl;
 
     await fetchServerConfig();

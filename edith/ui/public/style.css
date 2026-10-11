@@ -3,25 +3,125 @@
    v2.0 — Full redesign by Antigravity
    ============================================================ */
 
-:root {
-  --bg:          #040a12;
-  --cyan:        #00e5ff;
-  --cyan-dim:    rgba(0, 229, 255, 0.35);
-  --cyan-glow:   rgba(0, 229, 255, 0.15);
-  --blue:        #0055ff;
-  --amber:       #ffb700;
-  --red:         #ff0055;
+:root,
+body.theme-edith,
+body.theme-default {
+  --bg:          #020617;
+  --hud:         #22d3ee;
+  --hud-soft:    rgba(34, 211, 238, 0.45);
+  --hud-faint:   rgba(34, 211, 238, 0.14);
+  --accent:      #0ea5e9;
+  --bracket-color: rgba(165, 243, 252, 0.95);
+  --cyan:        #22d3ee;
+  --cyan-dim:    rgba(34, 211, 238, 0.35);
+  --cyan-glow:   rgba(34, 211, 238, 0.2);
+  --blue:        #0ea5e9;
+  --amber:       #f59e0b;
+  --red:         #ef4444;
   --green:       #10b981;
   --purple:      #a855f7;
-  --glass:       rgba(4, 14, 28, 0.78);
-  --glass-edge:  rgba(0, 229, 255, 0.2);
-  --text:        #c8eef5;
-  --text-dim:    #4a7f92;
-  --mono:        'Consolas', 'Fira Code', 'Courier New', monospace;
+  --glass:       rgba(8, 47, 73, 0.42);
+  --glass-edge:  rgba(56, 189, 248, 0.32);
+  --text:        #f0f9ff;
+  --text-dim:    #94a3b8;
+  --mono:        'JetBrains Mono', 'Consolas', monospace;
+  --font-hud:    'Rajdhani', 'Segoe UI', sans-serif;
+  --font-display:'Orbitron', 'Rajdhani', sans-serif;
 }
 
-/* ---- Brand New Day & Tactical Focus Themes (E.V Matrix) ---- */
+body.theme-jarvis {
+  --bg:          #120703;
+  --hud:         #f59e0b;
+  --hud-soft:    rgba(245, 158, 11, 0.45);
+  --hud-faint:   rgba(245, 158, 11, 0.14);
+  --accent:      #ef4444;
+  --bracket-color: rgba(253, 230, 138, 0.95);
+  --cyan:        #f59e0b;
+  --cyan-dim:    rgba(245, 158, 11, 0.35);
+  --cyan-glow:   rgba(245, 158, 11, 0.2);
+  --blue:        #ef4444;
+  --amber:       #fbbf24;
+  --red:         #dc2626;
+  --glass:       rgba(60, 25, 8, 0.45);
+  --glass-edge:  rgba(245, 158, 11, 0.35);
+  --text:        #fffbeb;
+  --text-dim:    #b49a7a;
+}
+
+body.theme-friday {
+  --bg:          #030f0a;
+  --hud:         #10b981;
+  --hud-soft:    rgba(16, 185, 129, 0.45);
+  --hud-faint:   rgba(16, 185, 129, 0.14);
+  --accent:      #8b5cf6;
+  --bracket-color: rgba(167, 243, 208, 0.95);
+  --cyan:        #10b981;
+  --cyan-dim:    rgba(16, 185, 129, 0.35);
+  --cyan-glow:   rgba(16, 185, 129, 0.2);
+  --blue:        #8b5cf6;
+  --glass:       rgba(6, 45, 30, 0.42);
+  --glass-edge:  rgba(16, 185, 129, 0.35);
+  --text:        #ecfdf5;
+  --text-dim:    #86b39c;
+}
+
+body.theme-karen {
+  --bg:          #130308;
+  --hud:         #f43f5e;
+  --hud-soft:    rgba(244, 63, 94, 0.45);
+  --hud-faint:   rgba(244, 63, 94, 0.14);
+  --accent:      #fb7185;
+  --bracket-color: rgba(254, 205, 211, 0.95);
+  --cyan:        #f43f5e;
+  --cyan-dim:    rgba(244, 63, 94, 0.35);
+  --cyan-glow:   rgba(244, 63, 94, 0.2);
+  --blue:        #fb7185;
+  --glass:       rgba(50, 10, 25, 0.44);
+  --glass-edge:  rgba(244, 63, 94, 0.38);
+  --text:        #fff1f2;
+  --text-dim:    #ba7b88;
+}
+
+body.theme-ultron,
+body.theme-focus {
+  --bg:          #090203;
+  --hud:         #ff1744;
+  --hud-soft:    rgba(255, 23, 68, 0.45);
+  --hud-faint:   rgba(255, 23, 68, 0.14);
+  --accent:      #b71c1c;
+  --bracket-color: rgba(255, 154, 162, 0.95);
+  --cyan:        #ff1744;
+  --cyan-dim:    rgba(255, 23, 68, 0.35);
+  --cyan-glow:   rgba(255, 23, 68, 0.22);
+  --blue:        #b71c1c;
+  --glass:       rgba(45, 6, 12, 0.48);
+  --glass-edge:  rgba(255, 23, 68, 0.4);
+  --text:        #ffebee;
+  --text-dim:    #b3646f;
+}
+
+body.theme-spiderman,
+body.theme-peter {
+  --bg:          #050713;
+  --hud:         #e11d48;
+  --hud-soft:    rgba(225, 29, 72, 0.45);
+  --hud-faint:   rgba(225, 29, 72, 0.14);
+  --accent:      #3b82f6;
+  --bracket-color: rgba(191, 219, 254, 0.95);
+  --cyan:        #3b82f6;
+  --cyan-dim:    rgba(59, 130, 246, 0.35);
+  --cyan-glow:   rgba(59, 130, 246, 0.22);
+  --blue:        #e11d48;
+  --amber:       #ffd700;
+  --glass:       rgba(20, 12, 35, 0.48);
+  --glass-edge:  rgba(59, 130, 246, 0.38);
+  --text:        #f8fafc;
+  --text-dim:    #8593ab;
+}
+
 body.theme-bnd {
+  --bg:          #07121e;
+  --hud:         #85dbe1;
   --cyan:        #85dbe1;
   --cyan-dim:    rgba(133, 219, 225, 0.4);
   --cyan-glow:   rgba(133, 219, 225, 0.2);
@@ -32,43 +132,22 @@ body.theme-bnd {
   --text-dim:    #5ea1ac;
 }
 
-body.theme-focus {
-  --cyan:        #ff3d00;
-  --cyan-dim:    rgba(255, 61, 0, 0.4);
-  --cyan-glow:   rgba(255, 61, 0, 0.2);
-  --blue:        #ff1744;
-  --amber:       #ff9100;
-  --glass:       rgba(28, 7, 7, 0.82);
-  --glass-edge:  rgba(255, 61, 0, 0.28);
-  --text:        #ffebee;
-  --text-dim:    #b06363;
-}
-
-body.theme-spiderman {
-  --bg:          #080309;
-  --cyan:        #ff1e42;
-  --cyan-dim:    rgba(255, 30, 66, 0.45);
-  --cyan-glow:   rgba(255, 30, 66, 0.25);
-  --blue:        #0066ff;
-  --amber:       #ffd700;
-  --red:         #ff003c;
-  --glass:       rgba(24, 6, 14, 0.85);
-  --glass-edge:  rgba(255, 30, 66, 0.35);
-  --text:        #ffe4e8;
-  --text-dim:    #b35a6c;
-}
-
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* ---- Base ---- */
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--mono);
+  font-family: var(--font-hud);
   overflow: hidden;
   width: 100vw;
   height: 100vh;
   user-select: none;
+  background-image:
+    linear-gradient(var(--hud-faint) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hud-faint) 1px, transparent 1px);
+  background-size: 46px 46px;
+  transition: background 0.35s ease, color 0.35s ease;
 }
 
 /* ---- Scan-line overlay ---- */
@@ -131,43 +210,49 @@ body::after {
 
 /* ---- Glass card ---- */
 .glass-card {
-  background: rgba(4, 14, 28, 0.65);
+  background:
+    linear-gradient(155deg, rgba(8, 47, 73, 0.36), rgba(2, 6, 23, 0.78) 60%),
+    var(--glass);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid var(--glass-edge);
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 14px;
   pointer-events: auto;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
-  transition: border-color 0.3s, box-shadow 0.3s;
+  box-shadow: inset 0 0 26px var(--hud-faint), 0 0 22px rgba(2, 132, 199, 0.07);
+  transition: border-color 0.3s, box-shadow 0.3s, background 0.3s;
 }
 
-/* inner top-edge glow line */
+/* MAX-version top-left corner bracket */
 .glass-card::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 10%;
-  right: 10%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--cyan), transparent);
-  opacity: 0.5;
-}
-
-/* cyber corner accent from E.V */
-.glass-card::after {
   content: '';
   position: absolute;
   top: -1px;
   left: -1px;
-  width: 12px;
-  height: 12px;
-  border-top: 2px solid var(--cyan);
-  border-left: 2px solid var(--cyan);
+  width: 16px;
+  height: 16px;
+  border-top: 1.5px solid var(--bracket-color, rgba(165, 243, 252, 0.95));
+  border-left: 1.5px solid var(--bracket-color, rgba(165, 243, 252, 0.95));
   pointer-events: none;
+  z-index: 2;
+}
+
+/* MAX-version bottom-right corner bracket */
+.glass-card::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 16px;
+  height: 16px;
+  border-bottom: 1.5px solid var(--bracket-color, rgba(165, 243, 252, 0.9));
+  border-right: 1.5px solid var(--bracket-color, rgba(165, 243, 252, 0.9));
+  pointer-events: none;
+  z-index: 2;
 }
 
 .glass-card:hover {

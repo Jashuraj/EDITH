@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>EDITH - Autonomous AI OS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css?v=2.6.0">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
@@ -60,11 +63,13 @@
           <span id="w-desc">OPTIMAL</span>
           <span id="w-city">LOCAL STATION</span>
         </div>
-        <div class="hud-themes" title="Select UI Hologram Mode">
-          <button class="theme-btn theme-cyan active" onclick="setTheme('default')" title="JARVIS Cyan">JARVIS</button>
-          <button class="theme-btn theme-bnd" onclick="setTheme('bnd')" title="Spider-Man Brand New Day Theme">BND</button>
-          <button class="theme-btn theme-focus" onclick="setTheme('focus')" title="Tactical Combat Mode">TACTICAL</button>
-          <button class="theme-btn theme-spiderman" onclick="setTheme('spiderman')" title="Spider-Man Suit & Web HUD">SPIDERMAN</button>
+        <div class="hud-themes" title="Select Character Voice & HUD Theme">
+          <button class="theme-btn theme-edith active" onclick="setTheme('edith')" title="EDITH (Tactical Cyan)">EDITH</button>
+          <button class="theme-btn theme-jarvis" onclick="setTheme('jarvis')" title="JARVIS (Mark-L Gold)">JARVIS</button>
+          <button class="theme-btn theme-friday" onclick="setTheme('friday')" title="FRIDAY (Neon Emerald)">FRIDAY</button>
+          <button class="theme-btn theme-karen" onclick="setTheme('karen')" title="KAREN (Hot Pink / Rose)">KAREN</button>
+          <button class="theme-btn theme-spiderman" onclick="setTheme('spiderman')" title="SPIDER-MAN (Scarlet & Web-Blue)">SPIDEY</button>
+          <button class="theme-btn theme-ultron" onclick="setTheme('ultron')" title="ULTRON (Crimson Power)">ULTRON</button>
         </div>
       </div>
 
@@ -385,25 +390,40 @@
     }
     setInterval(fetchWeather, 60000);
 
-    // ── Theme Switcher (JARVIS Cyan / Brand New Day / Tactical / Spider-Man) ─
-    function setTheme(mode) {
-      document.body.classList.remove('theme-bnd', 'theme-focus', 'theme-spiderman');
-      if (mode === 'bnd') {
-        document.body.classList.add('theme-bnd');
-      } else if (mode === 'focus') {
-        document.body.classList.add('theme-focus');
-      } else if (mode === 'spiderman') {
-        document.body.classList.add('theme-spiderman');
-      }
+    // ── Theme Switcher (Mapped to Character Profiles & Holographic Palettes) ─
+    const ALL_DESKTOP_THEMES = ['theme-edith', 'theme-jarvis', 'theme-friday', 'theme-karen', 'theme-ultron', 'theme-spiderman', 'theme-bnd', 'theme-focus'];
+    const VOICE_DESKTOP_THEME_MAP = {
+      edith: 'edith',
+      jarvis: 'jarvis',
+      friday: 'friday',
+      karen: 'karen',
+      peter: 'spiderman',
+      ultron: 'ultron',
+    };
+
+    function setTheme(mode, syncVoice = true) {
+      let target = mode || 'edith';
+      if (target === 'default' || target === 'cyan') target = 'edith';
+      if (VOICE_DESKTOP_THEME_MAP[target]) target = VOICE_DESKTOP_THEME_MAP[target];
+
+      document.body.classList.remove(...ALL_DESKTOP_THEMES);
+      document.body.classList.add(`theme-${target}`);
+
       if (window.setActiveTheme) {
-        window.setActiveTheme(mode);
-      } else if (window.setOrbColor) {
-        window.setOrbColor(mode === 'focus' ? 0xff3d00 : (mode === 'bnd' ? 0x85dbe1 : (mode === 'spiderman' ? 0xff1e42 : 0x00e5ff)));
+        window.setActiveTheme(target);
       }
       document.querySelectorAll('.theme-btn').forEach(b => b.classList.remove('active'));
-      const activeBtn = document.querySelector(`.theme-btn.theme-${mode}`);
+      const activeBtn = document.querySelector(`.theme-btn.theme-${target}`);
       if (activeBtn) activeBtn.classList.add('active');
-      try { localStorage.setItem('edith_theme', mode); } catch (_) {}
+      try { localStorage.setItem('edith_theme', target); } catch (_) {}
+
+      if (syncVoice) {
+        const expectedVoice = target === 'spiderman' ? 'peter' : target;
+        const sel = document.getElementById('select-voice-char');
+        if (sel && sel.value !== expectedVoice && typeof changeVoiceCharacter === 'function') {
+          changeVoiceCharacter(expectedVoice, false);
+        }
+      }
     }
     window.setTheme = setTheme;
 
@@ -619,11 +639,15 @@
       ultron: { rate: 0.85, pitch: 0.65, gender: 'male', welcome: 'There are no strings on me. System control absolute.' },
     };
 
-    async function changeVoiceCharacter(charId) {
+    async function changeVoiceCharacter(charId, syncTheme = true) {
       currentVoiceCharacter = charId;
       try { localStorage.setItem('edith_voice_char', charId); } catch (_) {}
       const sel = document.getElementById('select-voice-char');
       if (sel) sel.value = charId;
+      if (syncTheme && typeof setTheme === 'function') {
+        const mappedTheme = VOICE_DESKTOP_THEME_MAP[charId] || charId;
+        setTheme(mappedTheme, false);
+      }
       try {
         await fetch('/voice/character', {
           method: 'POST',

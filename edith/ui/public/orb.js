@@ -6,8 +6,9 @@
 
 let scene, camera, renderer;
 let orbGroup, particleSphere, innerRings = [];
-let targetColor = new THREE.Color(0x00e5ff); // Default Cyan
-let currentColor = new THREE.Color(0x00e5ff);
+let coreMesh, cageMesh, coreMat, cageMat;
+let targetColor = new THREE.Color(0x22d3ee); // Default Tactical Cyan
+let currentColor = new THREE.Color(0x22d3ee);
 let pulseSpeed = 1.0;
 let isDragging = false;
 let previousMousePosition = { x: 0, y: 0 };
@@ -98,6 +99,27 @@ function initThreeScene() {
     innerRings.push(ring);
     orbGroup.add(ring);
   });
+
+  // 3. Inner Reactor Core (MAX version Icosahedron Core & Outer Cage)
+  coreMat = new THREE.MeshBasicMaterial({
+    color: currentColor,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.45,
+    blending: THREE.AdditiveBlending
+  });
+  coreMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(2.6, 2), coreMat);
+  orbGroup.add(coreMesh);
+
+  cageMat = new THREE.MeshBasicMaterial({
+    color: currentColor,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.18,
+    blending: THREE.AdditiveBlending
+  });
+  cageMesh = new THREE.Mesh(new THREE.IcosahedronGeometry(3.6, 1), cageMat);
+  orbGroup.add(cageMesh);
 
   // Lights
   const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
@@ -208,8 +230,19 @@ function animate() {
 
   // Color interpolation
   currentColor.lerp(targetColor, 0.05);
-  particleSphere.material.color = currentColor;
+  if (particleSphere) particleSphere.material.color = currentColor;
   innerRings.forEach(r => r.material.color = currentColor);
+  if (coreMat) coreMat.color = currentColor;
+  if (cageMat) cageMat.color = currentColor;
+
+  if (coreMesh && !window.isUserPinching && !isDragging) {
+    coreMesh.rotation.y += 0.005 * pulseSpeed;
+    coreMesh.rotation.x += 0.003 * pulseSpeed;
+  }
+  if (cageMesh && !window.isUserPinching && !isDragging) {
+    cageMesh.rotation.y -= 0.002 * pulseSpeed;
+    cageMesh.rotation.z += 0.002 * pulseSpeed;
+  }
 
   // Smooth scaling with gentle breathing animation
   baseOrbScale += (targetOrbScale - baseOrbScale) * 0.14;
@@ -222,15 +255,21 @@ function animate() {
 
 let currentThemeMode = localStorage.getItem('edith_theme') || 'default';
 const THEME_COLORS = {
-  default: 0x00e5ff,
+  default: 0x22d3ee,
+  edith: 0x22d3ee,
+  jarvis: 0xf59e0b,
+  friday: 0x10b981,
+  karen: 0xf43f5e,
+  peter: 0xe11d48,
+  spiderman: 0xe11d48,
+  ultron: 0xff1744,
   bnd: 0x85dbe1,
   focus: 0xff3d00,
-  spiderman: 0xff1e42,
 };
 
 window.setActiveTheme = function(mode) {
   currentThemeMode = mode;
-  const hex = THEME_COLORS[mode] !== undefined ? THEME_COLORS[mode] : 0x00e5ff;
+  const hex = THEME_COLORS[mode] !== undefined ? THEME_COLORS[mode] : 0x22d3ee;
   targetColor = new THREE.Color(hex);
 };
 

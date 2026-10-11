@@ -3,55 +3,144 @@
    Aesthetic Mirroring: Section 84 & Master Constitution + E.V. Holographic Architecture
    ========================================================================== */
 
-:root {
-  --bg-deep: #04060d;
-  --bg-dark: #080c1a;
-  --bg-card: rgba(10, 16, 32, 0.78);
-  --bg-card-hover: rgba(16, 26, 50, 0.88);
-  --cyan-glow: #00e5ff;
-  --cyan-dim: rgba(0, 229, 255, 0.25);
-  --cyan-border: rgba(0, 229, 255, 0.35);
-  --red-glow: #ff1744;
-  --red-dim: rgba(255, 23, 68, 0.25);
-  --red-border: rgba(255, 23, 68, 0.45);
-  --text-main: #f0f4ff;
-  --text-muted: #7e8fa8;
-  --text-cyan: #64ffda;
-  --font-mono: "Consolas", "Cascadia Code", "SF Mono", monospace;
-  --font-hud: "Segoe UI", -apple-system, BlinkMacSystemFont, "Roboto", sans-serif;
+:root,
+body.theme-edith,
+body.theme-default {
+  --hud: #22d3ee;
+  --hud-soft: rgba(34, 211, 238, 0.45);
+  --hud-faint: rgba(34, 211, 238, 0.14);
+  --accent: #0ea5e9;
+  --bracket-color: rgba(165, 243, 252, 0.95);
+  --bg-deep: #020617;
+  --bg-dark: #060d1f;
+  --bg-card: rgba(8, 47, 73, 0.42);
+  --bg-card-hover: rgba(12, 60, 92, 0.55);
+  --cyan-glow: #22d3ee;
+  --cyan-dim: rgba(34, 211, 238, 0.28);
+  --cyan-border: rgba(56, 189, 248, 0.32);
+  --red-glow: #0ea5e9;
+  --red-dim: rgba(14, 165, 233, 0.28);
+  --red-border: rgba(14, 165, 233, 0.45);
+  --text-main: #f0f9ff;
+  --text-muted: #94a3b8;
+  --text-cyan: #67e8f9;
+  --font-mono: "JetBrains Mono", "Consolas", monospace;
+  --font-display: "Orbitron", "Rajdhani", sans-serif;
+  --font-hud: "Rajdhani", "Segoe UI", sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Spider-Man Suit & Web Theme */
-body.theme-spiderman {
-  --bg-deep: #080309;
-  --bg-dark: #12050f;
-  --bg-card: rgba(24, 8, 16, 0.82);
-  --bg-card-hover: rgba(36, 12, 24, 0.92);
-  --cyan-glow: #ff1e42;
-  --cyan-dim: rgba(255, 30, 66, 0.3);
-  --cyan-border: rgba(255, 30, 66, 0.45);
-  --red-glow: #ff003c;
-  --red-dim: rgba(255, 0, 60, 0.3);
-  --text-main: #ffe4e8;
-  --text-muted: #a65d6c;
-  --text-cyan: #ff758c;
+/* JARVIS - Mark-L Gold / Amber / Crimson Theme */
+body.theme-jarvis {
+  --hud: #f59e0b;
+  --hud-soft: rgba(245, 158, 11, 0.45);
+  --hud-faint: rgba(245, 158, 11, 0.14);
+  --accent: #ef4444;
+  --bracket-color: rgba(253, 230, 138, 0.95);
+  --bg-deep: #120703;
+  --bg-dark: #1a0b05;
+  --bg-card: rgba(60, 25, 8, 0.45);
+  --bg-card-hover: rgba(75, 32, 12, 0.58);
+  --cyan-glow: #f59e0b;
+  --cyan-dim: rgba(245, 158, 11, 0.28);
+  --cyan-border: rgba(245, 158, 11, 0.38);
+  --red-glow: #ef4444;
+  --red-dim: rgba(239, 68, 68, 0.28);
+  --red-border: rgba(239, 68, 68, 0.45);
+  --text-main: #fffbeb;
+  --text-muted: #b49a7a;
+  --text-cyan: #fbbf24;
 }
 
-/* Tactical Combat Focus Theme */
+/* FRIDAY - Neon Emerald / Violet Theme */
+body.theme-friday {
+  --hud: #10b981;
+  --hud-soft: rgba(16, 185, 129, 0.45);
+  --hud-faint: rgba(16, 185, 129, 0.14);
+  --accent: #8b5cf6;
+  --bracket-color: rgba(167, 243, 208, 0.95);
+  --bg-deep: #030f0a;
+  --bg-dark: #071710;
+  --bg-card: rgba(6, 45, 30, 0.42);
+  --bg-card-hover: rgba(10, 58, 39, 0.55);
+  --cyan-glow: #10b981;
+  --cyan-dim: rgba(16, 185, 129, 0.28);
+  --cyan-border: rgba(16, 185, 129, 0.38);
+  --red-glow: #8b5cf6;
+  --red-dim: rgba(139, 92, 246, 0.28);
+  --red-border: rgba(139, 92, 246, 0.45);
+  --text-main: #ecfdf5;
+  --text-muted: #86b39c;
+  --text-cyan: #34d399;
+}
+
+/* KAREN - Hot Pink / Magenta / Rose Theme */
+body.theme-karen {
+  --hud: #f43f5e;
+  --hud-soft: rgba(244, 63, 94, 0.45);
+  --hud-faint: rgba(244, 63, 94, 0.14);
+  --accent: #fb7185;
+  --bracket-color: rgba(254, 205, 211, 0.95);
+  --bg-deep: #130308;
+  --bg-dark: #1c070e;
+  --bg-card: rgba(50, 10, 25, 0.44);
+  --bg-card-hover: rgba(65, 15, 34, 0.56);
+  --cyan-glow: #f43f5e;
+  --cyan-dim: rgba(244, 63, 94, 0.28);
+  --cyan-border: rgba(244, 63, 94, 0.4);
+  --red-glow: #fb7185;
+  --red-dim: rgba(251, 113, 133, 0.28);
+  --red-border: rgba(251, 113, 133, 0.45);
+  --text-main: #fff1f2;
+  --text-muted: #ba7b88;
+  --text-cyan: #fb7185;
+}
+
+/* ULTRON - Menacing Crimson Red / Carbon Theme */
+body.theme-ultron,
 body.theme-focus {
-  --bg-deep: #0a0404;
-  --bg-dark: #160808;
-  --bg-card: rgba(26, 10, 10, 0.82);
-  --bg-card-hover: rgba(40, 14, 14, 0.92);
-  --cyan-glow: #ff3d00;
-  --cyan-dim: rgba(255, 61, 0, 0.3);
-  --cyan-border: rgba(255, 61, 0, 0.45);
-  --red-glow: #ff1744;
+  --hud: #ff1744;
+  --hud-soft: rgba(255, 23, 68, 0.45);
+  --hud-faint: rgba(255, 23, 68, 0.14);
+  --accent: #b71c1c;
+  --bracket-color: rgba(255, 154, 162, 0.95);
+  --bg-deep: #090203;
+  --bg-dark: #140406;
+  --bg-card: rgba(45, 6, 12, 0.48);
+  --bg-card-hover: rgba(60, 9, 17, 0.6);
+  --cyan-glow: #ff1744;
+  --cyan-dim: rgba(255, 23, 68, 0.3);
+  --cyan-border: rgba(255, 23, 68, 0.45);
+  --red-glow: #b71c1c;
+  --red-dim: rgba(183, 28, 28, 0.3);
+  --red-border: rgba(183, 28, 28, 0.5);
   --text-main: #ffebee;
-  --text-muted: #b06363;
-  --text-cyan: #ff9100;
+  --text-muted: #b3646f;
+  --text-cyan: #ff5252;
+}
+
+/* SPIDER-MAN - Comic Scarlet / Cobalt Web-Blue Theme */
+body.theme-spiderman,
+body.theme-peter {
+  --hud: #e11d48;
+  --hud-soft: rgba(225, 29, 72, 0.45);
+  --hud-faint: rgba(225, 29, 72, 0.14);
+  --accent: #3b82f6;
+  --bracket-color: rgba(191, 219, 254, 0.95);
+  --bg-deep: #050713;
+  --bg-dark: #0a0e20;
+  --bg-card: rgba(20, 12, 35, 0.48);
+  --bg-card-hover: rgba(28, 18, 48, 0.58);
+  --cyan-glow: #3b82f6;
+  --cyan-dim: rgba(59, 130, 246, 0.3);
+  --cyan-border: rgba(59, 130, 246, 0.4);
+  --red-glow: #e11d48;
+  --red-dim: rgba(225, 29, 72, 0.3);
+  --red-border: rgba(225, 29, 72, 0.45);
+  --text-main: #f8fafc;
+  --text-muted: #8593ab;
+  --text-cyan: #60a5fa;
 }
 
 * {
@@ -71,6 +160,62 @@ html, body {
   font-family: var(--font-hud);
   overflow: hidden;
   position: relative;
+  background-image:
+    linear-gradient(var(--hud-faint) 1px, transparent 1px),
+    linear-gradient(90deg, var(--hud-faint) 1px, transparent 1px);
+  background-size: 46px 46px;
+  transition: background-color 0.35s ease, color 0.35s ease;
+}
+
+/* CRT Scanlines Overlay */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 80;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.02) 0px,
+    rgba(255, 255, 255, 0.02) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+  mix-blend-mode: overlay;
+}
+
+/* Typography Classes */
+.font-display {
+  font-family: var(--font-display);
+}
+
+.font-tech {
+  font-family: var(--font-mono);
+}
+
+.hud-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--hud-soft);
+}
+
+.hud-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--hud-soft), transparent);
+}
+
+.text-glow {
+  text-shadow:
+    0 0 10px var(--hud-soft),
+    0 0 24px var(--hud-faint);
+}
+
+.text-glow-amber {
+  text-shadow:
+    0 0 10px rgba(245, 158, 11, 0.7),
+    0 0 28px rgba(245, 158, 11, 0.3);
 }
 
 /* Background Cyber Grid and Canvas */
@@ -91,8 +236,9 @@ html, body {
   width: 100%;
   height: 100%;
   z-index: 2;
-  background: radial-gradient(circle at 50% 35%, transparent 20%, rgba(4, 6, 13, 0.85) 85%);
+  background: radial-gradient(ellipse 72% 64% at 50% 46%, transparent 52%, var(--bg-deep) 100%);
   pointer-events: none;
+  transition: background 0.35s ease;
 }
 
 /* App Layout Container */
@@ -329,28 +475,46 @@ html, body {
 /* Response / Console Live Display */
 .live-console-card {
   width: 100%;
-  background: var(--bg-card);
+  background:
+    linear-gradient(155deg, rgba(8, 47, 73, 0.36), rgba(2, 6, 23, 0.78) 60%),
+    var(--bg-card);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border: 1px solid var(--cyan-dim);
-  border-radius: 12px;
+  border: 1px solid var(--cyan-border);
+  border-radius: 8px;
   padding: 10px 14px;
   margin-top: 8px;
   max-height: 110px;
   overflow-y: auto;
   position: relative;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  box-shadow: inset 0 0 24px var(--hud-faint), 0 8px 24px rgba(0, 0, 0, 0.6);
+  transition: all 0.3s ease;
 }
 
 .live-console-card::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 20px;
-  height: 2px;
-  background: var(--cyan-glow);
-  box-shadow: 0 0 8px var(--cyan-glow);
+  top: -1px;
+  left: -1px;
+  width: 14px;
+  height: 14px;
+  border-top: 1.5px solid var(--bracket-color);
+  border-left: 1.5px solid var(--bracket-color);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.live-console-card::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 14px;
+  height: 14px;
+  border-bottom: 1.5px solid var(--bracket-color);
+  border-right: 1.5px solid var(--bracket-color);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .console-header {
@@ -534,14 +698,45 @@ html, body {
 .modal-card {
   width: 100%;
   max-width: 420px;
-  background: var(--bg-dark);
+  background:
+    linear-gradient(155deg, rgba(8, 47, 73, 0.45), rgba(2, 6, 23, 0.92) 60%),
+    var(--bg-dark);
   border: 1px solid var(--cyan-border);
-  border-radius: 16px;
+  border-radius: 8px;
   padding: 18px 20px;
-  box-shadow: 0 0 35px rgba(0, 229, 255, 0.25);
+  box-shadow: inset 0 0 30px var(--hud-faint), 0 0 35px rgba(0, 0, 0, 0.85);
   display: flex;
   flex-direction: column;
   gap: 14px;
+  position: relative;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.modal-card::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: -1px;
+  width: 16px;
+  height: 16px;
+  border-top: 1.5px solid var(--bracket-color);
+  border-left: 1.5px solid var(--bracket-color);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.modal-card::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 16px;
+  height: 16px;
+  border-bottom: 1.5px solid var(--bracket-color);
+  border-right: 1.5px solid var(--bracket-color);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .modal-header {
@@ -1530,26 +1725,44 @@ html, body {
 /* ---------------- Laptop Vitals Status Card ---------------- */
 .vitals-card {
   width: 100%;
-  background: rgba(10, 18, 36, 0.82);
+  background:
+    linear-gradient(155deg, rgba(8, 47, 73, 0.36), rgba(2, 6, 23, 0.78) 60%),
+    var(--bg-card);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--cyan-border);
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 10px 14px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55), inset 0 0 15px rgba(0, 229, 255, 0.05);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.55), inset 0 0 24px var(--hud-faint);
   position: relative;
   flex-shrink: 0;
+  transition: all 0.3s ease;
 }
 
 .vitals-card::before {
   content: "";
   position: absolute;
-  top: 0;
-  left: 14px;
-  width: 32px;
-  height: 2px;
-  background: var(--cyan-glow);
-  box-shadow: 0 0 8px var(--cyan-glow);
+  top: -1px;
+  left: -1px;
+  width: 16px;
+  height: 16px;
+  border-top: 1.5px solid var(--bracket-color);
+  border-left: 1.5px solid var(--bracket-color);
+  pointer-events: none;
+  z-index: 2;
+}
+
+.vitals-card::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  right: -1px;
+  width: 16px;
+  height: 16px;
+  border-bottom: 1.5px solid var(--bracket-color);
+  border-right: 1.5px solid var(--bracket-color);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .vitals-header {
