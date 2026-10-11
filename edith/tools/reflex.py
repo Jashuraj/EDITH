@@ -68,6 +68,8 @@ class ReflexEngine:
         self.register(app_prefix + r"(?:open|launch|start|show)\s+(?:youtube|yt)$", "open_app", "windows", {"app": "youtube"})
         self.register(r"^(?:youtube|yt)$", "open_app", "windows", {"app": "youtube"})
         self.register(app_prefix + r"open\s+youtube\s+and\s+(?:play|search(?:\s+for)?)\s+(?P<query>.+)$", "search_youtube", "windows", {})
+        self.register(app_prefix + r"(?:play|open|switch\s+to)\s+(?P<query>.+?)\s+in\s+(?:the\s+)?same\s+tab$", "search_youtube_same_tab", "windows", {})
+        self.register(app_prefix + r"(?:play\s+another\s+video|open\s+another\s+video)\s+(?P<query>.+)$", "search_youtube_same_tab", "windows", {})
         self.register(app_prefix + r"play\s+(?P<query>.+?)(?:\s+(?:on|in)\s+(?:youtube|browser|the\s+browser|chrome|brave|edge))?$", "search_youtube", "windows", {})
         self.register(app_prefix + r"(?:open\s+(?:the\s+)?(?:browser|chrome|brave|edge)\s+and\s+)?play\s+(?P<query>.+)$", "search_youtube", "windows", {})
         self.register(app_prefix + r"search\s+youtube\s+(?:for\s+)?(?P<query>.+)$", "search_youtube", "windows", {})
@@ -177,6 +179,13 @@ class ReflexEngine:
         self.register(r"^(?:hey\s+edith[,\s]*)?(?:take\s+a?\s*screenshot|capture\s+screen)$", "screenshot", "windows", {})
         self.register(r"^(?:(?:hey\s+|ok\s+)?edith[,\s]*)?(?:show\s+|check\s+|what\s+is\s+the\s+)?battery(?:\s+status|\s+level|\s+percentage|\s+percent|\s+info)?$", "battery_status", "windows", {})
         self.register(r"^(?:hey\s+edith[,\s]*)?(?:lock|lock\s+my|lock\s+the)\s+(?:pc|computer|screen|workstation)$", "lock_workstation", "windows", {})
+        self.register(r"^(?:hey\s+edith[,\s]*)?(?:unlock|unlock\s+my|unlock\s+the)\s+(?:pc|computer|screen|laptop|workstation)$", "unlock_workstation", "windows", {})
+        self.register(r"^(?:unlock\s+screen|unlock\s+pc|unlock\s+laptop)$", "unlock_workstation", "windows", {})
+        self.register(app_prefix + r"(?:switch\s+to|change\s+to|enter)\s+(?:the\s+)?camera(?:\s+mode)?$", "switch_to_camera_mode", "windows", {})
+        self.register(r"^(?:camera\s+mode|switch\s+to\s+camera)$", "switch_to_camera_mode", "windows", {})
+        self.register(r"^(?:hey\s+edith[,\s]*)?(?:take\s+(?:a\s+)?(?:picture|photo)|snap\s+(?:a\s+)?photo|capture\s+(?:a\s+)?photo|click\s+(?:a\s+)?(?:picture|photo))$", "take_picture", "windows", {})
+        self.register(r"^(?:hey\s+edith[,\s]*)?(?:open|show|display|view)\s+(?:the\s+)?(?:picture|photo)(?:s)?(?:\s+(?:which|that)\s+(?:u|you)\s+(?:have\s+)?(?:clicked|taken|captured))?$", "open_latest_picture", "windows", {})
+        self.register(r"^(?:hey\s+edith[,\s]*)?(?:open|show)\s+(?:the\s+)?latest\s+(?:picture|photo)$", "open_latest_picture", "windows", {})
         self.register(app_prefix + r"(?:sleep|suspend)\s+(?:the\s+)?(?:pc|computer|system)$", "power_action", "windows", {"kind": "sleep"})
         self.register(app_prefix + r"cancel\s+(?:the\s+)?(?:shutdown|restart)$", "power_action", "windows", {"kind": "cancel_shutdown"})
 
@@ -416,6 +425,10 @@ class ReflexEngine:
             from edith.tools.windows import WIN_TOOLS
             q = match.params.get("query", "").strip()
             return WIN_TOOLS.search_youtube(q, open_browser=True)
+        elif match.command_name == "search_youtube_same_tab":
+            from edith.tools.windows import WIN_TOOLS
+            q = match.params.get("query", "").strip()
+            return WIN_TOOLS.search_youtube(q, open_browser=True, same_tab=True)
         elif match.command_name == "search_google":
             from edith.tools.windows import WIN_TOOLS
             q = match.params.get("query", "").strip()
@@ -487,6 +500,27 @@ class ReflexEngine:
             kind = match.params.get("kind", "lock")
             res = WIN_TOOLS.power_action(kind)
             return res.get("message") or f"Executed power action: {kind}."
+        elif match.command_name == "lock_workstation":
+            from edith.tools.windows import WIN_TOOLS
+            res = WIN_TOOLS.lock_workstation()
+            return res.get("message") or "Workstation locked."
+        elif match.command_name == "unlock_workstation":
+            from edith.tools.windows import WIN_TOOLS
+            pin = match.params.get("pin")
+            res = WIN_TOOLS.unlock_workstation(pin=pin)
+            return res.get("message") or "Workstation unlocked."
+        elif match.command_name == "switch_to_camera_mode":
+            from edith.tools.windows import WIN_TOOLS
+            res = WIN_TOOLS.switch_to_camera_mode()
+            return res.get("message") or "Switched to camera mode."
+        elif match.command_name == "take_picture":
+            from edith.tools.windows import WIN_TOOLS
+            res = WIN_TOOLS.take_picture()
+            return res.get("message") or "Photo captured."
+        elif match.command_name == "open_latest_picture":
+            from edith.tools.windows import WIN_TOOLS
+            res = WIN_TOOLS.open_latest_picture()
+            return res.get("message") or "Opened latest picture."
         elif match.command_name == "undo_action":
             from edith.core.undo import UNDO_MANAGER
             return UNDO_MANAGER.undo_last()
@@ -519,3 +553,4 @@ class ReflexEngine:
 
 # Global reflex engine singleton
 REFLEX = ReflexEngine()
+REFLEX_ENGINE = REFLEX

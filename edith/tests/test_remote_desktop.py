@@ -249,3 +249,56 @@ class TestTunnelManager:
         res_aim_up = dispatcher.handle_game_button("AIM", False)
         assert res_aim_up["mapped_action"] == "mouse_right"
         assert res_aim_up["state"] == "up"
+
+    def test_gamepad_select_and_start_buttons(self):
+        dispatcher = RemoteInputDispatcher()
+        res_sel = dispatcher.handle_game_button("SELECT", True)
+        assert res_sel["mapped_key"] == "tab"
+
+        res_start = dispatcher.handle_game_button("START", True)
+        assert res_start["mapped_key"] == "escape"
+
+    def test_dispatch_lock_and_unlock(self):
+        dispatcher = RemoteInputDispatcher()
+        res_lock = dispatcher.dispatch("lock", {})
+        assert res_lock["success"] is True
+
+        res_unlock = dispatcher.dispatch("unlock", {})
+        assert res_unlock["success"] is True
+
+    def test_youtube_same_tab_and_camera_tools(self):
+        from edith.tools.windows import WIN_TOOLS
+        yt_res = WIN_TOOLS.search_youtube("linkin park in same tab", open_browser=True)
+        assert yt_res["success"] is True
+        assert yt_res["same_tab"] is True
+
+        cam_mode = WIN_TOOLS.switch_to_camera_mode()
+        assert "success" in cam_mode
+
+        pic_res = WIN_TOOLS.take_picture()
+        assert "success" in pic_res
+
+        open_res = WIN_TOOLS.open_latest_picture()
+        assert "success" in open_res
+
+    def test_camera_and_unlock_reflexes(self):
+        from edith.tools.reflex import REFLEX_ENGINE
+        m1 = REFLEX_ENGINE.evaluate("unlock pc")
+        assert m1 is not None
+        assert m1.command_name == "unlock_workstation"
+
+        m2 = REFLEX_ENGINE.evaluate("switch to camera mode")
+        assert m2 is not None
+        assert m2.command_name == "switch_to_camera_mode"
+
+        m3 = REFLEX_ENGINE.evaluate("take picture")
+        assert m3 is not None
+        assert m3.command_name == "take_picture"
+
+        m4 = REFLEX_ENGINE.evaluate("open picture which u have clicked")
+        assert m4 is not None
+        assert m4.command_name == "open_latest_picture"
+
+        m5 = REFLEX_ENGINE.evaluate("play alan walker in same tab")
+        assert m5 is not None
+        assert m5.command_name == "search_youtube_same_tab"

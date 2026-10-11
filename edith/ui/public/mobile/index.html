@@ -148,12 +148,14 @@
         <button class="chip-btn purple-chip" id="btn-open-gamepad">🎮 Game Controller</button>
         <button class="chip-btn green-chip" id="btn-open-vnc">🌐 VNC Portal</button>
         <button class="chip-btn" id="btn-sync-clipboard">📋 Sync Clip</button>
-        <button class="chip-btn" data-cmd="open steam">🎮 Steam</button>
+        <button class="chip-btn" data-cmd="unlock screen">🔓 Unlock PC</button>
+        <button class="chip-btn" data-cmd="lock screen">🔒 Lock PC</button>
+        <button class="chip-btn" data-cmd="switch to camera mode">📷 Camera</button>
+        <button class="chip-btn" data-cmd="open the picture which you clicked">🖼️ View Photo</button>
         <button class="chip-btn" data-cmd="undo">↩ Undo</button>
         <button class="chip-btn" data-cmd="enable clap">👏 Clap Welcome</button>
         <button class="chip-btn" data-cmd="open youtube">▶ YouTube</button>
-        <button class="chip-btn" data-cmd="play song on youtube">🎵 Music</button>
-        <button class="chip-btn" data-cmd="lock screen">🔒 Lock PC</button>
+        <button class="chip-btn" data-cmd="play song on youtube in the same tab">🎵 Music (Same Tab)</button>
         <button class="chip-btn" data-cmd="volume up">🔊 Vol Up</button>
         <button class="chip-btn" data-cmd="volume down">🔉 Vol Down</button>
         <button class="chip-btn" data-cmd="open chrome">🌐 Chrome</button>
@@ -274,10 +276,14 @@
         <span class="remote-fps-tag" id="remote-fps-tag">LIVE</span>
       </div>
       <div class="remote-bar-actions">
-        <button class="remote-bar-btn" id="btn-remote-res" title="Toggle Resolution">📺 720p HD</button>
-        <button class="remote-bar-btn" id="btn-toggle-gamepad" title="Toggle Virtual Gamepad">🎮 Gamepad</button>
-        <button class="remote-bar-btn" id="btn-open-kb" title="Type Text to Laptop">⌨️ Type</button>
-        <button class="remote-bar-btn" id="btn-remote-clip" title="Sync Clipboard">📋 Clip</button>
+        <button class="remote-bar-btn" id="btn-remote-zoom-in" title="Zoom In">🔍+</button>
+        <button class="remote-bar-btn" id="btn-remote-zoom-out" title="Zoom Out">🔍-</button>
+        <button class="remote-bar-btn" id="btn-remote-zoom-fit" title="Fit Screen">Fit</button>
+        <button class="remote-bar-btn" id="btn-remote-unlock" title="Unlock Laptop">🔓</button>
+        <button class="remote-bar-btn" id="btn-remote-res" title="Toggle Resolution">📺 720p</button>
+        <button class="remote-bar-btn" id="btn-toggle-gamepad" title="Toggle Virtual Gamepad">🎮 Pad</button>
+        <button class="remote-bar-btn" id="btn-open-kb" title="Type Text to Laptop">⌨️</button>
+        <button class="remote-bar-btn" id="btn-remote-clip" title="Sync Clipboard">📋</button>
         <button class="remote-bar-btn" id="btn-remote-refresh" title="Reconnect Stream">🔄</button>
         <button class="remote-bar-btn remote-btn-close" id="btn-close-remote" title="Exit Remote Desktop">✕</button>
       </div>
@@ -308,8 +314,8 @@
           <div class="gamepad-center-bar">
             <button class="game-btn game-shoulder" data-btn="LB">LB [Q]</button>
             <button class="game-btn game-shoulder" data-btn="AIM">LT [Aim]</button>
-            <button class="game-btn game-center-special" data-btn="PAUSE">PAUSE [Esc]</button>
-            <button class="game-btn game-center-special" data-btn="SELECT">MAP [Tab]</button>
+            <button class="game-btn game-center-special select-btn" data-btn="SELECT">SELECT [Tab]</button>
+            <button class="game-btn game-center-special start-btn" data-btn="START">START [Esc]</button>
             <button class="game-btn game-shoulder" data-btn="FIRE">RT [Fire]</button>
             <button class="game-btn game-shoulder" data-btn="RB">RB [F]</button>
           </div>
@@ -341,6 +347,8 @@
 
     <!-- Bottom Mobile Control Bar (Touch Mouse / Gesture Assist) -->
     <div class="remote-bottom-bar" id="remote-bottom-bar">
+      <span class="remote-zoom-tag" id="remote-zoom-tag">100%</span>
+      <button class="remote-gesture-chip" data-action="unlock">🔓 Unlock</button>
       <button class="remote-gesture-chip" data-action="click">Left Click</button>
       <button class="remote-gesture-chip" data-action="right_click">Right Click</button>
       <button class="remote-gesture-chip" data-action="double_click">Double Click</button>
@@ -549,7 +557,7 @@
 
       <div class="guide-search-wrap">
         <span class="guide-search-icon">🔍</span>
-        <input type="text" id="guide-search-input" class="form-input guide-search-input" placeholder="Search commands (e.g. youtube, volume, steam)..." autocomplete="off" autocapitalize="none">
+        <input type="text" id="guide-search-input" class="form-input guide-search-input" placeholder="Search commands (e.g. youtube, volume, camera, unlock)..." autocomplete="off" autocapitalize="none">
         <button class="guide-search-clear" id="btn-guide-clear" style="display:none;">✕</button>
       </div>
 

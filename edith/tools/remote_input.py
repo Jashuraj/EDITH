@@ -478,6 +478,15 @@ class RemoteInputDispatcher:
         elif action == "media_toggle":
             return {"success": MOUSE.media_play_pause(), "action": "media_play_pause"}
 
+        elif action in ("lock", "lock_workstation"):
+            from edith.tools.windows import WIN_TOOLS
+            return WIN_TOOLS.lock_workstation()
+
+        elif action in ("unlock", "unlock_workstation"):
+            from edith.tools.windows import WIN_TOOLS
+            pin = params.get("pin")
+            return WIN_TOOLS.unlock_workstation(pin=pin)
+
         return {"success": False, "error": f"Unknown remote input action: '{action}'"}
 
 

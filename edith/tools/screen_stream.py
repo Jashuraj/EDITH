@@ -325,11 +325,12 @@ class ScreenStreamer:
         quality: int = 55,
     ) -> bytes:
         """Capture screen, optionally downsample, and encode into JPEG bytes."""
+        self._ensure_worker(scale_width=scale_width, quality=quality)
         now = time.time()
         with self._lock:
             if (
                 self._last_frame_bytes is not None
-                and (now - self._last_capture_time < 0.005)
+                and (now - self._last_capture_time < 0.02)
                 and (self._last_scale == scale_width)
             ):
                 return self._last_frame_bytes

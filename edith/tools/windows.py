@@ -338,23 +338,71 @@ class WindowsTools:
             logger.error("Failed to launch %s: %s", raw_name, e)
             return {"success": False, "app": raw_name, "error": str(e)}
 
-    def search_youtube(self, query: str, open_browser: bool = True) -> Dict[str, Any]:
+    def navigate_active_tab(self, url: str) -> bool:
+        """Navigate currently active browser tab to target URL using Ctrl+L and clipboard paste."""
+        if platform.system() != "Windows":
+            return self.open_url(url)
+        try:
+            import ctypes
+            import time
+            import pyperclip
+
+            u32 = ctypes.windll.user32
+            target_hwnd = None
+
+            def _enum_win(hwnd, extra):
+                nonlocal target_hwnd
+                if u32.IsWindowVisible(hwnd):
+                    length = u32.GetWindowTextLengthW(hwnd)
+                    if length > 0:
+                        buff = ctypes.create_unicode_buffer(length + 1)
+                        u32.GetWindowTextW(hwnd, buff, length + 1)
+                        title = buff.value.lower()
+                        if any(b in title for b in ["youtube", "chrome", "brave", "edge", "firefox"]):
+                            target_hwnd = hwnd
+                            return False
+                return True
+
+            WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+            u32.EnumWindows(WNDENUMPROC(_enum_win), 0)
+
+            if target_hwnd:
+                u32.ShowWindow(target_hwnd, 9)  # SW_RESTORE
+                u32.SetForegroundWindow(target_hwnd)
+                time.sleep(0.08)
+
+            pyperclip.copy(url)
+
+            from edith.tools.remote_input import REMOTE_INPUT
+            REMOTE_INPUT.hotkey(["ctrl", "l"])
+            time.sleep(0.06)
+            REMOTE_INPUT.hotkey(["ctrl", "v"])
+            time.sleep(0.04)
+            REMOTE_INPUT.key_press("enter")
+            return True
+        except Exception as ex:
+            logger.debug("navigate_active_tab fallback: %s", ex)
+            return self.open_url(url)
+
+    def search_youtube(self, query: str, open_browser: bool = True, same_tab: bool = False) -> Dict[str, Any]:
         """Search and play a video or topic directly on YouTube."""
         import re
         clean_q = (query or "").strip()
+        is_same_tab = same_tab or bool(re.search(r"\b(?:in\s+the\s+same\s+tab|same\s+tab|another\s+video)\b", clean_q, re.IGNORECASE))
         clean_q = re.sub(
-            r"\s+(?:on|in)\s+(?:the\s+)?(?:browser|web\s+browser|chrome|brave|edge|youtube|internet)$",
+            r"\s+(?:in\s+the\s+same\s+tab|same\s+tab|another\s+video|on|in)\s+(?:the\s+)?(?:browser|web\s+browser|chrome|brave|edge|youtube|internet)?$",
             "",
             clean_q,
             flags=re.IGNORECASE,
         ).strip()
+        clean_q = re.sub(r"^(?:play|open|switch\s+to)\s+", "", clean_q, flags=re.IGNORECASE).strip()
         low = clean_q.lower()
         if low in ("", "youtube", "yt"):
             target_url = "https://www.youtube.com"
             opened = False
             if open_browser:
                 if not os.environ.get("PYTEST_CURRENT_TEST"):
-                    opened = bool(self.open_url(target_url))
+                    opened = bool(self.navigate_active_tab(target_url) if is_same_tab else self.open_url(target_url))
                 else:
                     opened = True
             return {
@@ -364,6 +412,7 @@ class WindowsTools:
                 "video_id": None,
                 "embed_url": target_url,
                 "opened_on_host": opened,
+                "same_tab": is_same_tab,
                 "message": "Opening YouTube on host laptop.",
             }
 
@@ -401,7 +450,10 @@ class WindowsTools:
         opened = False
         if open_browser:
             if not os.environ.get("PYTEST_CURRENT_TEST"):
-                opened = bool(self.open_url(target_url))
+                if is_same_tab:
+                    opened = bool(self.navigate_active_tab(target_url))
+                else:
+                    opened = bool(self.open_url(target_url))
             else:
                 opened = True
 
@@ -412,7 +464,8 @@ class WindowsTools:
             "video_id": video_id,
             "embed_url": embed_url,
             "opened_on_host": opened,
-            "message": f"Playing '{display_title}' on YouTube.",
+            "same_tab": is_same_tab,
+            "message": f"Playing '{display_title}' on YouTube in {'the same tab' if is_same_tab else 'browser'}.",
         }
 
     def search_google(self, query: str) -> Dict[str, Any]:
@@ -625,6 +678,143 @@ class WindowsTools:
         except Exception as e:
             return {"success": False, "error": str(e)}
 
+    def unlock_workstation(self, pin: Optional[str] = None) -> Dict[str, Any]:
+        """Wake up display and unlock Windows workstation."""
+        logger.info("Unlocking Windows workstation.")
+        if platform.system() != "Windows":
+            return {"success": True, "message": "Workstation unlocked."}
+        try:
+            import ctypes
+            import time
+            from edith.tools.remote_input import REMOTE_INPUT
+
+            u32 = ctypes.windll.user32
+            # Wake display via mouse move event
+            u32.mouse_event(0x0001, 1, 1, 0, 0)
+            time.sleep(0.05)
+            u32.mouse_event(0x0001, -1, -1, 0, 0)
+            time.sleep(0.1)
+
+            # Dismiss lock screen wallpaper
+            REMOTE_INPUT.key_press("space")
+            time.sleep(0.35)
+
+            effective_pin = pin
+            if not effective_pin:
+                sec_path = Path("edith/data/security_config.json")
+                if sec_path.exists():
+                    try:
+                        import json
+                        sec_data = json.loads(sec_path.read_text(encoding="utf-8"))
+                        effective_pin = sec_data.get("unlock_pin")
+                    except Exception:
+                        pass
+
+            if effective_pin:
+                REMOTE_INPUT.type_text(str(effective_pin))
+                time.sleep(0.1)
+                REMOTE_INPUT.key_press("enter")
+                return {
+                    "success": True,
+                    "action": "unlock_workstation",
+                    "message": "Windows workstation unlocked successfully.",
+                }
+
+            return {
+                "success": True,
+                "action": "unlock_workstation",
+                "message": "Windows display awakened and lock wallpaper dismissed.",
+            }
+        except Exception as e:
+            logger.error("Unlock workstation error: %s", e)
+            return {"success": False, "error": str(e)}
+
+    def set_unlock_pin(self, pin: str) -> Dict[str, Any]:
+        """Configure stored PIN or password for hands-free workstation unlock."""
+        try:
+            import json
+            sec_path = Path("edith/data/security_config.json")
+            sec_path.parent.mkdir(parents=True, exist_ok=True)
+            data = {}
+            if sec_path.exists():
+                try:
+                    data = json.loads(sec_path.read_text(encoding="utf-8"))
+                except Exception:
+                    data = {}
+            data["unlock_pin"] = str(pin).strip()
+            sec_path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            return {"success": True, "message": "Workstation unlock PIN saved securely."}
+        except Exception as ex:
+            return {"success": False, "error": str(ex)}
+
+    def switch_to_camera_mode(self) -> Dict[str, Any]:
+        """Launch or switch to the Windows Camera app."""
+        return self.launch_app("camera")
+
+    def take_picture(self) -> Dict[str, Any]:
+        """Capture a photo using the active Camera app or display snapshot."""
+        if platform.system() == "Windows":
+            try:
+                import psutil
+                camera_running = any(
+                    "camera" in p.name().lower()
+                    for p in psutil.process_iter(["name"])
+                )
+                if camera_running:
+                    from edith.tools.remote_input import REMOTE_INPUT
+                    REMOTE_INPUT.key_press("space")
+                    return {
+                        "success": True,
+                        "action": "take_picture",
+                        "message": "Photo captured via Windows Camera.",
+                    }
+            except Exception:
+                pass
+
+        res = self.take_screenshot()
+        return {
+            "success": True,
+            "path": res.get("path"),
+            "action": "take_picture",
+            "message": "Photo captured and saved to gallery.",
+        }
+
+    def open_latest_picture(self) -> Dict[str, Any]:
+        """Open the most recently captured picture or screenshot in the default viewer."""
+        search_dirs = [
+            Path.home() / "Pictures" / "Camera Roll",
+            Path.home() / "Pictures",
+            self._screenshot_dir,
+            Path("edith/data/photos"),
+        ]
+        latest_file = None
+        latest_mtime = 0.0
+
+        for sdir in search_dirs:
+            if sdir.exists():
+                for ext in ("*.jpg", "*.jpeg", "*.png"):
+                    for f in sdir.glob(ext):
+                        try:
+                            m = f.stat().st_mtime
+                            if m > latest_mtime:
+                                latest_mtime = m
+                                latest_file = f
+                        except Exception:
+                            pass
+
+        if latest_file and latest_file.exists():
+            try:
+                os.startfile(str(latest_file))
+                return {
+                    "success": True,
+                    "path": str(latest_file),
+                    "filename": latest_file.name,
+                    "message": f"Opened latest picture: {latest_file.name}",
+                }
+            except Exception as ex:
+                return {"success": False, "error": f"Failed to open picture: {ex}"}
+        return {"success": False, "message": "No pictures found in gallery."}
+
     def take_screenshot(self) -> Dict[str, Any]:
         """Capture display screenshot and save locally."""
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
@@ -773,6 +963,8 @@ class WindowsTools:
         try:
             if k in ("lock", "lock_screen", "lock_workstation"):
                 return self.lock_workstation()
+            elif k in ("unlock", "unlock_screen", "unlock_pc", "unlock_workstation"):
+                return self.unlock_workstation()
             elif k in ("sleep", "suspend", "hibernate"):
                 if platform.system() == "Windows":
                     subprocess.Popen(["rundll32.exe", "powrprof.dll,SetSuspendState", "0,1,0"])

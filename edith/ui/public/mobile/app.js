@@ -106,6 +106,11 @@
     btnRemoteClip: document.getElementById("btn-remote-clip"),
     btnRemoteRefresh: document.getElementById("btn-remote-refresh"),
     btnRemoteRes: document.getElementById("btn-remote-res"),
+    btnRemoteZoomIn: document.getElementById("btn-remote-zoom-in"),
+    btnRemoteZoomOut: document.getElementById("btn-remote-zoom-out"),
+    btnRemoteZoomFit: document.getElementById("btn-remote-zoom-fit"),
+    btnRemoteUnlock: document.getElementById("btn-remote-unlock"),
+    remoteZoomTag: document.getElementById("remote-zoom-tag"),
     remoteFpsTag: document.getElementById("remote-fps-tag"),
     remoteTitleText: document.getElementById("remote-title-text"),
     gamepadOverlay: document.getElementById("virtual-gamepad-overlay"),
@@ -568,17 +573,20 @@
     if (!url) return { ok: false, ms: 0 };
     const cleanUrl = url.replace(/\/+$/, "");
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const isCloud = cleanUrl.includes("loca.lt") || cleanUrl.includes("trycloudflare.com") || cleanUrl.includes("pinggy");
+    const actualTimeout = isCloud ? Math.max(timeoutMs, 5000) : timeoutMs;
+    const timer = setTimeout(() => controller.abort(), actualTimeout);
     const t0 = performance.now();
 
     try {
-      const resp = await fetch(`${cleanUrl}/ping?bypass-tunnel-reminder=true`, {
+      const resp = await fetch(`${cleanUrl}/ping?bypass-tunnel-reminder=true&t=${Date.now()}`, {
         method: "GET",
         signal: controller.signal,
         headers: {
           "Accept": "application/json",
           "Bypass-Tunnel-Reminder": "true",
         },
+        cache: "no-store",
       });
       clearTimeout(timer);
       const dt = Math.round(performance.now() - t0);
@@ -596,9 +604,9 @@
       ? local.replace(":8794", ":8795")
       : (local.includes(":8795") ? local.replace(":8795", ":8794") : `${local}:8794`);
 
-    // If currently online and connected to activeEndpoint, do a quick heartbeat check first
+    // 1. Fast Heartbeat Check on Active Endpoint
     if (state.isOnline && state.activeEndpoint) {
-      const heartRes = await pingEndpoint(state.activeEndpoint, 3000);
+      const heartRes = await pingEndpoint(state.activeEndpoint, 3500);
       if (heartRes.ok) {
         consecutiveOfflineFailures = 0;
         setConnectionState(state.activeType, state.activeEndpoint, heartRes.ms);
@@ -606,53 +614,11 @@
       }
     }
 
-    if (state.mode === "local") {
-      const [res1, res2] = await Promise.all([
-        pingEndpoint(local, 3000),
-        localAlt !== local ? pingEndpoint(localAlt, 3000) : Promise.resolve({ ok: false, ms: 0 }),
-      ]);
-      if (res1.ok) {
-        consecutiveOfflineFailures = 0;
-        setConnectionState("LOCAL", local, res1.ms);
-        return;
-      }
-      if (res2.ok) {
-        consecutiveOfflineFailures = 0;
-        state.localUrl = localAlt;
-        localStorage.setItem(STORAGE_KEYS.LOCAL_URL, localAlt);
-        setConnectionState("LOCAL", localAlt, res2.ms);
-        return;
-      }
-      consecutiveOfflineFailures++;
-      if (consecutiveOfflineFailures >= 2 || !state.isOnline) {
-        setConnectionState("OFFLINE", local, null, "Wi-Fi LAN link searching...");
-      }
-      return;
-    }
-
-    if (state.mode === "cloud") {
-      if (!cloud) {
-        setConnectionState("OFFLINE", "", null, "Cloud URL not configured");
-        return;
-      }
-      const res = await pingEndpoint(cloud, 4000);
-      if (res.ok) {
-        consecutiveOfflineFailures = 0;
-        setConnectionState("CLOUD", cloud, res.ms);
-        return;
-      }
-      consecutiveOfflineFailures++;
-      if (consecutiveOfflineFailures >= 2 || !state.isOnline) {
-        setConnectionState("OFFLINE", cloud, null);
-      }
-      return;
-    }
-
-    // AUTO Mode: Probe local WiFi (primary and alt port) and global cloud
+    // 2. Dual-Path Auto-Failover: Probe both LAN Wi-Fi and Global Cloud in parallel
     const [localRes1, localRes2, cloudRes] = await Promise.all([
-      local ? pingEndpoint(local, 2800) : Promise.resolve({ ok: false, ms: 0 }),
-      localAlt && localAlt !== local ? pingEndpoint(localAlt, 2800) : Promise.resolve({ ok: false, ms: 0 }),
-      cloud ? pingEndpoint(cloud, 3500) : Promise.resolve({ ok: false, ms: 0 }),
+      local ? pingEndpoint(local, 3000) : Promise.resolve({ ok: false, ms: 0 }),
+      localAlt && localAlt !== local ? pingEndpoint(localAlt, 3000) : Promise.resolve({ ok: false, ms: 0 }),
+      cloud ? pingEndpoint(cloud, 5000) : Promise.resolve({ ok: false, ms: 0 }),
     ]);
 
     if (localRes1.ok) {
@@ -675,8 +641,9 @@
       return;
     }
 
+    // 3. Persistent Failure Handling: Require 6 consecutive failures (25+ seconds) before showing OFFLINE
     consecutiveOfflineFailures++;
-    if (consecutiveOfflineFailures >= 2 || !state.isOnline) {
+    if (consecutiveOfflineFailures >= 6) {
       setConnectionState("OFFLINE", local || cloud, null, "Searching for EDITH mainframe...");
     }
   }
@@ -880,9 +847,12 @@
     { cmd: "open file explorer", label: "File Explorer", desc: "Open Windows File Explorer", cat: "apps", icon: "📁" },
     { cmd: "open settings", label: "Settings", desc: "Open Windows Settings panel", cat: "apps", icon: "⚙️" },
 
-    // Gaming & Stream
-    { cmd: "open steam", label: "Open Steam", desc: "Launch Steam gaming platform", cat: "gaming", icon: "🎮" },
-    { cmd: "start sunshine", label: "Launch Sunshine", desc: "Start low-latency Sunshine GameStream host", cat: "gaming", icon: "☀️" },
+    // Workstation & Camera
+    { cmd: "unlock pc", label: "Unlock PC", desc: "Unlock Windows desktop with configured PIN", cat: "system", icon: "🔓" },
+    { cmd: "switch to camera mode", label: "Camera Mode", desc: "Focus or launch Windows camera application", cat: "apps", icon: "📷" },
+    { cmd: "take picture", label: "Take Picture", desc: "Capture photo using host camera", cat: "apps", icon: "📸" },
+    { cmd: "open picture", label: "Open Latest Photo", desc: "View the latest photo clicked by camera", cat: "apps", icon: "🖼️" },
+    { cmd: "play video in same tab", label: "YouTube Same Tab", desc: "Play another video reusing the active tab", cat: "media", icon: "🔂" },
 
     // Security & Core
     { cmd: "emergency stop", label: "Emergency Stop", desc: "Halt all active autonomous tasks", cat: "security", icon: "🛑" },
@@ -928,7 +898,7 @@
       dom.guideCommandGrid.innerHTML = `
         <div class="guide-no-results">
           No tactical commands match "${cleanSearch}".<br>
-          <span style="font-size:0.7rem; color:var(--text-muted); margin-top:4px; display:inline-block;">Try 'youtube', 'volume', 'steam', or 'metrics'.</span>
+          <span style="font-size:0.7rem; color:var(--text-muted); margin-top:4px; display:inline-block;">Try 'youtube', 'volume', 'camera', or 'metrics'.</span>
         </div>`;
       return;
     }
@@ -1237,6 +1207,23 @@
   }
 
   let vncCtx = null;
+  let remoteZoom = 1.0;
+  let remotePanX = 0;
+  let remotePanY = 0;
+
+  function updateZoomTransform() {
+    remoteZoom = Math.max(1.0, Math.min(4.0, remoteZoom));
+    if (remoteZoom === 1.0) {
+      remotePanX = 0;
+      remotePanY = 0;
+    }
+    if (dom.vncCanvas) {
+      dom.vncCanvas.style.transform = `translate(${remotePanX}px, ${remotePanY}px) scale(${remoteZoom})`;
+    }
+    if (dom.remoteZoomTag) {
+      dom.remoteZoomTag.textContent = `${Math.round(remoteZoom * 100)}%`;
+    }
+  }
 
   async function fetchStreamLoop() {
     if (!remoteStreamActive || (!dom.remoteScreenImg && !dom.vncCanvas)) return;
@@ -1446,57 +1433,18 @@
     } catch (_) {}
   }
 
-  let mobileRenderLoopActive = false;
-
-  function renderMobileScreenLoop() {
-    if (!remoteStreamActive) {
-      mobileRenderLoopActive = false;
-      return;
-    }
-
-    if (dom.remoteScreenImg && dom.remoteScreenImg.naturalWidth > 0 && dom.vncCanvas) {
-      if (dom.vncCanvas.width !== dom.remoteScreenImg.naturalWidth || dom.vncCanvas.height !== dom.remoteScreenImg.naturalHeight) {
-        dom.vncCanvas.width = dom.remoteScreenImg.naturalWidth;
-        dom.vncCanvas.height = dom.remoteScreenImg.naturalHeight;
-      }
-      if (!vncCtx) {
-        vncCtx = dom.vncCanvas.getContext("2d", { alpha: false, desynchronized: true });
-      }
-      vncCtx.drawImage(dom.remoteScreenImg, 0, 0);
-      frameCount++;
-    }
-
-    const now = performance.now();
-    if (now - lastFpsCalcTime >= 1000) {
-      currentFps = Math.max(90, Math.round((frameCount * 1000) / (now - lastFpsCalcTime)));
-      frameCount = 0;
-      lastFpsCalcTime = now;
-      if (dom.remoteFpsTag) {
-        dom.remoteFpsTag.textContent = `${currentFps} FPS // ${remoteResolution.toUpperCase()}`;
-        dom.remoteFpsTag.style.color = "#00e676";
-      }
-    }
-
-    requestAnimationFrame(renderMobileScreenLoop);
-  }
-
   function startScreenStream() {
-    if (!remoteStreamActive || !dom.remoteScreenImg) return;
+    if (!remoteStreamActive) return;
     updateResolutionButtonUI();
     if (dom.remoteFpsTag) {
       dom.remoteFpsTag.textContent = `90 FPS // ${remoteResolution.toUpperCase()}`;
       dom.remoteFpsTag.style.color = "#00e676";
     }
-    const ep = (state.activeEndpoint || defaultLocalUrl).replace(/\/+$/, "");
-    const scale = remoteResolution === "1080p" ? 1920 : (remoteResolution === "720p" ? 1280 : 960);
-    const quality = remoteResolution === "1080p" ? 50 : 45;
-    const streamUrl = `${ep}/stream/screen?fps=90&scale=${scale}&quality=${quality}&token=${encodeURIComponent(state.token || "")}&t=${Date.now()}`;
-    dom.remoteScreenImg.src = streamUrl;
-
-    if (!mobileRenderLoopActive) {
-      mobileRenderLoopActive = true;
-      requestAnimationFrame(renderMobileScreenLoop);
-    }
+    if (dom.remoteScreenImg) dom.remoteScreenImg.style.display = "none";
+    if (dom.vncCanvas) dom.vncCanvas.style.display = "block";
+    updateZoomTransform();
+    isFetchingFrame = false;
+    requestAnimationFrame(fetchStreamLoop);
   }
 
   function toggleGamepadView() {
@@ -1554,9 +1502,9 @@
     }
   }
 
-  // Touch Viewport Mouse Gestures
+  // Touch Viewport Mouse Gestures & Zoom
   function initRemoteViewportEvents() {
-    if (!dom.remoteViewport || !dom.remoteScreenImg) return;
+    if (!dom.remoteViewport) return;
 
     let touchStartTime = 0;
     let touchStartX = 0;
@@ -1566,36 +1514,22 @@
     let longPressTimer = null;
     let twoFingerStartY = 0;
 
+    let pinchStartDist = 0;
+    let pinchStartZoom = 1.0;
+    let pinchStartMidX = 0;
+    let pinchStartMidY = 0;
+    let pinchStartPanX = 0;
+    let pinchStartPanY = 0;
+    let isPinching = false;
+
     function getNormalizedCoords(clientX, clientY) {
-      const isImg = dom.remoteScreenImg && dom.remoteScreenImg.style.display !== "none" && dom.remoteScreenImg.naturalWidth > 0;
-      const el = isImg ? dom.remoteScreenImg : (dom.vncCanvas || dom.remoteViewport);
+      const el = dom.vncCanvas || dom.remoteViewport;
       if (!el) return { x: 0.5, y: 0.5 };
       const rect = el.getBoundingClientRect();
       if (!rect || rect.width <= 1 || rect.height <= 1) return { x: 0.5, y: 0.5 };
 
-      const naturalW = (isImg && el.naturalWidth) ? el.naturalWidth : (el.width || 1920);
-      const naturalH = (isImg && el.naturalHeight) ? el.naturalHeight : (el.height || 1080);
-      const naturalAspect = naturalW / naturalH;
-      const elemAspect = rect.width / rect.height;
-
-      let renderW, renderH, offsetX, offsetY;
-      if (elemAspect > naturalAspect) {
-        renderH = rect.height;
-        renderW = rect.height * naturalAspect;
-        offsetX = (rect.width - renderW) / 2;
-        offsetY = 0;
-      } else {
-        renderW = rect.width;
-        renderH = rect.width / naturalAspect;
-        offsetX = 0;
-        offsetY = (rect.height - renderH) / 2;
-      }
-
-      const touchX = clientX - rect.left - offsetX;
-      const touchY = clientY - rect.top - offsetY;
-
-      const normX = Math.max(0.0, Math.min(1.0, touchX / renderW));
-      const normY = Math.max(0.0, Math.min(1.0, touchY / renderH));
+      const normX = Math.max(0.0, Math.min(1.0, (clientX - rect.left) / rect.width));
+      const normY = Math.max(0.0, Math.min(1.0, (clientY - rect.top) / rect.height));
       return { x: normX, y: normY };
     }
 
@@ -1633,11 +1567,12 @@
     }
 
     dom.remoteViewport.addEventListener("touchstart", (e) => {
-      if (e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar")) {
+      if (remoteGamepadMode || e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar")) {
         return;
       }
 
       if (e.touches.length === 1) {
+        isPinching = false;
         const t = e.touches[0];
         touchStartTime = Date.now();
         touchStartX = t.clientX;
@@ -1656,17 +1591,26 @@
         }, 450);
       } else if (e.touches.length === 2) {
         clearTimeout(longPressTimer);
-        twoFingerStartY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        pinchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        pinchStartZoom = remoteZoom;
+        pinchStartMidX = (t1.clientX + t2.clientX) / 2;
+        pinchStartMidY = (t1.clientY + t2.clientY) / 2;
+        pinchStartPanX = remotePanX;
+        pinchStartPanY = remotePanY;
+        isPinching = true;
+        twoFingerStartY = pinchStartMidY;
       }
     }, { passive: false });
 
     dom.remoteViewport.addEventListener("touchmove", (e) => {
-      if (e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar")) {
+      if (remoteGamepadMode || e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar")) {
         return;
       }
       e.preventDefault();
 
-      if (e.touches.length === 1) {
+      if (e.touches.length === 1 && !isPinching) {
         const t = e.touches[0];
         const dist = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY);
         if (dist > 10) {
@@ -1676,20 +1620,40 @@
         const coords = getNormalizedCoords(t.clientX, t.clientY);
         updateVirtualCursor(t.clientX, t.clientY);
         queueMobileMouseMove(coords);
-      } else if (e.touches.length === 2) {
+      } else if (e.touches.length === 2 && isPinching) {
         clearTimeout(longPressTimer);
-        const currentTwoY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-        const delta = currentTwoY - twoFingerStartY;
-        if (Math.abs(delta) > 15) {
-          sendRemoteInput("scroll", { delta: delta > 0 ? 2 : -2 });
-          twoFingerStartY = currentTwoY;
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        const currentMidX = (t1.clientX + t2.clientX) / 2;
+        const currentMidY = (t1.clientY + t2.clientY) / 2;
+
+        if (Math.abs(currentDist - pinchStartDist) > 12) {
+          const scaleChange = currentDist / Math.max(1, pinchStartDist);
+          remoteZoom = Math.max(1.0, Math.min(4.0, pinchStartZoom * scaleChange));
+          remotePanX = pinchStartPanX + (currentMidX - pinchStartMidX);
+          remotePanY = pinchStartPanY + (currentMidY - pinchStartMidY);
+          updateZoomTransform();
+        } else if (remoteZoom === 1.0) {
+          const delta = currentMidY - twoFingerStartY;
+          if (Math.abs(delta) > 15) {
+            sendRemoteInput("scroll", { delta: delta > 0 ? 2 : -2 });
+            twoFingerStartY = currentMidY;
+          }
+        } else {
+          remotePanX = pinchStartPanX + (currentMidX - pinchStartMidX);
+          remotePanY = pinchStartPanY + (currentMidY - pinchStartMidY);
+          updateZoomTransform();
         }
       }
     }, { passive: false });
 
     dom.remoteViewport.addEventListener("touchend", (e) => {
       clearTimeout(longPressTimer);
-      if (e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar")) {
+      if (e.touches.length < 2) {
+        isPinching = false;
+      }
+      if (remoteGamepadMode || e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar")) {
         return;
       }
 
@@ -1713,12 +1677,46 @@
       }
     });
 
+    if (dom.btnRemoteZoomIn) {
+      dom.btnRemoteZoomIn.addEventListener("click", () => {
+        remoteZoom = Math.min(4.0, remoteZoom + 0.25);
+        updateZoomTransform();
+        triggerHaptic(15);
+      });
+    }
+    if (dom.btnRemoteZoomOut) {
+      dom.btnRemoteZoomOut.addEventListener("click", () => {
+        remoteZoom = Math.max(1.0, remoteZoom - 0.25);
+        updateZoomTransform();
+        triggerHaptic(15);
+      });
+    }
+    if (dom.btnRemoteZoomFit) {
+      dom.btnRemoteZoomFit.addEventListener("click", () => {
+        remoteZoom = 1.0;
+        remotePanX = 0;
+        remotePanY = 0;
+        updateZoomTransform();
+        triggerHaptic(15);
+      });
+    }
+    if (dom.btnRemoteUnlock) {
+      dom.btnRemoteUnlock.addEventListener("click", () => {
+        triggerHaptic(30);
+        sendRemoteInput("unlock");
+        logConsole("AUTH", "Unlock PIN sent to host workstation.");
+      });
+    }
+
     if (dom.remoteBottomBar) {
       dom.remoteBottomBar.querySelectorAll(".remote-gesture-chip").forEach((chip) => {
         chip.addEventListener("click", () => {
           const action = chip.getAttribute("data-action");
           triggerHaptic(15);
-          if (action === "scroll_up") {
+          if (action === "unlock") {
+            sendRemoteInput("unlock");
+            logConsole("AUTH", "Workstation unlock PIN dispatched.");
+          } else if (action === "scroll_up") {
             sendRemoteInput("scroll", { delta: 3 });
           } else if (action === "scroll_down") {
             sendRemoteInput("scroll", { delta: -3 });
@@ -1738,6 +1736,30 @@
 
     const maxRadius = 45;
     let activePointerId = null;
+    let joystickInFlight = false;
+    let lastStickDispatch = 0;
+    let currentDirection = "";
+
+    function getDirection(normX, normY, deadzone = 0.22) {
+      const mag = Math.hypot(normX, normY);
+      if (mag < deadzone) return "neutral";
+      let d = "";
+      if (normY < -deadzone) d += "U";
+      else if (normY > deadzone) d += "D";
+      if (normX < -deadzone) d += "L";
+      else if (normX > deadzone) d += "R";
+      return d;
+    }
+
+    async function dispatchJoystick(normX, normY) {
+      if (joystickInFlight) return;
+      joystickInFlight = true;
+      try {
+        await sendRemoteInput("joystick", { x: normX, y: normY });
+      } finally {
+        joystickInFlight = false;
+      }
+    }
 
     function handleStickMove(clientX, clientY) {
       const rect = dom.stickBase.getBoundingClientRect();
@@ -1757,17 +1779,20 @@
 
       const normX = dx / maxRadius;
       const normY = dy / maxRadius;
-
+      const dir = getDirection(normX, normY);
       const now = performance.now();
-      if (now - lastJoystickDispatch > 30) {
-        lastJoystickDispatch = now;
+
+      if (dir !== currentDirection || (now - lastStickDispatch > 80 && !joystickInFlight)) {
+        currentDirection = dir;
+        lastStickDispatch = now;
         joystickActive = true;
-        sendRemoteInput("joystick", { x: normX, y: normY });
+        dispatchJoystick(normX, normY);
       }
     }
 
     function resetStick() {
       activePointerId = null;
+      currentDirection = "neutral";
       dom.stickNub.style.transform = "translate(-50%, -50%)";
       if (joystickActive) {
         joystickActive = false;
