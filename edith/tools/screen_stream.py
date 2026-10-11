@@ -26,6 +26,7 @@ class ScreenStreamer:
 
     def __init__(self):
         self._lock = threading.Lock()
+        self._gdi_lock = threading.RLock()
         self._is_windows = platform.system() == "Windows"
         self._last_frame_bytes: Optional[bytes] = None
         self._last_capture_time: float = 0.0
@@ -44,26 +45,37 @@ class ScreenStreamer:
 
     def _cleanup_dib_cache(self) -> None:
         """Release cached Win32 GDI DIBSection resources."""
-        if not self._dib_cache:
-            return
-        try:
-            import ctypes
-            u32 = ctypes.windll.user32
-            gdi32 = ctypes.windll.gdi32
-            if self._dib_cache.get("old_bm") and self._dib_cache.get("hdc_mem"):
-                gdi32.SelectObject(self._dib_cache["hdc_mem"], self._dib_cache["old_bm"])
-            if self._dib_cache.get("hbm"):
-                gdi32.DeleteObject(self._dib_cache["hbm"])
-            if self._dib_cache.get("hdc_mem"):
-                gdi32.DeleteDC(self._dib_cache["hdc_mem"])
-            if self._dib_cache.get("hdc_screen"):
-                u32.ReleaseDC(0, self._dib_cache["hdc_screen"])
-        except Exception:
-            pass
-        self._dib_cache = None
+        with self._gdi_lock:
+            if not self._dib_cache:
+                return
+            try:
+                import ctypes
+                u32 = ctypes.windll.user32
+                gdi32 = ctypes.windll.gdi32
+                if self._dib_cache.get("old_bm") and self._dib_cache.get("hdc_mem"):
+                    gdi32.SelectObject(self._dib_cache["hdc_mem"], self._dib_cache["old_bm"])
+                if self._dib_cache.get("hbm"):
+                    gdi32.DeleteObject(self._dib_cache["hbm"])
+                if self._dib_cache.get("hdc_mem"):
+                    gdi32.DeleteDC(self._dib_cache["hdc_mem"])
+                if self._dib_cache.get("hdc_screen"):
+                    u32.ReleaseDC(0, self._dib_cache["hdc_screen"])
+            except Exception:
+                pass
+            self._dib_cache = None
+
+    def stop(self) -> None:
+        """Stop background worker thread and release resources."""
+        self._worker_running = False
+        if self._worker_thread and self._worker_thread.is_alive():
+            try:
+                self._worker_thread.join(timeout=0.25)
+            except Exception:
+                pass
+        self._cleanup_dib_cache()
 
     def __del__(self) -> None:
-        self._cleanup_dib_cache()
+        self.stop()
 
     def _init_win32_desktop(self) -> None:
         """Bind thread desktop to interactive input desktop on Windows."""
@@ -85,108 +97,109 @@ class ScreenStreamer:
 
     def _capture_win32_gdi(self, scale_width: Optional[int] = None):
         """Ultra-fast 90+ FPS persistent Win32 DIBSection screen capture via ctypes."""
-        try:
-            import ctypes
-            import ctypes.wintypes
-            from PIL import Image
+        with self._gdi_lock:
+            try:
+                import ctypes
+                import ctypes.wintypes
+                from PIL import Image
 
-            class BITMAPINFOHEADER(ctypes.Structure):
-                _fields_ = [
-                    ("biSize", ctypes.wintypes.DWORD),
-                    ("biWidth", ctypes.wintypes.LONG),
-                    ("biHeight", ctypes.wintypes.LONG),
-                    ("biPlanes", ctypes.wintypes.WORD),
-                    ("biBitCount", ctypes.wintypes.WORD),
-                    ("biCompression", ctypes.wintypes.DWORD),
-                    ("biSizeImage", ctypes.wintypes.DWORD),
-                    ("biXPelsPerMeter", ctypes.wintypes.LONG),
-                    ("biYPelsPerMeter", ctypes.wintypes.LONG),
-                    ("biClrUsed", ctypes.wintypes.DWORD),
-                    ("biClrImportant", ctypes.wintypes.DWORD),
-                ]
+                class BITMAPINFOHEADER(ctypes.Structure):
+                    _fields_ = [
+                        ("biSize", ctypes.wintypes.DWORD),
+                        ("biWidth", ctypes.wintypes.LONG),
+                        ("biHeight", ctypes.wintypes.LONG),
+                        ("biPlanes", ctypes.wintypes.WORD),
+                        ("biBitCount", ctypes.wintypes.WORD),
+                        ("biCompression", ctypes.wintypes.DWORD),
+                        ("biSizeImage", ctypes.wintypes.DWORD),
+                        ("biXPelsPerMeter", ctypes.wintypes.LONG),
+                        ("biYPelsPerMeter", ctypes.wintypes.LONG),
+                        ("biClrUsed", ctypes.wintypes.DWORD),
+                        ("biClrImportant", ctypes.wintypes.DWORD),
+                    ]
 
-            u32 = ctypes.windll.user32
-            gdi32 = ctypes.windll.gdi32
+                u32 = ctypes.windll.user32
+                gdi32 = ctypes.windll.gdi32
 
-            w = u32.GetSystemMetrics(0)
-            h = u32.GetSystemMetrics(1)
-            if w <= 0 or h <= 0:
-                return None
-
-            self._screen_size = (w, h)
-
-            if scale_width and scale_width < w:
-                tw = scale_width
-                th = max(1, int(h * tw / w))
-                use_stretch = True
-            else:
-                tw = w
-                th = h
-                use_stretch = False
-
-            # Check or create persistent DIBSection cache
-            cache = self._dib_cache
-            if not cache or cache.get("tw") != tw or cache.get("th") != th or not cache.get("hdc_screen"):
-                self._cleanup_dib_cache()
-                hdc_screen = u32.GetDC(0)
-                if not hdc_screen:
-                    return None
-                hdc_mem = gdi32.CreateCompatibleDC(hdc_screen)
-
-                bmi = BITMAPINFOHEADER()
-                bmi.biSize = ctypes.sizeof(BITMAPINFOHEADER)
-                bmi.biWidth = tw
-                bmi.biHeight = -th  # top-down DIB
-                bmi.biPlanes = 1
-                bmi.biBitCount = 32
-                bmi.biCompression = 0
-
-                ppvBits = ctypes.c_void_p()
-                hbm = gdi32.CreateDIBSection(hdc_mem, ctypes.byref(bmi), 0, ctypes.byref(ppvBits), 0, 0)
-                if not hbm or not ppvBits.value:
-                    u32.ReleaseDC(0, hdc_screen)
-                    gdi32.DeleteDC(hdc_mem)
+                w = u32.GetSystemMetrics(0)
+                h = u32.GetSystemMetrics(1)
+                if w <= 0 or h <= 0:
                     return None
 
-                old_bm = gdi32.SelectObject(hdc_mem, hbm)
-                if use_stretch:
-                    gdi32.SetStretchBltMode(hdc_mem, 3)
+                self._screen_size = (w, h)
 
-                size = tw * th * 4
-                buf = (ctypes.c_char * size).from_address(ppvBits.value)
+                if scale_width and scale_width < w:
+                    tw = scale_width
+                    th = max(1, int(h * tw / w))
+                    use_stretch = True
+                else:
+                    tw = w
+                    th = h
+                    use_stretch = False
 
-                cache = {
-                    "tw": tw,
-                    "th": th,
-                    "hdc_screen": hdc_screen,
-                    "hdc_mem": hdc_mem,
-                    "hbm": hbm,
-                    "old_bm": old_bm,
-                    "buf": buf,
-                    "use_stretch": use_stretch,
-                }
-                self._dib_cache = cache
+                # Check or create persistent DIBSection cache
+                cache = self._dib_cache
+                if not cache or cache.get("tw") != tw or cache.get("th") != th or not cache.get("hdc_screen"):
+                    self._cleanup_dib_cache()
+                    hdc_screen = u32.GetDC(0)
+                    if not hdc_screen:
+                        return None
+                    hdc_mem = gdi32.CreateCompatibleDC(hdc_screen)
 
-            hdc_screen = cache["hdc_screen"]
-            hdc_mem = cache["hdc_mem"]
-            buf = cache["buf"]
+                    bmi = BITMAPINFOHEADER()
+                    bmi.biSize = ctypes.sizeof(BITMAPINFOHEADER)
+                    bmi.biWidth = tw
+                    bmi.biHeight = -th  # top-down DIB
+                    bmi.biPlanes = 1
+                    bmi.biBitCount = 32
+                    bmi.biCompression = 0
 
-            if cache["use_stretch"]:
-                res = gdi32.StretchBlt(hdc_mem, 0, 0, tw, th, hdc_screen, 0, 0, w, h, 0x00CC0020)
-            else:
-                res = gdi32.BitBlt(hdc_mem, 0, 0, tw, th, hdc_screen, 0, 0, 0x00CC0020)
+                    ppvBits = ctypes.c_void_p()
+                    hbm = gdi32.CreateDIBSection(hdc_mem, ctypes.byref(bmi), 0, ctypes.byref(ppvBits), 0, 0)
+                    if not hbm or not ppvBits.value:
+                        u32.ReleaseDC(0, hdc_screen)
+                        gdi32.DeleteDC(hdc_mem)
+                        return None
 
-            if not res:
-                # If DC was invalidated, clear cache and retry next cycle
-                self._cleanup_dib_cache()
+                    old_bm = gdi32.SelectObject(hdc_mem, hbm)
+                    if use_stretch:
+                        gdi32.SetStretchBltMode(hdc_mem, 3)
+
+                    size = tw * th * 4
+                    buf = (ctypes.c_char * size).from_address(ppvBits.value)
+
+                    cache = {
+                        "tw": tw,
+                        "th": th,
+                        "hdc_screen": hdc_screen,
+                        "hdc_mem": hdc_mem,
+                        "hbm": hbm,
+                        "old_bm": old_bm,
+                        "buf": buf,
+                        "use_stretch": use_stretch,
+                    }
+                    self._dib_cache = cache
+
+                hdc_screen = cache["hdc_screen"]
+                hdc_mem = cache["hdc_mem"]
+                buf = cache["buf"]
+
+                if cache["use_stretch"]:
+                    res = gdi32.StretchBlt(hdc_mem, 0, 0, tw, th, hdc_screen, 0, 0, w, h, 0x00CC0020)
+                else:
+                    res = gdi32.BitBlt(hdc_mem, 0, 0, tw, th, hdc_screen, 0, 0, 0x00CC0020)
+
+                if not res:
+                    # If DC was invalidated, clear cache and retry next cycle
+                    self._cleanup_dib_cache()
+                    return None
+
+                # Zero-copy instant BGRX to RGB buffer construction, followed by fast copy
+                im = Image.frombuffer("RGB", (tw, th), buf, "raw", "BGRX", 0, 1)
+                return im.copy()
+            except Exception as ex:
+                self._last_error = f"GDI capture exception: {ex}"
                 return None
-
-            # Zero-copy instant BGRX to RGB buffer construction
-            im = Image.frombuffer("RGB", (tw, th), buf, "raw", "BGRX", 0, 1)
-            return im
-        except Exception as ex:
-            self._last_error = f"GDI capture exception: {ex}"
-            return None
 
     def capture_raw_image(self, scale_width: Optional[int] = None):
         """Capture the current display as a PIL Image."""

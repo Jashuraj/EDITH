@@ -59,6 +59,18 @@ class TestVoiceSystem(unittest.TestCase):
         speaker = SpeechSynthesizer()
         self.assertEqual(speaker.synthesize_wav(""), b"")
 
+    def test_synthesize_audio(self):
+        speaker = SpeechSynthesizer()
+        audio, mime = speaker.synthesize_audio("EDITH systems nominal", character="edith")
+        self.assertIsInstance(audio, bytes)
+        self.assertGreater(len(audio), 0)
+        self.assertIn(mime, ["audio/mpeg", "audio/wav"])
+
+    def test_synthesize_audio_empty(self):
+        speaker = SpeechSynthesizer()
+        audio, mime = speaker.synthesize_audio("", character="edith")
+        self.assertEqual(audio, b"")
+        self.assertEqual(mime, "audio/wav")
 
 
 if __name__ == "__main__":

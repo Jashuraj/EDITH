@@ -39,6 +39,7 @@ a = Analysis(
         'comtypes',
         'win32com',
         'win32com.client',
+        'edge_tts',
     ],
 
     hookspath=[],

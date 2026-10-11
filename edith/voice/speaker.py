@@ -23,6 +23,7 @@ VOICE_CHARACTERS: Dict[str, Dict[str, Any]] = {
         "role": "Tactical AI Operating System",
         "gender": "Female",
         "sapi_voice": "Microsoft Zira Desktop",
+        "neural_voice": "en-US-AriaNeural",
         "rate": 1,
         "pitch_shift": 1,
         "web_rate": 1.05,
@@ -36,6 +37,7 @@ VOICE_CHARACTERS: Dict[str, Dict[str, Any]] = {
         "role": "Chief Engineer & Technical Butler",
         "gender": "Male",
         "sapi_voice": "Microsoft David Desktop",
+        "neural_voice": "en-GB-RyanNeural",
         "rate": 0,
         "pitch_shift": -1,
         "web_rate": 0.95,
@@ -49,6 +51,7 @@ VOICE_CHARACTERS: Dict[str, Dict[str, Any]] = {
         "role": "Rapid Response & Multi-Tasking Specialist",
         "gender": "Female",
         "sapi_voice": "Microsoft Zira Desktop",
+        "neural_voice": "en-IE-EmilyNeural",
         "rate": 2,
         "pitch_shift": 2,
         "web_rate": 1.15,
@@ -62,6 +65,7 @@ VOICE_CHARACTERS: Dict[str, Dict[str, Any]] = {
         "role": "Spider-Suit Lady & Daily Navigator",
         "gender": "Female",
         "sapi_voice": "Microsoft Zira Desktop",
+        "neural_voice": "en-US-JennyNeural",
         "rate": 0,
         "pitch_shift": 0,
         "web_rate": 1.0,
@@ -75,6 +79,7 @@ VOICE_CHARACTERS: Dict[str, Dict[str, Any]] = {
         "role": "Agile Web-Slinger & Gaming Specialist",
         "gender": "Male",
         "sapi_voice": "Microsoft David Desktop",
+        "neural_voice": "en-US-AndrewNeural",
         "rate": 2,
         "pitch_shift": 2,
         "web_rate": 1.2,
@@ -88,6 +93,7 @@ VOICE_CHARACTERS: Dict[str, Dict[str, Any]] = {
         "role": "Overdrive Security & Stress-Testing Sovereign",
         "gender": "Male",
         "sapi_voice": "Microsoft David Desktop",
+        "neural_voice": "en-US-ChristopherNeural",
         "rate": -2,
         "pitch_shift": -5,
         "web_rate": 0.85,
@@ -190,6 +196,7 @@ class SpeechSynthesizer:
 
         clean_text = text.replace('"', '""').replace("'", "''")
         char_info = self.get_character_info(character)
+        gender = char_info.get("gender", "Female").lower()
         voice_pref = self.voice_name or char_info.get("sapi_voice", "Microsoft Zira Desktop")
         rate_val = int(char_info.get("rate", 0))
 
@@ -199,7 +206,18 @@ class SpeechSynthesizer:
         Add-Type -AssemblyName System.Speech
         $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer
         try {{
-            $synth.SelectVoice('{voice_pref}')
+            $target = '{voice_pref.lower()}'
+            $installed = $synth.GetInstalledVoices()
+            foreach ($v in $installed) {{
+                $d = $v.VoiceInfo.Name.ToLower()
+                if ($d.Contains('zira') -and ($target.Contains('zira') -or '{gender}' -eq 'female')) {{
+                    $synth.SelectVoice($v.VoiceInfo.Name)
+                    break
+                }} elseif ($d.Contains('david') -and ($target.Contains('david') -or '{gender}' -eq 'male')) {{
+                    $synth.SelectVoice($v.VoiceInfo.Name)
+                    break
+                }}
+            }}
         }} catch {{}}
         $synth.Rate = {rate_val}
         $synth.Speak('{clean_text}')
@@ -222,6 +240,45 @@ class SpeechSynthesizer:
             logger.error("Speech synthesis failed: %s", e)
             return False
 
+    def synthesize_audio(self, text: Any, character: Optional[str] = None) -> tuple[bytes, str]:
+        """Synthesize text into audio bytes using Edge Neural TTS or native SAPI fallback."""
+        if not isinstance(text, str):
+            if isinstance(text, dict):
+                text = text.get("message") or text.get("result") or text.get("output") or json.dumps(text)
+            else:
+                text = str(text)
+
+        clean = text.strip()
+        if not clean:
+            return b"", "audio/wav"
+
+        char_info = self.get_character_info(character)
+        neural_voice = char_info.get("neural_voice", "en-US-AriaNeural")
+
+        # 1. Edge Neural TTS for lifelike voice acting
+        try:
+            import asyncio
+            import edge_tts
+
+            communicate = edge_tts.Communicate(clean, voice=neural_voice)
+            loop = asyncio.new_event_loop()
+            try:
+                async def _stream_audio():
+                    chunks = [c["data"] async for c in communicate.stream() if c["type"] == "audio"]
+                    return b"".join(chunks)
+
+                audio_bytes = loop.run_until_complete(_stream_audio())
+                if audio_bytes and len(audio_bytes) > 100:
+                    return audio_bytes, "audio/mpeg"
+            finally:
+                loop.close()
+        except Exception as ex:
+            logger.debug("Edge neural TTS fallback: %s", ex)
+
+        # 2. Offline WAV synthesis fallback
+        wav_bytes = self.synthesize_wav(clean, character=character)
+        return wav_bytes, "audio/wav"
+
     def synthesize_wav(self, text: Any, character: Optional[str] = None) -> bytes:
         """Synthesize text into WAV audio bytes using native Windows SAPI."""
         if not isinstance(text, str):
@@ -235,6 +292,7 @@ class SpeechSynthesizer:
             return b""
 
         char_info = self.get_character_info(character)
+        gender = char_info.get("gender", "Female").lower()
         voice_pref = self.voice_name or char_info.get("sapi_voice", "Microsoft Zira Desktop")
         rate_val = int(char_info.get("rate", 0))
 
@@ -242,13 +300,32 @@ class SpeechSynthesizer:
         try:
             import tempfile
             import os
+            import pythoncom
             import win32com.client
 
+            pythoncom.CoInitialize()
             v = win32com.client.Dispatch("SAPI.SpVoice")
-            for item in v.GetVoices():
-                if voice_pref.lower() in item.GetDescription().lower():
-                    v.Voice = item
+            selected_voice = None
+            target_pref = voice_pref.lower()
+            voices = v.GetVoices()
+            for i in range(voices.Count):
+                item = voices.Item(i)
+                desc = item.GetDescription().lower()
+                if "zira" in target_pref and "zira" in desc:
+                    selected_voice = item
                     break
+                elif "david" in target_pref and "david" in desc:
+                    selected_voice = item
+                    break
+                elif gender == "female" and ("zira" in desc or "female" in desc or "heera" in desc):
+                    selected_voice = item
+                    break
+                elif gender == "male" and ("david" in desc or "male" in desc or "mark" in desc):
+                    selected_voice = item
+                    break
+
+            if selected_voice:
+                v.Voice = selected_voice
             v.Rate = rate_val
 
             stream = win32com.client.Dispatch("SAPI.SpFileStream")
@@ -265,7 +342,8 @@ class SpeechSynthesizer:
                     os.remove(tmp)
                 except Exception:
                     pass
-                return wav_data
+                if wav_data.startswith(b"RIFF"):
+                    return wav_data
         except Exception as ex:
             logger.debug("win32com SAPI synthesize_wav fallback: %s", ex)
 
@@ -279,7 +357,20 @@ class SpeechSynthesizer:
             ps = f"""
             Add-Type -AssemblyName System.Speech
             $synth = New-Object System.Speech.Synthesis.SpeechSynthesizer
-            try {{ $synth.SelectVoice('{voice_pref}') }} catch {{}}
+            try {{
+                $target = '{voice_pref.lower()}'
+                $installed = $synth.GetInstalledVoices()
+                foreach ($v in $installed) {{
+                    $d = $v.VoiceInfo.Name.ToLower()
+                    if ($d.Contains('zira') -and ($target.Contains('zira') -or '{gender}' -eq 'female')) {{
+                        $synth.SelectVoice($v.VoiceInfo.Name)
+                        break
+                    }} elseif ($d.Contains('david') -and ($target.Contains('david') -or '{gender}' -eq 'male')) {{
+                        $synth.SelectVoice($v.VoiceInfo.Name)
+                        break
+                    }}
+                }}
+            }} catch {{}}
             $synth.Rate = {rate_val}
             $synth.SetOutputToWaveFile('{tmp}')
             $synth.Speak('{clean}')
@@ -315,4 +406,5 @@ class SpeechSynthesizer:
 
 # Global speaker singleton
 SPEAKER = SpeechSynthesizer()
+
 

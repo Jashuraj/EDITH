@@ -170,10 +170,17 @@ class TestUIServer(unittest.TestCase):
         req = urllib.request.Request("http://127.0.0.1:8796/api/voice/tts?text=Test+audio&char=edith")
         with urllib.request.urlopen(req, timeout=5.0) as res:
             self.assertEqual(res.status, 200)
-            self.assertEqual(res.headers.get("Content-Type"), "audio/wav")
+            content_type = res.headers.get("Content-Type")
+            self.assertIn(content_type, ("audio/wav", "audio/mpeg"))
             audio = res.read()
             self.assertGreater(len(audio), 0)
-            self.assertTrue(audio.startswith(b"RIFF"))
+            self.assertTrue(
+                audio.startswith(b"RIFF")
+                or audio.startswith(b"ID3")
+                or audio.startswith(b"\xff\xfb")
+                or audio.startswith(b"\xff\xf3")
+                or audio.startswith(b"\xff\xf2")
+            )
 
 
 if __name__ == "__main__":

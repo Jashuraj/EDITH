@@ -27,14 +27,14 @@ BLOCK_MS = 25
 SPIKE_RATIO = 3.0
 COOLDOWN_S = 3.0
 SPEAKER_ECHO_GRACE_S = 4.0
-MIN_CREST_FACTOR = 2.2
-MIN_PEAK_AMPLITUDE = 0.028
-MIN_DOUBLE_GAP_S = 0.06
-MAX_DOUBLE_GAP_S = 1.35
+MIN_CREST_FACTOR = 3.0
+MIN_PEAK_AMPLITUDE = 0.075
+MIN_DOUBLE_GAP_S = 0.12
+MAX_DOUBLE_GAP_S = 0.95
 RETRIGGER_RATIO = 0.55
 NOISE_FLOOR_ALPHA = 0.990
-MIN_RMS = 0.004
-QUIET_GATE_MULT = 2.0
+MIN_RMS = 0.005
+QUIET_GATE_MULT = 2.2
 
 
 
@@ -260,7 +260,7 @@ class ClapDetector:
                                 if MIN_DOUBLE_GAP_S <= gap <= MAX_DOUBLE_GAP_S:
                                     # Double clap detected!
                                     logger.info("DOUBLE CLAP DETECTED! (gap=%.3fs, rms=%.4f)", gap, rms)
-                                    last_double_time = now
+                                    last_double_time = now + 12.0
                                     armed_for_second = False
                                     self.trigger_welcome()
                                     continue

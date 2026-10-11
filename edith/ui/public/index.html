@@ -638,17 +638,17 @@
     window.changeVoiceCharacter = changeVoiceCharacter;
 
     // ── TTS ────────────────────────────────────────────────────
-    function speakOut(text) {
-      if (!ttsEnabled || !('speechSynthesis' in window)) return;
-      if (!text || !text.trim()) return;
+    let hudActiveAudio = null;
+
+    function speakFallbackBrowser(text) {
+      if (!('speechSynthesis' in window)) {
+        isSpeaking = false;
+        return;
+      }
       try {
         window.speechSynthesis.cancel();
         clearTimeout(speechSafetyTimer);
         isSpeaking = true;
-        // Pause microphone while speaking to eliminate self-speech echo
-        if (recognition && isVoiceActive) {
-          try { recognition.abort(); } catch (_) {}
-        }
         const utt = new SpeechSynthesisUtterance(text);
         window._activeUtterance = utt;
         const cfg = CHARACTER_SPEECH_CONFIG[currentVoiceCharacter] || CHARACTER_SPEECH_CONFIG.edith;
@@ -677,12 +677,9 @@
             )
           );
         }
-        if (!preferred) {
-          preferred = voices.find(v => v.lang.startsWith('en'));
-        }
+        if (!preferred) preferred = voices.find(v => v.lang.startsWith('en'));
         if (preferred) utt.voice = preferred;
 
-        // Failsafe timer: guarantees isSpeaking = false even if browser GC drops onend
         const maxSpeechMs = Math.min(10000, Math.max(2500, text.length * 75 + 1000));
         speechSafetyTimer = setTimeout(() => {
           if (isSpeaking) {
@@ -699,7 +696,6 @@
           setTimeout(() => {
             isSpeaking = false;
             window._activeUtterance = null;
-            // Cleanly resume mic after room audio reverb has dissipated
             if (isVoiceActive && recognition && !isTransmitting) {
               try { recognition.start(); } catch (_) {}
             }
@@ -719,6 +715,61 @@
         clearTimeout(speechSafetyTimer);
         isSpeaking = false;
         window._activeUtterance = null;
+      }
+    }
+
+    function speakOut(text) {
+      if (!ttsEnabled) return;
+      if (!text || !text.trim()) return;
+
+      const cleanText = text.replace(/https?:\/\/\S+/g, '').replace(/[*_#`~[\]]/g, '').trim();
+      if (!cleanText) return;
+
+      if (hudActiveAudio) {
+        try { hudActiveAudio.pause(); } catch (_) {}
+        hudActiveAudio = null;
+      }
+      try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (_) {}
+      clearTimeout(speechSafetyTimer);
+      isSpeaking = true;
+
+      // Pause microphone while speaking to eliminate self-speech echo
+      if (recognition && isVoiceActive) {
+        try { recognition.abort(); } catch (_) {}
+      }
+
+      // 1. Stream server neural voice
+      try {
+        const audioUrl = `/api/voice/tts?char=${encodeURIComponent(currentVoiceCharacter)}&text=${encodeURIComponent(cleanText.slice(0, 320))}`;
+        const audio = new Audio(audioUrl);
+        hudActiveAudio = audio;
+
+        audio.onended = () => {
+          hudActiveAudio = null;
+          isSpeaking = false;
+          if (isVoiceActive && recognition && !isTransmitting) {
+            setTimeout(() => {
+              if (isVoiceActive && !isSpeaking) {
+                try { recognition.start(); } catch (_) {}
+              }
+            }, 350);
+          }
+        };
+
+        audio.onerror = () => {
+          hudActiveAudio = null;
+          speakFallbackBrowser(cleanText);
+        };
+
+        const p = audio.play();
+        if (p !== undefined) {
+          p.catch(() => {
+            hudActiveAudio = null;
+            speakFallbackBrowser(cleanText);
+          });
+        }
+      } catch (_) {
+        speakFallbackBrowser(cleanText);
       }
     }
 
@@ -1106,7 +1157,7 @@
       const thinkEl = logEntry('Processing...', 'thinking');
       document.getElementById('btn-submit').innerText = 'THINKING...';
 
-      // 15-second safety timer so UI never gets stuck in thinking state
+      // 45-second safety timer so UI never gets stuck in thinking state
       const safetyTimeout = setTimeout(() => {
         if (isTransmitting) {
           isTransmitting = false;
@@ -1114,7 +1165,7 @@
           document.getElementById('btn-submit').innerText = 'TRANSMIT';
           logEntry('Operation timed out. Ready for new input.', 'error');
         }
-      }, 15000);
+      }, 45000);
 
       try {
         const res = await fetch('/cmd', {

@@ -230,19 +230,19 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             qs = urllib.parse.parse_qs(parsed.query)
             text = qs.get("text", [""])[0]
             char_id = qs.get("char", qs.get("character", [""]))[0] or None
-            wav_bytes = SPEAKER.synthesize_wav(text, character=char_id) if text else b""
-            if not wav_bytes:
+            audio_bytes, mime = SPEAKER.synthesize_audio(text, character=char_id) if text else (b"", "audio/wav")
+            if not audio_bytes:
                 self.send_response(204)
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 return
             self.send_response(200)
-            self.send_header("Content-Type", "audio/wav")
-            self.send_header("Content-Length", str(len(wav_bytes)))
+            self.send_header("Content-Type", mime)
+            self.send_header("Content-Length", str(len(audio_bytes)))
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
-            self.wfile.write(wav_bytes)
+            self.wfile.write(audio_bytes)
             return
 
         elif parsed.path == "/audio/devices":
@@ -722,19 +722,19 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
         elif parsed.path in ("/api/voice/tts", "/voice/tts"):
             text = str(data.get("text", "")).strip()
             char_id = data.get("char") or data.get("character")
-            wav_bytes = SPEAKER.synthesize_wav(text, character=char_id) if text else b""
-            if not wav_bytes:
+            audio_bytes, mime = SPEAKER.synthesize_audio(text, character=char_id) if text else (b"", "audio/wav")
+            if not audio_bytes:
                 self.send_response(204)
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 return
             self.send_response(200)
-            self.send_header("Content-Type", "audio/wav")
-            self.send_header("Content-Length", str(len(wav_bytes)))
+            self.send_header("Content-Type", mime)
+            self.send_header("Content-Length", str(len(audio_bytes)))
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
-            self.wfile.write(wav_bytes)
+            self.wfile.write(audio_bytes)
             return
 
         elif parsed.path == "/voice/stop":
