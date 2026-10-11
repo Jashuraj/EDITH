@@ -96,7 +96,7 @@
     btnOpenGamepad: document.getElementById("btn-open-gamepad"),
     btnSyncClipboard: document.getElementById("btn-sync-clipboard"),
     remoteOverlay: document.getElementById("remote-desktop-overlay"),
-    remoteScreenImg: document.getElementById("remote-screen-img") || document.getElementById("mobile-remote-img"),
+    remoteScreenImg: document.getElementById("remote-screen-img"),
     remoteViewport: document.getElementById("remote-viewport"),
     remoteCursor: document.getElementById("remote-virtual-cursor"),
     remoteFeedback: document.getElementById("remote-touch-feedback"),
@@ -827,7 +827,6 @@
       command: cmd,
       device_id: "edith_mobile_pwa",
       token: state.token || undefined,
-      request_id: window.edithRid ? window.edithRid() : String(Date.now()),
     };
 
     const targetUrl = `${state.activeEndpoint.replace(/\/+$/, "")}/cmd`;
@@ -1154,7 +1153,9 @@
   // 1. Spider-Web Radar Background Canvas
   function initWebCanvas() {
     const canvas = dom.canvasWeb;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     let w = 0, h = 0;
 
     function resize() {
@@ -1229,7 +1230,9 @@
   // 2. Center Reticle Oscilloscope Waveform Canvas
   function initOscilloscopeCanvas() {
     const canvas = dom.canvasOsc;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     const w = (canvas.width = 220);
     const h = (canvas.height = 50);
     let phase = 0;
@@ -1718,7 +1721,7 @@
       dom.remoteCursor.style.top = `${clientY - vpRect.top}px`;
     }
 
-    dom.remoteViewport?.addEventListener("touchstart", (e) => {
+    dom.remoteViewport.addEventListener("touchstart", (e) => {
       if (remoteGamepadMode || e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar") || e.target.closest("#mobile-zoom-overlay")) {
         return;
       }
@@ -1757,7 +1760,7 @@
       }
     }, { passive: false });
 
-    dom.remoteViewport?.addEventListener("touchmove", (e) => {
+    dom.remoteViewport.addEventListener("touchmove", (e) => {
       if (remoteGamepadMode || e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar") || e.target.closest("#mobile-zoom-overlay")) {
         return;
       }
@@ -1801,7 +1804,7 @@
       }
     }, { passive: false });
 
-    dom.remoteViewport?.addEventListener("touchend", (e) => {
+    dom.remoteViewport.addEventListener("touchend", (e) => {
       clearTimeout(longPressTimer);
       if (e.touches.length < 2) {
         isPinching = false;
@@ -1848,7 +1851,7 @@
       }
     });
 
-    dom.remoteViewport?.addEventListener("click", (e) => {
+    dom.remoteViewport.addEventListener("click", (e) => {
       if (remoteGamepadMode || e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar") || e.target.closest("#mobile-zoom-overlay")) {
         return;
       }
@@ -1861,7 +1864,7 @@
     });
 
     if (dom.btnMzoomIn) {
-      dom.btnMzoomIn?.addEventListener("click", (e) => {
+      dom.btnMzoomIn.addEventListener("click", (e) => {
         e.stopPropagation();
         remoteZoom = Math.min(4.0, remoteZoom + 0.35);
         updateZoomTransform();
@@ -1869,7 +1872,7 @@
       });
     }
     if (dom.btnMzoomOut) {
-      dom.btnMzoomOut?.addEventListener("click", (e) => {
+      dom.btnMzoomOut.addEventListener("click", (e) => {
         e.stopPropagation();
         remoteZoom = Math.max(1.0, remoteZoom - 0.35);
         if (remoteZoom === 1.0) { remotePanX = 0; remotePanY = 0; }
@@ -1878,7 +1881,7 @@
       });
     }
     if (dom.btnMzoomFit) {
-      dom.btnMzoomFit?.addEventListener("click", (e) => {
+      dom.btnMzoomFit.addEventListener("click", (e) => {
         e.stopPropagation();
         remoteZoom = 1.0;
         remotePanX = 0;
@@ -1889,21 +1892,21 @@
     }
 
     if (dom.btnRemoteZoomIn) {
-      dom.btnRemoteZoomIn?.addEventListener("click", () => {
+      dom.btnRemoteZoomIn.addEventListener("click", () => {
         remoteZoom = Math.min(4.0, remoteZoom + 0.25);
         updateZoomTransform();
         triggerHaptic(15);
       });
     }
     if (dom.btnRemoteZoomOut) {
-      dom.btnRemoteZoomOut?.addEventListener("click", () => {
+      dom.btnRemoteZoomOut.addEventListener("click", () => {
         remoteZoom = Math.max(1.0, remoteZoom - 0.25);
         updateZoomTransform();
         triggerHaptic(15);
       });
     }
     if (dom.btnRemoteZoomFit) {
-      dom.btnRemoteZoomFit?.addEventListener("click", () => {
+      dom.btnRemoteZoomFit.addEventListener("click", () => {
         remoteZoom = 1.0;
         remotePanX = 0;
         remotePanY = 0;
@@ -1912,7 +1915,7 @@
       });
     }
     if (dom.btnRemoteUnlock) {
-      dom.btnRemoteUnlock?.addEventListener("click", () => {
+      dom.btnRemoteUnlock.addEventListener("click", () => {
         triggerHaptic(30);
         sendRemoteInput("unlock");
         logConsole("AUTH", "Unlock PIN sent to host workstation.");
@@ -2022,7 +2025,7 @@
     }
 
     if (window.PointerEvent) {
-      dom.stickBase?.addEventListener("pointerdown", (e) => {
+      dom.stickBase.addEventListener("pointerdown", (e) => {
         e.preventDefault();
         e.stopPropagation();
         activePointerId = e.pointerId;
@@ -2030,7 +2033,7 @@
         handleStickMove(e.clientX, e.clientY);
       });
 
-      dom.stickBase?.addEventListener("pointermove", (e) => {
+      dom.stickBase.addEventListener("pointermove", (e) => {
         if (activePointerId === null || e.pointerId !== activePointerId) return;
         e.preventDefault();
         e.stopPropagation();
@@ -2046,30 +2049,30 @@
         }
       };
 
-      dom.stickBase?.addEventListener("pointerup", onPointerEnd);
-      dom.stickBase?.addEventListener("pointercancel", onPointerEnd);
+      dom.stickBase.addEventListener("pointerup", onPointerEnd);
+      dom.stickBase.addEventListener("pointercancel", onPointerEnd);
     } else {
-      dom.stickBase?.addEventListener("touchstart", (e) => {
+      dom.stickBase.addEventListener("touchstart", (e) => {
         e.preventDefault();
         e.stopPropagation();
         const t = e.touches[0];
         handleStickMove(t.clientX, t.clientY);
       }, { passive: false });
 
-      dom.stickBase?.addEventListener("touchmove", (e) => {
+      dom.stickBase.addEventListener("touchmove", (e) => {
         e.preventDefault();
         e.stopPropagation();
         const t = e.touches[0];
         handleStickMove(t.clientX, t.clientY);
       }, { passive: false });
 
-      dom.stickBase?.addEventListener("touchend", (e) => {
+      dom.stickBase.addEventListener("touchend", (e) => {
         e.preventDefault();
         e.stopPropagation();
         resetStick();
       }, { passive: false });
 
-      dom.stickBase?.addEventListener("touchcancel", (e) => {
+      dom.stickBase.addEventListener("touchcancel", (e) => {
         e.preventDefault();
         e.stopPropagation();
         resetStick();
@@ -2113,14 +2116,14 @@
     if (!dom.modalKb) return;
 
     if (dom.btnOpenKb) {
-      dom.btnOpenKb?.addEventListener("click", () => {
+      dom.btnOpenKb.addEventListener("click", () => {
         dom.modalKb.style.display = "flex";
         if (dom.kbTextInput) dom.kbTextInput.focus();
       });
     }
 
     if (dom.btnCloseKb) {
-      dom.btnCloseKb?.addEventListener("click", () => {
+      dom.btnCloseKb.addEventListener("click", () => {
         dom.modalKb.style.display = "none";
       });
     }
@@ -2134,14 +2137,14 @@
           triggerHaptic(15);
         }
       };
-      dom.btnKbSendText?.addEventListener("click", sendText);
-      dom.kbTextInput?.addEventListener("keydown", (e) => {
+      dom.btnKbSendText.addEventListener("click", sendText);
+      dom.kbTextInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") sendText();
       });
     }
 
     if (dom.btnKbEnter) {
-      dom.btnKbEnter?.addEventListener("click", () => {
+      dom.btnKbEnter.addEventListener("click", () => {
         triggerHaptic(15);
         sendRemoteInput("key_press", { key: "enter" });
       });
@@ -2417,22 +2420,22 @@
   // ---------------- Settings & UI Event Listeners ----------------
   function initEvents() {
     // AirDrop & Clipboard Modal
-    if (dom.btnOpenAirDrop) dom.btnOpenAirDrop?.addEventListener("click", openAirDropModal);
-    if (dom.btnCloseAirDrop) dom.btnCloseAirDrop?.addEventListener("click", closeAirDropModal);
+    if (dom.btnOpenAirDrop) dom.btnOpenAirDrop.addEventListener("click", openAirDropModal);
+    if (dom.btnCloseAirDrop) dom.btnCloseAirDrop.addEventListener("click", closeAirDropModal);
     if (dom.modalAirDrop) {
-      dom.modalAirDrop?.addEventListener("click", (e) => {
+      dom.modalAirDrop.addEventListener("click", (e) => {
         if (e.target === dom.modalAirDrop) closeAirDropModal();
       });
     }
-    if (dom.btnClipPull) dom.btnClipPull?.addEventListener("click", fetchClipboardFromPC);
-    if (dom.btnClipPush) dom.btnClipPush?.addEventListener("click", pushClipboardToPC);
+    if (dom.btnClipPull) dom.btnClipPull.addEventListener("click", fetchClipboardFromPC);
+    if (dom.btnClipPush) dom.btnClipPush.addEventListener("click", pushClipboardToPC);
     if (dom.btnSelectFile) {
-      dom.btnSelectFile?.addEventListener("click", () => {
+      dom.btnSelectFile.addEventListener("click", () => {
         if (dom.airdropFileInput) dom.airdropFileInput.click();
       });
     }
     if (dom.airdropFileInput) {
-      dom.airdropFileInput?.addEventListener("change", (e) => {
+      dom.airdropFileInput.addEventListener("change", (e) => {
         if (e.target.files && e.target.files[0]) {
           uploadAirDropFile(e.target.files[0]);
         }
@@ -2440,18 +2443,18 @@
     }
 
     // Audio Mixer & Media Controls
-    if (dom.btnOpenMixer) dom.btnOpenMixer?.addEventListener("click", openAudioMixerModal);
-    if (dom.btnCloseMixer) dom.btnCloseMixer?.addEventListener("click", closeAudioMixerModal);
+    if (dom.btnOpenMixer) dom.btnOpenMixer.addEventListener("click", openAudioMixerModal);
+    if (dom.btnCloseMixer) dom.btnCloseMixer.addEventListener("click", closeAudioMixerModal);
     if (dom.modalMixer) {
-      dom.modalMixer?.addEventListener("click", (e) => {
+      dom.modalMixer.addEventListener("click", (e) => {
         if (e.target === dom.modalMixer) closeAudioMixerModal();
       });
     }
     if (dom.mixerMasterSlider) {
-      dom.mixerMasterSlider?.addEventListener("input", (e) => {
+      dom.mixerMasterSlider.addEventListener("input", (e) => {
         if (dom.mixerMasterVal) dom.mixerMasterVal.textContent = `${e.target.value}%`;
       });
-      dom.mixerMasterSlider?.addEventListener("change", async (e) => {
+      dom.mixerMasterSlider.addEventListener("change", async (e) => {
         if (!state.activeEndpoint) return;
         try {
           const ep = state.activeEndpoint.replace(/\/+$/, "");
@@ -2464,7 +2467,7 @@
       });
     }
     if (dom.btnMixerMute) {
-      dom.btnMixerMute?.addEventListener("click", async () => {
+      dom.btnMixerMute.addEventListener("click", async () => {
         if (!state.activeEndpoint) return;
         try {
           const ep = state.activeEndpoint.replace(/\/+$/, "");
@@ -2477,29 +2480,29 @@
         } catch (_) {}
       });
     }
-    if (dom.btnMediaPrev) dom.btnMediaPrev?.addEventListener("click", () => sendMediaControl("prev"));
-    if (dom.btnMediaPlayPause) dom.btnMediaPlayPause?.addEventListener("click", () => sendMediaControl("play_pause"));
-    if (dom.btnMediaNext) dom.btnMediaNext?.addEventListener("click", () => sendMediaControl("next"));
-    if (dom.btnMediaStop) dom.btnMediaStop?.addEventListener("click", () => sendMediaControl("stop"));
-    if (dom.btnRefreshMixer) dom.btnRefreshMixer?.addEventListener("click", fetchAudioMixerStatus);
+    if (dom.btnMediaPrev) dom.btnMediaPrev.addEventListener("click", () => sendMediaControl("prev"));
+    if (dom.btnMediaPlayPause) dom.btnMediaPlayPause.addEventListener("click", () => sendMediaControl("play_pause"));
+    if (dom.btnMediaNext) dom.btnMediaNext.addEventListener("click", () => sendMediaControl("next"));
+    if (dom.btnMediaStop) dom.btnMediaStop.addEventListener("click", () => sendMediaControl("stop"));
+    if (dom.btnRefreshMixer) dom.btnRefreshMixer.addEventListener("click", fetchAudioMixerStatus);
 
     // Biometric Face Sentinel
-    if (dom.btnToggleSentinel) dom.btnToggleSentinel?.addEventListener("click", toggleFaceSentinel);
+    if (dom.btnToggleSentinel) dom.btnToggleSentinel.addEventListener("click", toggleFaceSentinel);
 
     // Input Submissions
-    dom.btnSend?.addEventListener("click", () => {
+    dom.btnSend.addEventListener("click", () => {
       executeCommand(dom.cmdInput.value);
     });
 
-    dom.cmdInput?.addEventListener("keydown", (e) => {
+    dom.cmdInput.addEventListener("keydown", (e) => {
       if (e.key === "Enter") {
         executeCommand(dom.cmdInput.value);
       }
     });
 
     // Voice Mic Toggles
-    dom.btnMic?.addEventListener("click", toggleSpeech);
-    dom.spiderCore?.addEventListener("click", toggleSpeech);
+    dom.btnMic.addEventListener("click", toggleSpeech);
+    dom.spiderCore.addEventListener("click", toggleSpeech);
 
     // Quick Action Chips
     dom.chips.forEach((chip) => {
@@ -2511,10 +2514,10 @@
 
     // Voice Mode & TTS Toggles
     if (dom.btnTts) {
-      dom.btnTts?.addEventListener("click", toggleVoiceMode);
+      dom.btnTts.addEventListener("click", toggleVoiceMode);
     }
     if (dom.btnVoiceMode) {
-      dom.btnVoiceMode?.addEventListener("click", toggleVoiceMode);
+      dom.btnVoiceMode.addEventListener("click", toggleVoiceMode);
     }
     if (dom.voicePills) {
       dom.voicePills.forEach((pill) => {
@@ -2531,7 +2534,7 @@
 
     // Settings Modal Open/Close
     if (dom.btnBrandTheme) {
-      dom.btnBrandTheme?.addEventListener("click", () => {
+      dom.btnBrandTheme.addEventListener("click", () => {
         triggerHaptic(20);
         const THEME_CYCLE = ["edith", "jarvis", "friday", "karen", "ultron", "spiderman"];
         const cur = localStorage.getItem("mobile_theme") || "edith";
@@ -2542,26 +2545,26 @@
       });
     }
 
-    dom.statusBadge?.addEventListener("click", openSettings);
-    dom.btnOpenSettings?.addEventListener("click", openSettings);
-    dom.btnCloseSettings?.addEventListener("click", closeSettings);
+    dom.statusBadge.addEventListener("click", openSettings);
+    dom.btnOpenSettings.addEventListener("click", openSettings);
+    dom.btnCloseSettings.addEventListener("click", closeSettings);
 
-    dom.modalSettings?.addEventListener("click", (e) => {
+    dom.modalSettings.addEventListener("click", (e) => {
       if (e.target === dom.modalSettings) closeSettings();
     });
 
     // Command Guide Drawer & Modal
-    if (dom.btnOpenGuide) dom.btnOpenGuide?.addEventListener("click", openGuideModal);
-    if (dom.btnChipGuide) dom.btnChipGuide?.addEventListener("click", openGuideModal);
-    if (dom.btnCloseGuide) dom.btnCloseGuide?.addEventListener("click", closeGuideModal);
+    if (dom.btnOpenGuide) dom.btnOpenGuide.addEventListener("click", openGuideModal);
+    if (dom.btnChipGuide) dom.btnChipGuide.addEventListener("click", openGuideModal);
+    if (dom.btnCloseGuide) dom.btnCloseGuide.addEventListener("click", closeGuideModal);
     if (dom.modalGuide) {
-      dom.modalGuide?.addEventListener("click", (e) => {
+      dom.modalGuide.addEventListener("click", (e) => {
         if (e.target === dom.modalGuide) closeGuideModal();
       });
     }
 
     if (dom.guideSearchInput) {
-      dom.guideSearchInput?.addEventListener("input", (e) => {
+      dom.guideSearchInput.addEventListener("input", (e) => {
         guideSearchText = e.target.value;
         if (dom.btnGuideClear) {
           dom.btnGuideClear.style.display = guideSearchText ? "block" : "none";
@@ -2571,7 +2574,7 @@
     }
 
     if (dom.btnGuideClear) {
-      dom.btnGuideClear?.addEventListener("click", () => {
+      dom.btnGuideClear.addEventListener("click", () => {
         guideSearchText = "";
         if (dom.guideSearchInput) dom.guideSearchInput.value = "";
         dom.btnGuideClear.style.display = "none";
@@ -2602,13 +2605,10 @@
     });
 
     // Save Settings
-    dom.btnSaveSettings?.addEventListener("click", async () => {
+    dom.btnSaveSettings.addEventListener("click", async () => {
       state.localUrl = dom.cfgLocalUrl.value.trim() || defaultLocalUrl;
       state.cloudUrl = dom.cfgCloudUrl.value.trim();
-      state.token = await (window.edithResolveToken
-        ? window.edithResolveToken(dom.cfgToken.value.trim(), state.cloudUrl || state.localUrl, logConsole)
-        : dom.cfgToken.value.trim());
-      dom.cfgToken.value = state.token;
+      state.token = dom.cfgToken.value.trim();
 
       if (dom.cfgTheme) setMobileTheme(dom.cfgTheme.value);
       if (dom.cfgVoiceChar) setMobileVoiceCharacter(dom.cfgVoiceChar.value);
@@ -2624,7 +2624,7 @@
     });
 
     // Test Connection
-    dom.btnTestConn?.addEventListener("click", async () => {
+    dom.btnTestConn.addEventListener("click", async () => {
       dom.btnTestConn.textContent = "Testing...";
       dom.btnTestConn.disabled = true;
       const tUrl = state.mode === "cloud" && dom.cfgCloudUrl.value.trim()
@@ -2643,7 +2643,7 @@
     });
 
     // Launch Cloud Tunnel Trigger
-    dom.btnStartTunnel?.addEventListener("click", async () => {
+    dom.btnStartTunnel.addEventListener("click", async () => {
       dom.btnStartTunnel.textContent = "⚡ Initializing Tunnel...";
       dom.btnStartTunnel.disabled = true;
 
@@ -2673,48 +2673,48 @@
 
     // In-HUD Media Player Listeners
     if (dom.btnMediaPopout) {
-      dom.btnMediaPopout?.addEventListener("click", popoutMedia);
+      dom.btnMediaPopout.addEventListener("click", popoutMedia);
     }
     if (dom.btnMediaMin) {
-      dom.btnMediaMin?.addEventListener("click", toggleMinimizeMedia);
+      dom.btnMediaMin.addEventListener("click", toggleMinimizeMedia);
     }
     if (dom.btnMediaClose) {
-      dom.btnMediaClose?.addEventListener("click", closeHudMedia);
+      dom.btnMediaClose.addEventListener("click", closeHudMedia);
     }
 
     // Header Connection Mode Toggle
     if (dom.btnModeToggle) {
-      dom.btnModeToggle?.addEventListener("click", toggleConnectionMode);
+      dom.btnModeToggle.addEventListener("click", toggleConnectionMode);
     }
 
 
     // Remote Desktop & Virtual Gamepad Listeners
     if (dom.btnOpenRemote) {
-      dom.btnOpenRemote?.addEventListener("click", () => openRemoteDesktop(false));
+      dom.btnOpenRemote.addEventListener("click", () => openRemoteDesktop(false));
     }
     if (dom.btnOpenGamepad) {
-      dom.btnOpenGamepad?.addEventListener("click", () => openRemoteDesktop(true));
+      dom.btnOpenGamepad.addEventListener("click", () => openRemoteDesktop(true));
     }
     if (dom.btnSyncClipboard) {
-      dom.btnSyncClipboard?.addEventListener("click", syncClipboardWithLaptop);
+      dom.btnSyncClipboard.addEventListener("click", syncClipboardWithLaptop);
     }
     if (dom.btnCloseRemote) {
-      dom.btnCloseRemote?.addEventListener("click", closeRemoteDesktop);
+      dom.btnCloseRemote.addEventListener("click", closeRemoteDesktop);
     }
     if (dom.btnToggleGamepad) {
-      dom.btnToggleGamepad?.addEventListener("click", toggleGamepadView);
+      dom.btnToggleGamepad.addEventListener("click", toggleGamepadView);
     }
     if (dom.btnRemoteClip) {
-      dom.btnRemoteClip?.addEventListener("click", syncClipboardWithLaptop);
+      dom.btnRemoteClip.addEventListener("click", syncClipboardWithLaptop);
     }
     if (dom.btnRemoteRefresh) {
-      dom.btnRemoteRefresh?.addEventListener("click", startScreenStream);
+      dom.btnRemoteRefresh.addEventListener("click", startScreenStream);
     }
     if (dom.btnRemoteRes) {
-      dom.btnRemoteRes?.addEventListener("click", toggleResolution);
+      dom.btnRemoteRes.addEventListener("click", toggleResolution);
     }
     if (dom.btnQuickConnect) {
-      dom.btnQuickConnect?.addEventListener("click", async () => {
+      dom.btnQuickConnect.addEventListener("click", async () => {
         const val = (dom.quickHostInput ? dom.quickHostInput.value : "").trim();
         if (val) {
           const clean = val.startsWith("http") ? val : `http://${val}`;
@@ -2727,10 +2727,10 @@
       });
     }
     if (dom.btnQuickScan) {
-      dom.btnQuickScan?.addEventListener("click", () => scanLocalSubnet());
+      dom.btnQuickScan.addEventListener("click", () => scanLocalSubnet());
     }
     if (dom.btnOpenVnc) {
-      dom.btnOpenVnc?.addEventListener("click", () => {
+      dom.btnOpenVnc.addEventListener("click", () => {
         const ep = (state.activeEndpoint || defaultLocalUrl).replace(/\/+$/, "");
         const q = new URLSearchParams({
           token: state.token || "",
@@ -2754,7 +2754,7 @@
     let lastY = 0;
     let lastDispatch = 0;
 
-    dom.gameLookTrackpad?.addEventListener("touchstart", (e) => {
+    dom.gameLookTrackpad.addEventListener("touchstart", (e) => {
       if (e.touches.length > 0) {
         isTracking = true;
         lastX = e.touches[0].clientX;
@@ -2763,7 +2763,7 @@
       }
     }, { passive: false });
 
-    dom.gameLookTrackpad?.addEventListener("touchmove", (e) => {
+    dom.gameLookTrackpad.addEventListener("touchmove", (e) => {
       if (!isTracking || e.touches.length === 0) return;
       e.preventDefault();
       const now = performance.now();
@@ -2782,8 +2782,8 @@
     }, { passive: false });
 
     const endTrack = () => { isTracking = false; };
-    dom.gameLookTrackpad?.addEventListener("touchend", endTrack);
-    dom.gameLookTrackpad?.addEventListener("touchcancel", endTrack);
+    dom.gameLookTrackpad.addEventListener("touchend", endTrack);
+    dom.gameLookTrackpad.addEventListener("touchcancel", endTrack);
   }
 
   async function scanLocalSubnet(baseSubnet = "192.168.1", port = 8794) {
@@ -2854,6 +2854,23 @@
 
   // Auto-fetch server config if loaded from server or disk
   async function fetchServerConfig() {
+    // 0. Use window.__EDITH_CONFIG__ if provided synchronously
+    if (window.__EDITH_CONFIG__) {
+      try {
+        const bcfg = window.__EDITH_CONFIG__;
+        if (bcfg.cloud_url && (!state.cloudUrl || state.cloudUrl.includes("edith-jashu.loca.lt"))) {
+          state.cloudUrl = bcfg.cloud_url;
+          localStorage.setItem(STORAGE_KEYS.CLOUD_URL, state.cloudUrl);
+          if (dom.cfgCloudUrl) dom.cfgCloudUrl.value = state.cloudUrl;
+        }
+        if (bcfg.local_url && (!state.localUrl || state.localUrl.includes("127.0.0.1"))) {
+          state.localUrl = bcfg.local_url;
+          localStorage.setItem(STORAGE_KEYS.LOCAL_URL, state.localUrl);
+          if (dom.cfgLocalUrl) dom.cfgLocalUrl.value = state.localUrl;
+        }
+      } catch (_) {}
+    }
+
     // 1. Try bundled server_config.json if running in native APK
     try {
       const bResp = await fetch("./server_config.json");
@@ -2947,47 +2964,6 @@
 
   // ---------------- Bootstrap ----------------
   async function init() {
-    initWebCanvas();
-    initOscilloscopeCanvas();
-    try { initEvents(); } catch (e) { console.warn("EDITH initEvents:", e); }
-    updateVoiceModeUI();
-    const savedChar = localStorage.getItem("mobile_voice_char") || "edith";
-    const savedTheme = localStorage.getItem("mobile_theme") || VOICE_THEME_MAP[savedChar] || "edith";
-    setMobileTheme(savedTheme, false);
-    setMobileVoiceCharacter(savedChar, false, false);
-    if (dom.quickHostInput) dom.quickHostInput.value = state.localUrl;
-
-    await fetchServerConfig();
-    await resolveActiveEndpoint();
-    if (dom.quickHostInput) dom.quickHostInput.value = state.localUrl;
-    await pollLaptopVitals();
-
-    // Heartbeat connection maintenance and bi-directional message polling
-    setInterval(async () => {
-      await fetchServerConfig();
-      await resolveActiveEndpoint();
-      await pollLaptopVitals();
-      await pollPhoneMessagesAndTelemetry();
-    }, 3500);
-
-    // Auto-reconnect immediately when mobile screen wakes or network reconnects
-    document.addEventListener("visibilitychange", async () => {
-      if (document.visibilityState === "visible") {
-        consecutiveOfflineFailures = 0;
-        await resolveActiveEndpoint();
-        await pollLaptopVitals();
-        if (remoteStreamActive) {
-          isFetchingFrame = false;
-          requestAnimationFrame(fetchStreamLoop);
-        }
-      }
-    });
-
-    window.addEventListener("online", async () => {
-      consecutiveOfflineFailures = 0;
-      await resolveActiveEndpoint();
-    });
-
     // Window bridge for inline HTML onclick handlers
     let remoteZoomVal = 1.0;
     window.setMobileTheme = (theme) => setMobileTheme(theme, true);
@@ -3024,16 +3000,16 @@
     };
     window.zoomMobileRemote = (factor) => {
       remoteZoomVal = Math.max(0.5, Math.min(3.0, remoteZoomVal * factor));
-      const img = document.getElementById("mobile-remote-img");
+      const img = document.getElementById("mobile-remote-img") || document.getElementById("remote-screen-img");
       if (img) img.style.transform = `scale(${remoteZoomVal})`;
-      const lbl = document.getElementById("lbl-mobile-zoom");
+      const lbl = document.getElementById("lbl-mobile-zoom") || document.getElementById("lbl-mzoom-val");
       if (lbl) lbl.textContent = `${Math.round(remoteZoomVal * 100)}%`;
     };
     window.resetMobileZoom = () => {
       remoteZoomVal = 1.0;
-      const img = document.getElementById("mobile-remote-img");
+      const img = document.getElementById("mobile-remote-img") || document.getElementById("remote-screen-img");
       if (img) img.style.transform = "scale(1.0)";
-      const lbl = document.getElementById("lbl-mobile-zoom");
+      const lbl = document.getElementById("lbl-mobile-zoom") || document.getElementById("lbl-mzoom-val");
       if (lbl) lbl.textContent = "100%";
     };
     window.handleMobileRemoteClick = (e) => {
@@ -3047,20 +3023,10 @@
       sendRemoteInput(action === "down" ? "key_down" : "key_up", { key: keyName });
     };
     window.saveHostSettings = async () => {
-      const inp = document.getElementById("setting-host-url");
-      const tokInp = document.getElementById("setting-token");
+      const inp = document.getElementById("setting-host-url") || document.getElementById("cfg-local-url");
       if (inp && inp.value.trim()) {
-        state.localUrl = inp.value.trim().replace(/\/+$/, "");
+        state.localUrl = inp.value.trim();
         localStorage.setItem(STORAGE_KEYS.LOCAL_URL, state.localUrl);
-        if (tokInp && tokInp.value.trim() && window.edithResolveToken) {
-          const t = await window.edithResolveToken(tokInp.value.trim(), state.localUrl, logConsole);
-          if (t) {
-            state.token = t;
-            localStorage.setItem(STORAGE_KEYS.TOKEN, t);
-            tokInp.value = "";
-            tokInp.placeholder = "Paired ✓ (enter a new code to re-pair)";
-          }
-        }
         window.closeModal("settings");
         await resolveActiveEndpoint();
         await pollLaptopVitals();
@@ -3068,6 +3034,55 @@
     };
     window.syncClipboard = () => executeCommand("get clipboard");
     window.toggleEmergencyStop = () => executeCommand("emergency stop");
+
+    try { initWebCanvas(); } catch (_) {}
+    try { initOscilloscopeCanvas(); } catch (_) {}
+    try { initEvents(); } catch (_) {}
+    try { updateVoiceModeUI(); } catch (_) {}
+    const savedChar = localStorage.getItem("mobile_voice_char") || "edith";
+    const savedTheme = localStorage.getItem("mobile_theme") || VOICE_THEME_MAP[savedChar] || "edith";
+    try { setMobileTheme(savedTheme, false); } catch (_) {}
+    try { setMobileVoiceCharacter(savedChar, false, false); } catch (_) {}
+    if (dom.quickHostInput) dom.quickHostInput.value = state.localUrl;
+
+    try {
+      await fetchServerConfig();
+      await resolveActiveEndpoint();
+      if (dom.quickHostInput) dom.quickHostInput.value = state.localUrl;
+      await pollLaptopVitals();
+    } catch (_) {}
+
+    // Heartbeat connection maintenance and bi-directional message polling
+    setInterval(async () => {
+      try {
+        await fetchServerConfig();
+        await resolveActiveEndpoint();
+        await pollLaptopVitals();
+        await pollPhoneMessagesAndTelemetry();
+      } catch (_) {}
+    }, 3500);
+
+    // Auto-reconnect immediately when mobile screen wakes or network reconnects
+    document.addEventListener("visibilitychange", async () => {
+      if (document.visibilityState === "visible") {
+        consecutiveOfflineFailures = 0;
+        try {
+          await resolveActiveEndpoint();
+          await pollLaptopVitals();
+          if (remoteStreamActive) {
+            isFetchingFrame = false;
+            requestAnimationFrame(fetchStreamLoop);
+          }
+        } catch (_) {}
+      }
+    });
+
+    window.addEventListener("online", async () => {
+      consecutiveOfflineFailures = 0;
+      try {
+        await resolveActiveEndpoint();
+      } catch (_) {}
+    });
   }
 
   window.addEventListener("DOMContentLoaded", init);

@@ -64,6 +64,10 @@ class TunnelManager:
                 if self._custom_url:
                     self._active_url = self._custom_url
                     self._active_provider = "custom"
+                elif data.get("active_url"):
+                    self._active_url = data.get("active_url")
+                    self._active_provider = data.get("provider") or "localtunnel"
+                    self._is_healthy = bool(data.get("healthy", True))
             except Exception as e:
                 logger.warning("Could not read tunnel config: %s", e)
 

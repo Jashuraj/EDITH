@@ -1153,7 +1153,9 @@
   // 1. Spider-Web Radar Background Canvas
   function initWebCanvas() {
     const canvas = dom.canvasWeb;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     let w = 0, h = 0;
 
     function resize() {
@@ -1228,7 +1230,9 @@
   // 2. Center Reticle Oscilloscope Waveform Canvas
   function initOscilloscopeCanvas() {
     const canvas = dom.canvasOsc;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
+    if (!ctx) return;
     const w = (canvas.width = 220);
     const h = (canvas.height = 50);
     let phase = 0;
@@ -2850,6 +2854,23 @@
 
   // Auto-fetch server config if loaded from server or disk
   async function fetchServerConfig() {
+    // 0. Use window.__EDITH_CONFIG__ if provided synchronously
+    if (window.__EDITH_CONFIG__) {
+      try {
+        const bcfg = window.__EDITH_CONFIG__;
+        if (bcfg.cloud_url && (!state.cloudUrl || state.cloudUrl.includes("edith-jashu.loca.lt"))) {
+          state.cloudUrl = bcfg.cloud_url;
+          localStorage.setItem(STORAGE_KEYS.CLOUD_URL, state.cloudUrl);
+          if (dom.cfgCloudUrl) dom.cfgCloudUrl.value = state.cloudUrl;
+        }
+        if (bcfg.local_url && (!state.localUrl || state.localUrl.includes("127.0.0.1"))) {
+          state.localUrl = bcfg.local_url;
+          localStorage.setItem(STORAGE_KEYS.LOCAL_URL, state.localUrl);
+          if (dom.cfgLocalUrl) dom.cfgLocalUrl.value = state.localUrl;
+        }
+      } catch (_) {}
+    }
+
     // 1. Try bundled server_config.json if running in native APK
     try {
       const bResp = await fetch("./server_config.json");
@@ -2943,47 +2964,6 @@
 
   // ---------------- Bootstrap ----------------
   async function init() {
-    initWebCanvas();
-    initOscilloscopeCanvas();
-    initEvents();
-    updateVoiceModeUI();
-    const savedChar = localStorage.getItem("mobile_voice_char") || "edith";
-    const savedTheme = localStorage.getItem("mobile_theme") || VOICE_THEME_MAP[savedChar] || "edith";
-    setMobileTheme(savedTheme, false);
-    setMobileVoiceCharacter(savedChar, false, false);
-    if (dom.quickHostInput) dom.quickHostInput.value = state.localUrl;
-
-    await fetchServerConfig();
-    await resolveActiveEndpoint();
-    if (dom.quickHostInput) dom.quickHostInput.value = state.localUrl;
-    await pollLaptopVitals();
-
-    // Heartbeat connection maintenance and bi-directional message polling
-    setInterval(async () => {
-      await fetchServerConfig();
-      await resolveActiveEndpoint();
-      await pollLaptopVitals();
-      await pollPhoneMessagesAndTelemetry();
-    }, 3500);
-
-    // Auto-reconnect immediately when mobile screen wakes or network reconnects
-    document.addEventListener("visibilitychange", async () => {
-      if (document.visibilityState === "visible") {
-        consecutiveOfflineFailures = 0;
-        await resolveActiveEndpoint();
-        await pollLaptopVitals();
-        if (remoteStreamActive) {
-          isFetchingFrame = false;
-          requestAnimationFrame(fetchStreamLoop);
-        }
-      }
-    });
-
-    window.addEventListener("online", async () => {
-      consecutiveOfflineFailures = 0;
-      await resolveActiveEndpoint();
-    });
-
     // Window bridge for inline HTML onclick handlers
     let remoteZoomVal = 1.0;
     window.setMobileTheme = (theme) => setMobileTheme(theme, true);
@@ -3020,16 +3000,16 @@
     };
     window.zoomMobileRemote = (factor) => {
       remoteZoomVal = Math.max(0.5, Math.min(3.0, remoteZoomVal * factor));
-      const img = document.getElementById("mobile-remote-img");
+      const img = document.getElementById("mobile-remote-img") || document.getElementById("remote-screen-img");
       if (img) img.style.transform = `scale(${remoteZoomVal})`;
-      const lbl = document.getElementById("lbl-mobile-zoom");
+      const lbl = document.getElementById("lbl-mobile-zoom") || document.getElementById("lbl-mzoom-val");
       if (lbl) lbl.textContent = `${Math.round(remoteZoomVal * 100)}%`;
     };
     window.resetMobileZoom = () => {
       remoteZoomVal = 1.0;
-      const img = document.getElementById("mobile-remote-img");
+      const img = document.getElementById("mobile-remote-img") || document.getElementById("remote-screen-img");
       if (img) img.style.transform = "scale(1.0)";
-      const lbl = document.getElementById("lbl-mobile-zoom");
+      const lbl = document.getElementById("lbl-mobile-zoom") || document.getElementById("lbl-mzoom-val");
       if (lbl) lbl.textContent = "100%";
     };
     window.handleMobileRemoteClick = (e) => {
@@ -3043,7 +3023,7 @@
       sendRemoteInput(action === "down" ? "key_down" : "key_up", { key: keyName });
     };
     window.saveHostSettings = async () => {
-      const inp = document.getElementById("setting-host-url");
+      const inp = document.getElementById("setting-host-url") || document.getElementById("cfg-local-url");
       if (inp && inp.value.trim()) {
         state.localUrl = inp.value.trim();
         localStorage.setItem(STORAGE_KEYS.LOCAL_URL, state.localUrl);
@@ -3054,6 +3034,55 @@
     };
     window.syncClipboard = () => executeCommand("get clipboard");
     window.toggleEmergencyStop = () => executeCommand("emergency stop");
+
+    try { initWebCanvas(); } catch (_) {}
+    try { initOscilloscopeCanvas(); } catch (_) {}
+    try { initEvents(); } catch (_) {}
+    try { updateVoiceModeUI(); } catch (_) {}
+    const savedChar = localStorage.getItem("mobile_voice_char") || "edith";
+    const savedTheme = localStorage.getItem("mobile_theme") || VOICE_THEME_MAP[savedChar] || "edith";
+    try { setMobileTheme(savedTheme, false); } catch (_) {}
+    try { setMobileVoiceCharacter(savedChar, false, false); } catch (_) {}
+    if (dom.quickHostInput) dom.quickHostInput.value = state.localUrl;
+
+    try {
+      await fetchServerConfig();
+      await resolveActiveEndpoint();
+      if (dom.quickHostInput) dom.quickHostInput.value = state.localUrl;
+      await pollLaptopVitals();
+    } catch (_) {}
+
+    // Heartbeat connection maintenance and bi-directional message polling
+    setInterval(async () => {
+      try {
+        await fetchServerConfig();
+        await resolveActiveEndpoint();
+        await pollLaptopVitals();
+        await pollPhoneMessagesAndTelemetry();
+      } catch (_) {}
+    }, 3500);
+
+    // Auto-reconnect immediately when mobile screen wakes or network reconnects
+    document.addEventListener("visibilitychange", async () => {
+      if (document.visibilityState === "visible") {
+        consecutiveOfflineFailures = 0;
+        try {
+          await resolveActiveEndpoint();
+          await pollLaptopVitals();
+          if (remoteStreamActive) {
+            isFetchingFrame = false;
+            requestAnimationFrame(fetchStreamLoop);
+          }
+        } catch (_) {}
+      }
+    });
+
+    window.addEventListener("online", async () => {
+      consecutiveOfflineFailures = 0;
+      try {
+        await resolveActiveEndpoint();
+      } catch (_) {}
+    });
   }
 
   window.addEventListener("DOMContentLoaded", init);

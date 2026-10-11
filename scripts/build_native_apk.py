@@ -91,17 +91,23 @@ def prepare_project_files() -> None:
         pass
 
     import json
-    cfg_path = MOBILE_ASSETS / "server_config.json"
-    cfg_path.write_text(
-        json.dumps({
-            "local_ip": detected_ip,
-            "local_url": f"http://{detected_ip}:8794",
-            "cloud_url": tunnel_url,
-            "ui_port": 8794,
-            "phone_port": 8795
-        }, indent=2),
-        encoding="utf-8"
-    )
+    cfg_data = {
+        "local_ip": detected_ip,
+        "local_url": f"http://{detected_ip}:8794",
+        "cloud_url": tunnel_url,
+        "ui_port": 8794,
+        "phone_port": 8795
+    }
+    cfg_json = json.dumps(cfg_data, indent=2)
+    cfg_js = f"window.__EDITH_CONFIG__ = {cfg_json};\n"
+
+    (MOBILE_ASSETS / "server_config.json").write_text(cfg_json, encoding="utf-8")
+    (MOBILE_ASSETS / "server_config.js").write_text(cfg_js, encoding="utf-8")
+
+    pub_mobile = BASE_DIR / "public" / "mobile"
+    if pub_mobile.exists():
+        (pub_mobile / "server_config.json").write_text(cfg_json, encoding="utf-8")
+        (pub_mobile / "server_config.js").write_text(cfg_js, encoding="utf-8")
 
     res_dir = BUILD_DIR / "res"
     (res_dir / "values").mkdir(parents=True, exist_ok=True)
@@ -226,6 +232,7 @@ def prepare_project_files() -> None:
         'import android.net.http.SslError;\n'
         'import android.util.Log;\n'
         'import android.webkit.ConsoleMessage;\n'
+        'import android.webkit.WebResourceRequest;\n'
         'import android.Manifest;\n'
         'import android.content.pm.PackageManager;\n\n'
         'public class MainActivity extends Activity {\n'
@@ -260,6 +267,10 @@ def prepare_project_files() -> None:
         '        webView.setWebViewClient(new WebViewClient() {\n'
         '            @Override\n'
         '            public boolean shouldOverrideUrlLoading(WebView view, String url) {\n'
+        '                return false;\n'
+        '            }\n'
+        '            @Override\n'
+        '            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {\n'
         '                return false;\n'
         '            }\n'
         '            @Override\n'
