@@ -89,6 +89,8 @@ def test_new_reflex_matches():
 
 def test_lifelong_skills_populated():
     """Verify that lifelong memory contains offline skills."""
+    from edith.tasks.seed_skills import seed
+    seed()
     skills = MEMORY.get_all_learned_skills()
     assert len(skills) >= 20
     goals = [s["goal"] for s in skills]
