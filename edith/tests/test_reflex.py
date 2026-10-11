@@ -78,6 +78,21 @@ class TestReflexEngine(unittest.TestCase):
         res2 = self.engine.execute_match(match2)
         self.assertIn("favorite color is crimson", str(res2))
 
+    def test_switch_voice_and_theme_execution(self):
+        match_voice = self.engine.evaluate("switch voice to jarvis")
+        self.assertIsNotNone(match_voice)
+        res_voice = self.engine.execute_match(match_voice)
+        self.assertIsInstance(res_voice, dict)
+        self.assertEqual(res_voice["action"], "switch_voice_character")
+        self.assertEqual(res_voice["character"]["id"], "jarvis")
+
+        match_theme = self.engine.evaluate("switch theme to spiderman")
+        self.assertIsNotNone(match_theme)
+        res_theme = self.engine.execute_match(match_theme)
+        self.assertIsInstance(res_theme, dict)
+        self.assertEqual(res_theme["action"], "switch_theme")
+        self.assertEqual(res_theme["theme"], "spiderman")
+
 
 if __name__ == "__main__":
     unittest.main()

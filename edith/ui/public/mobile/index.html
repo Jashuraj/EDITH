@@ -291,6 +291,14 @@
 
     <!-- Screen Viewport & Touch Interaction Canvas -->
     <div class="remote-viewport" id="remote-viewport">
+      <!-- Floating Tactical Zoom Pill -->
+      <div class="mobile-zoom-overlay" id="mobile-zoom-overlay">
+        <button class="zoom-pill-btn" id="btn-mzoom-out" title="Zoom Out">−</button>
+        <span class="zoom-pill-val" id="lbl-mzoom-val">100%</span>
+        <button class="zoom-pill-btn" id="btn-mzoom-in" title="Zoom In">+</button>
+        <button class="zoom-pill-btn zoom-fit-btn" id="btn-mzoom-fit" title="Fit Screen">FIT</button>
+      </div>
+
       <canvas id="vnc-canvas" class="vnc-canvas"></canvas>
       <img id="remote-screen-img" class="remote-screen-img" src="" alt="Windows Desktop Stream" draggable="false" style="display: none;">
       <div id="remote-virtual-cursor" class="remote-virtual-cursor" style="display: none;"></div>
@@ -298,8 +306,12 @@
 
       <!-- Virtual Gamepad Overlay (Active in Game Mode or by toggle) -->
       <div id="virtual-gamepad-overlay" class="virtual-gamepad-overlay" style="display: none;">
-        <!-- Left Analog Thumbstick -->
+        <!-- Left Analog Thumbstick with Direct SELECT & START Buttons -->
         <div class="gamepad-stick-container" id="gamepad-stick-container">
+          <div class="gamepad-side-controls">
+            <button class="game-btn game-side-btn select-btn" data-btn="SELECT">SELECT [Tab]</button>
+            <button class="game-btn game-side-btn start-btn" data-btn="START">START [Esc]</button>
+          </div>
           <div class="gamepad-stick-base" id="gamepad-stick-base">
             <div class="stick-label stick-label-up">W</div>
             <div class="stick-label stick-label-left">A</div>

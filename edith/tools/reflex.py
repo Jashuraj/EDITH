@@ -69,7 +69,9 @@ class ReflexEngine:
         self.register(r"^(?:youtube|yt)$", "open_app", "windows", {"app": "youtube"})
         self.register(app_prefix + r"open\s+youtube\s+and\s+(?:play|search(?:\s+for)?)\s+(?P<query>.+)$", "search_youtube", "windows", {})
         self.register(app_prefix + r"(?:play|open|switch\s+to)\s+(?P<query>.+?)\s+in\s+(?:the\s+)?same\s+tab$", "search_youtube_same_tab", "windows", {})
-        self.register(app_prefix + r"(?:play\s+another\s+video|open\s+another\s+video)\s+(?P<query>.+)$", "search_youtube_same_tab", "windows", {})
+        self.register(app_prefix + r"(?:play\s+another\s+video|open\s+another\s+video|play\s+another\s+song|open\s+another\s+song)(?:\s+(?P<query>.+))?$", "search_youtube_same_tab", "windows", {})
+        self.register(app_prefix + r"(?:open|play)\s+(?:this|that)\s+video(?:\s+or\s+that)?\s+in\s+(?:the\s+)?same\s+tab$", "search_youtube_same_tab", "windows", {"query": "popular video"})
+        self.register(app_prefix + r"(?:open|play)\s+(?P<query>.+?)\s+video\s+in\s+(?:the\s+)?same\s+tab$", "search_youtube_same_tab", "windows", {})
         self.register(app_prefix + r"play\s+(?P<query>.+?)(?:\s+(?:on|in)\s+(?:youtube|browser|the\s+browser|chrome|brave|edge))?$", "search_youtube", "windows", {})
         self.register(app_prefix + r"(?:open\s+(?:the\s+)?(?:browser|chrome|brave|edge)\s+and\s+)?play\s+(?P<query>.+)$", "search_youtube", "windows", {})
         self.register(app_prefix + r"search\s+youtube\s+(?:for\s+)?(?P<query>.+)$", "search_youtube", "windows", {})
@@ -181,11 +183,11 @@ class ReflexEngine:
         self.register(r"^(?:hey\s+edith[,\s]*)?(?:lock|lock\s+my|lock\s+the)\s+(?:pc|computer|screen|workstation)$", "lock_workstation", "windows", {})
         self.register(r"^(?:hey\s+edith[,\s]*)?(?:unlock|unlock\s+my|unlock\s+the)\s+(?:pc|computer|screen|laptop|workstation)$", "unlock_workstation", "windows", {})
         self.register(r"^(?:unlock\s+screen|unlock\s+pc|unlock\s+laptop)$", "unlock_workstation", "windows", {})
-        self.register(app_prefix + r"(?:switch\s+to|change\s+to|enter)\s+(?:the\s+)?camera(?:\s+mode)?$", "switch_to_camera_mode", "windows", {})
-        self.register(r"^(?:camera\s+mode|switch\s+to\s+camera)$", "switch_to_camera_mode", "windows", {})
+        self.register(app_prefix + r"(?:switch\s+to|change\s+to|enter|open|launch)\s+(?:the\s+)?camera(?:\s+mode)?$", "switch_to_camera_mode", "windows", {})
+        self.register(r"^(?:camera\s+mode|switch\s+to\s+camera|open\s+camera)$", "switch_to_camera_mode", "windows", {})
         self.register(r"^(?:hey\s+edith[,\s]*)?(?:take\s+(?:a\s+)?(?:picture|photo)|snap\s+(?:a\s+)?photo|capture\s+(?:a\s+)?photo|click\s+(?:a\s+)?(?:picture|photo))$", "take_picture", "windows", {})
-        self.register(r"^(?:hey\s+edith[,\s]*)?(?:open|show|display|view)\s+(?:the\s+)?(?:picture|photo)(?:s)?(?:\s+(?:which|that)\s+(?:u|you)\s+(?:have\s+)?(?:clicked|taken|captured))?$", "open_latest_picture", "windows", {})
-        self.register(r"^(?:hey\s+edith[,\s]*)?(?:open|show)\s+(?:the\s+)?latest\s+(?:picture|photo)$", "open_latest_picture", "windows", {})
+        self.register(r"^(?:hey\s+edith[,\s]*)?(?:open|show|display|view)\s+(?:the\s+)?(?:picture|photo|pic)(?:s)?(?:\s+(?:which|that)?\s*(?:u|you)?\s*(?:have\s*)?(?:clicked|taken|captured|snapped))?$", "open_latest_picture", "windows", {})
+        self.register(r"^(?:hey\s+edith[,\s]*)?(?:open|show)\s+(?:the\s+|my\s+)?latest\s+(?:picture|photo|pic)$", "open_latest_picture", "windows", {})
         self.register(app_prefix + r"(?:sleep|suspend)\s+(?:the\s+)?(?:pc|computer|system)$", "power_action", "windows", {"kind": "sleep"})
         self.register(app_prefix + r"cancel\s+(?:the\s+)?(?:shutdown|restart)$", "power_action", "windows", {"kind": "cancel_shutdown"})
 
@@ -367,7 +369,7 @@ class ReflexEngine:
             return "Jarvis voice output has been unmuted."
         elif match.command_name == "switch_voice_character":
             from edith.voice.speaker import SPEAKER
-            raw_target = match.parameters.get("character", "edith")
+            raw_target = match.params.get("character", "edith")
             char_info = SPEAKER.set_character(raw_target)
             msg = f"Voice protocol switched to {char_info['name']}. {char_info['welcome']}"
             SPEAKER.speak(msg, async_mode=True)
@@ -382,7 +384,7 @@ class ReflexEngine:
             lines = [f"• {c['name']} ({c['role']}) - {c['description']}" for c in chars]
             return "Available voice characters:\n" + "\n".join(lines)
         elif match.command_name == "switch_theme":
-            raw_mode = match.parameters.get("theme", "spiderman")
+            raw_mode = match.params.get("theme", "spiderman")
             mode = "spiderman" if "spider" in raw_mode.lower() else ("bnd" if "bnd" in raw_mode.lower() else ("focus" if "tactical" in raw_mode.lower() or "focus" in raw_mode.lower() else "default"))
             return {
                 "message": f"HUD theme switched to {mode.upper()}.",

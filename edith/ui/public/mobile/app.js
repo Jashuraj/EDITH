@@ -110,6 +110,10 @@
     btnRemoteZoomOut: document.getElementById("btn-remote-zoom-out"),
     btnRemoteZoomFit: document.getElementById("btn-remote-zoom-fit"),
     btnRemoteUnlock: document.getElementById("btn-remote-unlock"),
+    btnMzoomIn: document.getElementById("btn-mzoom-in"),
+    btnMzoomOut: document.getElementById("btn-mzoom-out"),
+    btnMzoomFit: document.getElementById("btn-mzoom-fit"),
+    lblMzoomVal: document.getElementById("lbl-mzoom-val"),
     remoteZoomTag: document.getElementById("remote-zoom-tag"),
     remoteFpsTag: document.getElementById("remote-fps-tag"),
     remoteTitleText: document.getElementById("remote-title-text"),
@@ -1217,11 +1221,19 @@
       remotePanX = 0;
       remotePanY = 0;
     }
+    const transformStr = `translate(${remotePanX}px, ${remotePanY}px) scale(${remoteZoom})`;
     if (dom.vncCanvas) {
-      dom.vncCanvas.style.transform = `translate(${remotePanX}px, ${remotePanY}px) scale(${remoteZoom})`;
+      dom.vncCanvas.style.transform = transformStr;
     }
+    if (dom.remoteScreenImg) {
+      dom.remoteScreenImg.style.transform = transformStr;
+    }
+    const zoomText = `${Math.round(remoteZoom * 100)}%`;
     if (dom.remoteZoomTag) {
-      dom.remoteZoomTag.textContent = `${Math.round(remoteZoom * 100)}%`;
+      dom.remoteZoomTag.textContent = zoomText;
+    }
+    if (dom.lblMzoomVal) {
+      dom.lblMzoomVal.textContent = zoomText;
     }
   }
 
@@ -1523,7 +1535,9 @@
     let isPinching = false;
 
     function getNormalizedCoords(clientX, clientY) {
-      const el = dom.vncCanvas || dom.remoteViewport;
+      const el = (dom.vncCanvas && dom.vncCanvas.style.display !== "none" && dom.vncCanvas.offsetWidth > 0)
+        ? dom.vncCanvas
+        : (dom.remoteScreenImg && dom.remoteScreenImg.style.display !== "none" && dom.remoteScreenImg.offsetWidth > 0 ? dom.remoteScreenImg : dom.remoteViewport);
       if (!el) return { x: 0.5, y: 0.5 };
       const rect = el.getBoundingClientRect();
       if (!rect || rect.width <= 1 || rect.height <= 1) return { x: 0.5, y: 0.5 };
@@ -1567,9 +1581,10 @@
     }
 
     dom.remoteViewport.addEventListener("touchstart", (e) => {
-      if (remoteGamepadMode || e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar")) {
+      if (remoteGamepadMode || e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar") || e.target.closest("#mobile-zoom-overlay")) {
         return;
       }
+      e.preventDefault();
 
       if (e.touches.length === 1) {
         isPinching = false;
@@ -1605,7 +1620,7 @@
     }, { passive: false });
 
     dom.remoteViewport.addEventListener("touchmove", (e) => {
-      if (remoteGamepadMode || e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar")) {
+      if (remoteGamepadMode || e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar") || e.target.closest("#mobile-zoom-overlay")) {
         return;
       }
       e.preventDefault();
@@ -1653,7 +1668,7 @@
       if (e.touches.length < 2) {
         isPinching = false;
       }
-      if (remoteGamepadMode || e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar")) {
+      if (remoteGamepadMode || e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar") || e.target.closest("#mobile-zoom-overlay")) {
         return;
       }
 
@@ -1666,9 +1681,27 @@
           showRipple(t.clientX, t.clientY);
 
           const now = Date.now();
-          if (now - lastTapTime < 300) {
-            sendRemoteInput("double_click", coords);
+          const tapInterval = now - lastTapTime;
+          if (tapInterval < 320) {
+            // Double tap zoom
             lastTapTime = 0;
+            if (remoteZoom > 1.2) {
+              remoteZoom = 1.0;
+              remotePanX = 0;
+              remotePanY = 0;
+              updateZoomTransform();
+              triggerHaptic(20);
+            } else {
+              remoteZoom = 2.0;
+              const el = (dom.vncCanvas && dom.vncCanvas.style.display !== "none" && dom.vncCanvas.offsetWidth > 0)
+                ? dom.vncCanvas
+                : (dom.remoteScreenImg || dom.remoteViewport);
+              const rect = el.getBoundingClientRect();
+              remotePanX = Math.round((rect.width / 2) - (t.clientX - rect.left));
+              remotePanY = Math.round((rect.height / 2) - (t.clientY - rect.top));
+              updateZoomTransform();
+              triggerHaptic(25);
+            }
           } else {
             sendRemoteInput("click", coords);
             lastTapTime = now;
@@ -1676,6 +1709,34 @@
         }
       }
     });
+
+    if (dom.btnMzoomIn) {
+      dom.btnMzoomIn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        remoteZoom = Math.min(4.0, remoteZoom + 0.35);
+        updateZoomTransform();
+        triggerHaptic(15);
+      });
+    }
+    if (dom.btnMzoomOut) {
+      dom.btnMzoomOut.addEventListener("click", (e) => {
+        e.stopPropagation();
+        remoteZoom = Math.max(1.0, remoteZoom - 0.35);
+        if (remoteZoom === 1.0) { remotePanX = 0; remotePanY = 0; }
+        updateZoomTransform();
+        triggerHaptic(15);
+      });
+    }
+    if (dom.btnMzoomFit) {
+      dom.btnMzoomFit.addEventListener("click", (e) => {
+        e.stopPropagation();
+        remoteZoom = 1.0;
+        remotePanX = 0;
+        remotePanY = 0;
+        updateZoomTransform();
+        triggerHaptic(20);
+      });
+    }
 
     if (dom.btnRemoteZoomIn) {
       dom.btnRemoteZoomIn.addEventListener("click", () => {
@@ -1751,13 +1812,23 @@
       return d;
     }
 
+    let pendingJoystick = null;
+
     async function dispatchJoystick(normX, normY) {
-      if (joystickInFlight) return;
+      if (joystickInFlight) {
+        pendingJoystick = { x: normX, y: normY };
+        return;
+      }
       joystickInFlight = true;
       try {
         await sendRemoteInput("joystick", { x: normX, y: normY });
       } finally {
         joystickInFlight = false;
+        if (pendingJoystick) {
+          const next = pendingJoystick;
+          pendingJoystick = null;
+          dispatchJoystick(next.x, next.y);
+        }
       }
     }
 
@@ -1782,7 +1853,7 @@
       const dir = getDirection(normX, normY);
       const now = performance.now();
 
-      if (dir !== currentDirection || (now - lastStickDispatch > 80 && !joystickInFlight)) {
+      if (dir !== currentDirection || (now - lastStickDispatch > 50)) {
         currentDirection = dir;
         lastStickDispatch = now;
         joystickActive = true;
@@ -1792,12 +1863,12 @@
 
     function resetStick() {
       activePointerId = null;
+      pendingJoystick = null;
       currentDirection = "neutral";
       dom.stickNub.style.transform = "translate(-50%, -50%)";
-      if (joystickActive) {
-        joystickActive = false;
-        sendRemoteInput("joystick_release");
-      }
+      joystickActive = false;
+      sendRemoteInput("joystick_release");
+      setTimeout(() => sendRemoteInput("joystick_release"), 60);
     }
 
     if (window.PointerEvent) {
@@ -2506,7 +2577,11 @@
     if (dom.btnOpenVnc) {
       dom.btnOpenVnc.addEventListener("click", () => {
         const ep = (state.activeEndpoint || defaultLocalUrl).replace(/\/+$/, "");
-        window.open(`${ep}/vnc`, "_blank");
+        const q = new URLSearchParams({
+          token: state.token || "",
+          device_id: "edith_mobile_pwa",
+        });
+        window.open(`${ep}/vnc?${q.toString()}`, "_blank");
       });
     }
 
@@ -2738,8 +2813,25 @@
       await pollLaptopVitals();
       await pollPhoneMessagesAndTelemetry();
     }, 3500);
-  }
 
+    // Auto-reconnect immediately when mobile screen wakes or network reconnects
+    document.addEventListener("visibilitychange", async () => {
+      if (document.visibilityState === "visible") {
+        consecutiveOfflineFailures = 0;
+        await resolveActiveEndpoint();
+        await pollLaptopVitals();
+        if (remoteStreamActive) {
+          isFetchingFrame = false;
+          requestAnimationFrame(fetchStreamLoop);
+        }
+      }
+    });
+
+    window.addEventListener("online", async () => {
+      consecutiveOfflineFailures = 0;
+      await resolveActiveEndpoint();
+    });
+  }
 
   window.addEventListener("DOMContentLoaded", init);
 })();

@@ -368,8 +368,11 @@ class WindowsTools:
 
             if target_hwnd:
                 u32.ShowWindow(target_hwnd, 9)  # SW_RESTORE
+                # Bypass Windows foreground lock
+                u32.keybd_event(0x12, 0, 0, 0)
+                u32.keybd_event(0x12, 0, 2, 0)
                 u32.SetForegroundWindow(target_hwnd)
-                time.sleep(0.08)
+                time.sleep(0.1)
 
             pyperclip.copy(url)
 
@@ -761,6 +764,31 @@ class WindowsTools:
                     for p in psutil.process_iter(["name"])
                 )
                 if camera_running:
+                    import ctypes
+                    u32 = ctypes.windll.user32
+                    cam_hwnd = None
+
+                    def _enum_cam(hwnd, _):
+                        nonlocal cam_hwnd
+                        if u32.IsWindowVisible(hwnd):
+                            length = u32.GetWindowTextLengthW(hwnd)
+                            if length > 0:
+                                buff = ctypes.create_unicode_buffer(length + 1)
+                                u32.GetWindowTextW(hwnd, buff, length + 1)
+                                if "camera" in buff.value.lower():
+                                    cam_hwnd = hwnd
+                                    return False
+                        return True
+
+                    WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+                    u32.EnumWindows(WNDENUMPROC(_enum_cam), 0)
+                    if cam_hwnd:
+                        u32.ShowWindow(cam_hwnd, 9)
+                        u32.keybd_event(0x12, 0, 0, 0)
+                        u32.keybd_event(0x12, 0, 2, 0)
+                        u32.SetForegroundWindow(cam_hwnd)
+                        time.sleep(0.15)
+
                     from edith.tools.remote_input import REMOTE_INPUT
                     REMOTE_INPUT.key_press("space")
                     return {

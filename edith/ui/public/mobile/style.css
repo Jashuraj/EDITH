@@ -915,9 +915,9 @@ html, body {
   box-shadow: 0 0 25px rgba(0, 229, 255, 0.1);
   image-rendering: -webkit-optimize-contrast;
   display: block;
-  transform-origin: 0 0;
+  transform-origin: center center;
   will-change: transform;
-  transition: transform 0.05s linear;
+  transition: none !important;
 }
 
 .remote-zoom-tag {
@@ -931,6 +931,59 @@ html, body {
   padding: 2px 6px;
   margin-right: 2px;
   user-select: none;
+}
+
+/* Floating Tactical Zoom HUD Pill on Mobile */
+.mobile-zoom-overlay {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(6, 12, 24, 0.9);
+  border: 1px solid var(--cyan-border);
+  border-radius: 20px;
+  padding: 3px 8px;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 50;
+  box-shadow: 0 0 14px rgba(0, 229, 255, 0.25);
+  touch-action: none;
+}
+
+.zoom-pill-btn {
+  background: rgba(0, 229, 255, 0.12);
+  border: 1px solid rgba(0, 229, 255, 0.4);
+  color: var(--cyan-glow);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.zoom-pill-btn:active {
+  background: var(--cyan-glow);
+  color: #000;
+}
+
+.zoom-pill-val {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--cyan-glow);
+  min-width: 40px;
+  text-align: center;
+}
+
+.zoom-fit-btn {
+  font-size: 0.65rem !important;
+  padding: 2px 6px !important;
+  color: #00e676 !important;
+  border-color: rgba(0, 230, 118, 0.4) !important;
 }
 
 .quick-host-bar {
@@ -1156,11 +1209,37 @@ html, body {
 
 .gamepad-stick-container {
   pointer-events: auto;
-  width: 140px;
-  height: 140px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
+}
+
+.gamepad-side-controls {
+  display: flex;
+  gap: 6px;
+  pointer-events: auto;
+}
+
+.game-side-btn {
+  width: 60px !important;
+  height: 28px !important;
+  border-radius: 6px !important;
+  font-size: 0.62rem !important;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: none;
+}
+.game-side-btn.select-btn {
+  background: rgba(255, 171, 0, 0.22) !important;
+  border: 1px solid #ffab00 !important;
+  color: #ffab00 !important;
+}
+.game-side-btn.start-btn {
+  background: rgba(0, 230, 118, 0.22) !important;
+  border: 1px solid #00e676 !important;
+  color: #00e676 !important;
 }
 
 .gamepad-stick-base {

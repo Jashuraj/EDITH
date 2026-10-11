@@ -174,7 +174,20 @@ class RemoteInputDispatcher:
             flags = 0
             if vk in (0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x2D, 0x2E, 0x5B):
                 flags |= 0x0001  # KEYEVENTF_EXTENDEDKEY
-            self._u32.keybd_event(vk, scan, flags, 0)
+
+            sent = False
+            try:
+                inp = INPUT(type=INPUT_KEYBOARD)
+                inp.ki.wVk = vk
+                inp.ki.wScan = scan
+                inp.ki.dwFlags = flags
+                if self._u32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT)) == 1:
+                    sent = True
+            except Exception:
+                pass
+
+            if not sent:
+                self._u32.keybd_event(vk, scan, flags, 0)
             self._held_keys.add(key_clean)
             self._last_action_time = time.time()
             return True
@@ -192,7 +205,20 @@ class RemoteInputDispatcher:
             flags = KEYEVENTF_KEYUP
             if vk in (0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x2D, 0x2E, 0x5B):
                 flags |= 0x0001
-            self._u32.keybd_event(vk, scan, flags, 0)
+
+            sent = False
+            try:
+                inp = INPUT(type=INPUT_KEYBOARD)
+                inp.ki.wVk = vk
+                inp.ki.wScan = scan
+                inp.ki.dwFlags = flags
+                if self._u32.SendInput(1, ctypes.byref(inp), ctypes.sizeof(INPUT)) == 1:
+                    sent = True
+            except Exception:
+                pass
+
+            if not sent:
+                self._u32.keybd_event(vk, scan, flags, 0)
             self._last_action_time = time.time()
             return True
 
@@ -387,6 +413,8 @@ class RemoteInputDispatcher:
 
         elif action == "mouse_down":
             btn = params.get("button", "left").lower()
+            if "x" in params and "y" in params:
+                MOUSE.move(float(params["x"]), float(params["y"]))
             if btn == "right":
                 if self._u32: self._u32.mouse_event(0x0008, 0, 0, 0, 0)
             elif btn == "middle":
@@ -397,6 +425,8 @@ class RemoteInputDispatcher:
 
         elif action == "mouse_up":
             btn = params.get("button", "left").lower()
+            if "x" in params and "y" in params:
+                MOUSE.move(float(params["x"]), float(params["y"]))
             if btn == "right":
                 if self._u32: self._u32.mouse_event(0x0010, 0, 0, 0, 0)
             elif btn == "middle":

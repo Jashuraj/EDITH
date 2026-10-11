@@ -45,7 +45,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['tensorflow', 'torch', 'scipy', 'matplotlib', 'ctranslate2', 'onnxruntime', 'faster_whisper', 'cv2'],
+    excludes=['tensorflow', 'torch', 'scipy', 'matplotlib', 'ctranslate2', 'onnxruntime', 'faster_whisper', 'cv2', 'PySide2', 'PyQt5', 'PySide6', 'PyQt6', 'shiboken2', 'shiboken6', 'tkinter', '_tkinter', 'PySimpleGUI'],
     noarchive=False,
     optimize=0,
 )

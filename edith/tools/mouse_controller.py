@@ -48,10 +48,13 @@ class MouseController:
 
         if self._u32:
             try:
-                # Ensure 1:1 screen mapping under display scaling (125%, 150%)
-                self._u32.SetProcessDPIAware()
+                # Per-Monitor V2 DPI awareness for pixel-perfect 1:1 display mapping
+                ctypes.windll.shcore.SetProcessDpiAwareness(2)
             except Exception:
-                pass
+                try:
+                    self._u32.SetProcessDPIAware()
+                except Exception:
+                    pass
 
         self.update_screen_metrics()
 
@@ -69,6 +72,7 @@ class MouseController:
         if not self._u32:
             return False
 
+        self.update_screen_metrics()
         clamped_x = max(0.0, min(1.0, float(norm_x)))
         clamped_y = max(0.0, min(1.0, float(norm_y)))
 
@@ -76,6 +80,10 @@ class MouseController:
         target_y = int(clamped_y * self.screen_height)
 
         self._u32.SetCursorPos(target_x, target_y)
+        # Also dispatch standard Win32 absolute mouse move event for applications and games
+        abs_x = int(clamped_x * 65535)
+        abs_y = int(clamped_y * 65535)
+        self._u32.mouse_event(MOUSEEVENTF_ABSOLUTE | MOUSEEVENTF_MOVE, abs_x, abs_y, 0, 0)
         self._last_move_time = time.perf_counter()
         return True
 
@@ -178,15 +186,23 @@ class MouseController:
             return {"success": success, "action": "move"}
 
         elif action in ("click", "left_click"):
+            if "x" in params and "y" in params:
+                self.move(float(params["x"]), float(params["y"]))
             return {"success": self.left_click(), "action": "left_click"}
 
         elif action == "right_click":
+            if "x" in params and "y" in params:
+                self.move(float(params["x"]), float(params["y"]))
             return {"success": self.right_click(), "action": "right_click"}
 
         elif action == "double_click":
+            if "x" in params and "y" in params:
+                self.move(float(params["x"]), float(params["y"]))
             return {"success": self.double_click(), "action": "double_click"}
 
         elif action in ("drag_start", "grab"):
+            if "x" in params and "y" in params:
+                self.move(float(params["x"]), float(params["y"]))
             return {"success": self.drag_start(), "action": "drag_start"}
 
         elif action in ("drag_end", "release"):

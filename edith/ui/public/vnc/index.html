@@ -46,18 +46,23 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 0 12px;
+      padding: 0 10px;
       z-index: 100;
+      overflow-x: auto;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      gap: 10px;
     }
     .vnc-brand {
       display: flex;
       align-items: center;
       gap: 8px;
       font-family: 'Orbitron', sans-serif;
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       font-weight: 700;
       letter-spacing: 1px;
       color: var(--cyan);
+      flex-shrink: 0;
     }
     .status-dot {
       width: 8px;
@@ -69,9 +74,10 @@
     .vnc-metrics {
       display: flex;
       align-items: center;
-      gap: 12px;
-      font-size: 0.72rem;
+      gap: 10px;
+      font-size: 0.70rem;
       color: rgba(255, 255, 255, 0.7);
+      flex-shrink: 0;
     }
     .vnc-metrics span {
       font-weight: 600;
@@ -79,7 +85,8 @@
     .vnc-tools {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
+      flex-shrink: 0;
     }
     .vnc-btn {
       background: rgba(0, 229, 255, 0.1);
@@ -90,7 +97,8 @@
       font-family: 'Orbitron', sans-serif;
       font-size: 0.68rem;
       cursor: pointer;
-      transition: all 0.2s;
+      transition: background 0.15s, color 0.15s;
+      flex-shrink: 0;
     }
     .vnc-btn:active, .vnc-btn.active {
       background: var(--cyan);
@@ -123,7 +131,38 @@
       cursor: crosshair;
       display: block;
       transform-origin: center center;
-      transition: transform 0.05s ease-out;
+      transition: none;
+      will-change: transform;
+    }
+    /* Floating Tactical Zoom HUD */
+    .vnc-zoom-overlay {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(6, 12, 24, 0.88);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 8px;
+      backdrop-filter: blur(8px);
+      z-index: 95;
+      box-shadow: 0 0 12px rgba(0, 229, 255, 0.25);
+      touch-action: none;
+    }
+    .vnc-zoom-val {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--cyan);
+      min-width: 42px;
+      text-align: center;
+      font-family: 'Share Tech Mono', monospace;
+    }
+    .zoom-btn {
+      padding: 3px 7px !important;
+      font-size: 0.72rem !important;
+      line-height: 1;
     }
     .gamepad-middle {
       position: absolute;
@@ -364,6 +403,14 @@
       <canvas id="vnc-canvas" tabindex="1"></canvas>
       <div id="vnc-ripple-container"></div>
 
+      <!-- Floating Tactical Zoom Controls -->
+      <div class="vnc-zoom-overlay" id="vnc-zoom-overlay">
+        <button class="vnc-btn zoom-btn" id="hud-zoom-in" title="Zoom In">🔍 +</button>
+        <span class="vnc-zoom-val" id="hud-zoom-level">100%</span>
+        <button class="vnc-btn zoom-btn" id="hud-zoom-out" title="Zoom Out">🔍 -</button>
+        <button class="vnc-btn zoom-btn" id="hud-zoom-fit" title="Reset Zoom">Fit</button>
+      </div>
+
       <!-- Type Text Modal -->
       <div class="type-modal" id="type-modal">
         <div style="font-size: 0.75rem; color: var(--cyan); margin-bottom: 6px;">TYPE DIRECTLY TO LAPTOP:</div>
@@ -425,6 +472,12 @@
   <script>
     // State & Configuration
     const origin = window.location.origin.startsWith("http") ? window.location.origin : "";
+    const urlParams = new URLSearchParams(window.location.search);
+    const authToken = urlParams.get("token") || localStorage.getItem("edith_token") || "";
+    const authDeviceId = urlParams.get("device_id") || localStorage.getItem("edith_device_id") || "edith_vnc_web";
+    if (authToken) localStorage.setItem("edith_token", authToken);
+    if (authDeviceId) localStorage.setItem("edith_device_id", authDeviceId);
+
     let targetFps = 90;
     let resolution = "720p";
     let gamepadActive = false;
@@ -450,6 +503,10 @@
     const btnZoomIn = document.getElementById("btn-zoom-in");
     const btnZoomOut = document.getElementById("btn-zoom-out");
     const btnZoomFit = document.getElementById("btn-zoom-fit");
+    const hudZoomIn = document.getElementById("hud-zoom-in");
+    const hudZoomOut = document.getElementById("hud-zoom-out");
+    const hudZoomFit = document.getElementById("hud-zoom-fit");
+    const hudZoomLevel = document.getElementById("hud-zoom-level");
     const btnUnlock = document.getElementById("btn-unlock");
     const btnGamepad = document.getElementById("btn-gamepad");
     const btnFullscreen = document.getElementById("btn-fullscreen");
@@ -459,9 +516,15 @@
     const typeTextInput = document.getElementById("type-text-input");
 
     function updateZoomTransform() {
+      remoteZoom = Math.max(1.0, Math.min(4.0, remoteZoom));
+      if (remoteZoom === 1.0) {
+        remotePanX = 0;
+        remotePanY = 0;
+      }
       if (canvas) {
         canvas.style.transform = `translate(${remotePanX}px, ${remotePanY}px) scale(${remoteZoom})`;
       }
+      if (hudZoomLevel) hudZoomLevel.textContent = `${Math.round(remoteZoom * 100)}%`;
     }
 
     // Input Sender
@@ -469,8 +532,12 @@
       try {
         await fetch(`${origin}/api/remote/input`, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "Bypass-Tunnel-Reminder": "true" },
-          body: JSON.stringify({ action, params, device_id: "edith_vnc_web" }),
+          headers: {
+            "Content-Type": "application/json",
+            "Bypass-Tunnel-Reminder": "true",
+            "X-Token": authToken,
+          },
+          body: JSON.stringify({ action, params, device_id: authDeviceId, token: authToken }),
         });
       } catch (err) {
         console.warn("Input notice:", err);
@@ -515,12 +582,15 @@
 
       const scale = resolution === "1080p" ? 1920 : (resolution === "720p" ? 1280 : 960);
       const quality = resolution === "1080p" ? 55 : (resolution === "720p" ? 48 : 42);
-      const streamUrl = `${origin}/api/screen/capture?scale=${scale}&quality=${quality}&t=${Date.now()}`;
+      const streamUrl = `${origin}/api/screen/capture?scale=${scale}&quality=${quality}&token=${encodeURIComponent(authToken)}&device_id=${encodeURIComponent(authDeviceId)}&bypass-tunnel-reminder=true&t=${Date.now()}`;
 
       try {
         const resp = await fetch(streamUrl, {
           cache: "no-store",
-          headers: { "Bypass-Tunnel-Reminder": "true" },
+          headers: {
+            "Bypass-Tunnel-Reminder": "true",
+            "X-Token": authToken,
+          },
         });
 
         if (!resp.ok) {
@@ -636,7 +706,8 @@
     let twoFingerStartY = 0;
 
     viewport.addEventListener("touchstart", (e) => {
-      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal")) return;
+      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal") || e.target.closest(".vnc-zoom-overlay")) return;
+      e.preventDefault();
 
       if (e.touches.length === 1) {
         isPinching = false;
@@ -668,7 +739,8 @@
     }, { passive: false });
 
     viewport.addEventListener("touchmove", (e) => {
-      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal")) return;
+      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal") || e.target.closest(".vnc-zoom-overlay")) return;
+      e.preventDefault();
 
       if (e.touches.length === 1 && !isPinching) {
         const t = e.touches[0];
@@ -705,16 +777,57 @@
       }
     }, { passive: false });
 
+    let lastTapTimestamp = 0;
+    let lastTapClientX = 0;
+    let lastTapClientY = 0;
+
+    const zoomInAction = () => {
+      remoteZoom = Math.min(4.0, remoteZoom + 0.25);
+      updateZoomTransform();
+    };
+    const zoomOutAction = () => {
+      remoteZoom = Math.max(1.0, remoteZoom - 0.25);
+      if (remoteZoom === 1.0) { remotePanX = 0; remotePanY = 0; }
+      updateZoomTransform();
+    };
+    const zoomFitAction = () => {
+      remoteZoom = 1.0;
+      remotePanX = 0;
+      remotePanY = 0;
+      updateZoomTransform();
+    };
+
     viewport.addEventListener("touchend", (e) => {
       clearTimeout(longPressTimer);
       if (e.touches.length < 2) isPinching = false;
-      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal")) return;
+      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal") || e.target.closest(".vnc-zoom-overlay")) return;
 
-      const dt = Date.now() - touchStartTime;
+      const now = Date.now();
+      const dt = now - touchStartTime;
       if (dt < 300 && e.changedTouches.length === 1) {
         const t = e.changedTouches[0];
         const dist = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY);
         if (dist < 15) {
+          // Double tap zoom detector
+          const tapInterval = now - lastTapTimestamp;
+          const tapDist = Math.hypot(t.clientX - lastTapClientX, t.clientY - lastTapClientY);
+          if (tapInterval < 320 && tapDist < 30) {
+            if (remoteZoom > 1.2) {
+              zoomFitAction();
+            } else {
+              remoteZoom = 2.0;
+              const rect = canvas.getBoundingClientRect();
+              remotePanX = Math.round((rect.width / 2) - (t.clientX - rect.left));
+              remotePanY = Math.round((rect.height / 2) - (t.clientY - rect.top));
+              updateZoomTransform();
+            }
+            lastTapTimestamp = 0;
+            return;
+          }
+          lastTapTimestamp = now;
+          lastTapClientX = t.clientX;
+          lastTapClientY = t.clientY;
+
           const coords = getNormalizedCoords(t.clientX, t.clientY);
           sendInput("click", coords);
         }
@@ -723,7 +836,7 @@
 
     // Desktop Mouse support on canvas
     viewport.addEventListener("mousedown", (e) => {
-      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal")) return;
+      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal") || e.target.closest(".vnc-zoom-overlay")) return;
       const coords = getNormalizedCoords(e.clientX, e.clientY);
       createRipple(e.clientX, e.clientY);
 
@@ -732,13 +845,13 @@
       } else if (e.button === 1) {
         sendInput("mouse_down", { button: "middle" });
       } else {
-        sendInput("mouse_down", { button: "left" });
+        sendInput("mouse_down", { button: "left", x: coords.x, y: coords.y });
         sendInput("move", coords);
       }
     });
 
     viewport.addEventListener("mouseup", (e) => {
-      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal")) return;
+      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal") || e.target.closest(".vnc-zoom-overlay")) return;
       if (e.button === 0) {
         sendInput("mouse_up", { button: "left" });
       } else if (e.button === 1) {
@@ -747,16 +860,17 @@
     });
 
     viewport.addEventListener("mousemove", (e) => {
-      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal")) return;
+      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal") || e.target.closest(".vnc-zoom-overlay")) return;
       const coords = getNormalizedCoords(e.clientX, e.clientY);
       queueMouseMove(coords);
     });
 
     viewport.addEventListener("wheel", (e) => {
       e.preventDefault();
-      if (e.ctrlKey) {
+      if (e.ctrlKey || e.altKey) {
         const factor = e.deltaY < 0 ? 1.15 : 0.85;
         remoteZoom = Math.max(1.0, Math.min(4.0, remoteZoom * factor));
+        if (remoteZoom === 1.0) { remotePanX = 0; remotePanY = 0; }
         updateZoomTransform();
       } else {
         const delta = e.deltaY < 0 ? 1 : -1;
@@ -797,27 +911,13 @@
       resMetric.textContent = `${resolution.toUpperCase()} HD`;
     });
 
-    // Zoom Controls
-    if (btnZoomIn) {
-      btnZoomIn.addEventListener("click", () => {
-        remoteZoom = Math.min(4.0, remoteZoom + 0.25);
-        updateZoomTransform();
-      });
-    }
-    if (btnZoomOut) {
-      btnZoomOut.addEventListener("click", () => {
-        remoteZoom = Math.max(1.0, remoteZoom - 0.25);
-        updateZoomTransform();
-      });
-    }
-    if (btnZoomFit) {
-      btnZoomFit.addEventListener("click", () => {
-        remoteZoom = 1.0;
-        remotePanX = 0;
-        remotePanY = 0;
-        updateZoomTransform();
-      });
-    }
+    // Hook Up All Zoom Controls (Header & Floating HUD)
+    if (btnZoomIn) btnZoomIn.addEventListener("click", zoomInAction);
+    if (btnZoomOut) btnZoomOut.addEventListener("click", zoomOutAction);
+    if (btnZoomFit) btnZoomFit.addEventListener("click", zoomFitAction);
+    if (hudZoomIn) hudZoomIn.addEventListener("click", zoomInAction);
+    if (hudZoomOut) hudZoomOut.addEventListener("click", zoomOutAction);
+    if (hudZoomFit) hudZoomFit.addEventListener("click", zoomFitAction);
 
     // Workstation Unlock
     if (btnUnlock) {

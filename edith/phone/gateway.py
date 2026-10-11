@@ -167,7 +167,9 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
         device_id = str(data.get("device_id", "")).strip()
         token = str(data.get("token", "")).strip() or str(self.headers.get("X-Token", "")).strip()
 
-        if PHONE_PROTOCOL._paired_devices:
+        client_ip = getattr(self, "client_address", [""])[0]
+        is_local = client_ip in ("127.0.0.1", "::1", "localhost")
+        if PHONE_PROTOCOL._paired_devices and not is_local:
             if not PHONE_PROTOCOL.verify_token(device_id, token):
                 self._send_json({"error": "Unauthorized device token."}, status=401)
                 return
@@ -473,7 +475,9 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
         query_params = urllib.parse.parse_qs(parsed.query)
 
         # Token authentication check for restricted endpoints
-        if PHONE_PROTOCOL._paired_devices:
+        client_ip = getattr(self, "client_address", [""])[0]
+        is_local = client_ip in ("127.0.0.1", "::1", "localhost")
+        if PHONE_PROTOCOL._paired_devices and not is_local:
             token = query_params.get("token", [None])[0] or self.headers.get("X-Token")
             device_id = query_params.get("device_id", [None])[0]
             # Verify if accessing remote stream or controls
@@ -611,19 +615,19 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
         elif parsed.path in ("/api/voice/tts", "/voice/tts"):
             text = query_params.get("text", [""])[0]
             char_id = query_params.get("char", query_params.get("character", [""]))[0] or None
-            wav_bytes = SPEAKER.synthesize_wav(text, character=char_id) if text else b""
-            if not wav_bytes:
+            audio_bytes, mime = SPEAKER.synthesize_audio(text, character=char_id) if text else (b"", "audio/wav")
+            if not audio_bytes:
                 self.send_response(204)
                 self.send_header("Access-Control-Allow-Origin", "*")
                 self.end_headers()
                 return
             self.send_response(200)
-            self.send_header("Content-Type", "audio/wav")
-            self.send_header("Content-Length", str(len(wav_bytes)))
+            self.send_header("Content-Type", mime)
+            self.send_header("Content-Length", str(len(audio_bytes)))
             self.send_header("Access-Control-Allow-Origin", "*")
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
-            self.wfile.write(wav_bytes)
+            self.wfile.write(audio_bytes)
             return
 
 

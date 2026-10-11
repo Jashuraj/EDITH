@@ -256,24 +256,29 @@ class ScreenStreamer:
 
     def _ensure_worker(self, scale_width: Optional[int] = 1280, quality: int = 55) -> None:
         """Start background capture worker thread if not already running."""
+        with self._lock:
+            self._target_scale = scale_width
+            self._target_quality = quality
         if self._worker_thread is not None and self._worker_thread.is_alive():
             return
         self._worker_running = True
         self._worker_thread = threading.Thread(
             target=self._worker_loop,
-            args=(scale_width, quality),
             daemon=True,
             name="edith_screen_capture_worker",
         )
         self._worker_thread.start()
 
-    def _worker_loop(self, scale_width: Optional[int], quality: int) -> None:
+    def _worker_loop(self) -> None:
         """Continuously capture desktop frames in background thread at target 90 FPS."""
         target_delay = 1.0 / 90.0
         while self._worker_running:
             t0 = time.perf_counter()
+            with self._lock:
+                sw = getattr(self, "_target_scale", 1280)
+                q = getattr(self, "_target_quality", 55)
             try:
-                self._capture_frame_internal(scale_width, quality)
+                self._capture_frame_internal(sw, q)
             except Exception:
                 time.sleep(0.005)
             dt = time.perf_counter() - t0
@@ -308,7 +313,7 @@ class ScreenStreamer:
             im = im.resize((scale_width, target_height), Image.Resampling.BILINEAR)
 
         buf = io.BytesIO()
-        im.save(buf, format="JPEG", quality=max(10, min(95, quality)), optimize=False)
+        im.save(buf, format="JPEG", quality=max(10, min(95, quality)), subsampling="4:2:0", optimize=False)
         data = buf.getvalue()
 
         with self._lock:
@@ -330,8 +335,7 @@ class ScreenStreamer:
         with self._lock:
             if (
                 self._last_frame_bytes is not None
-                and (now - self._last_capture_time < 0.02)
-                and (self._last_scale == scale_width)
+                and (now - self._last_capture_time < 0.35)
             ):
                 return self._last_frame_bytes
 
