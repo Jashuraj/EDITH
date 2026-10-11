@@ -1,0 +1,64 @@
+/* EDITH Gateway additions — built only from the existing EDITH design tokens. */
+.eg-body { max-height: min(78vh, 760px); overflow-y: auto; }
+.eg-p, .eg-hint { color: var(--muted); font-size: 11px; line-height: 1.55; margin: 6px 0; }
+.eg-hint code, .eg-mono { font-family: var(--mono); font-size: 10px; color: var(--cyan); word-break: break-all; white-space: pre-wrap; }
+.eg-h3 { font-family: var(--display); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--text); margin: 16px 0 8px; }
+.eg-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 8px 0; }
+.eg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.eg-grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.eg-card { border: 1px solid var(--line); background: rgba(255,255,255,0.015); padding: 12px; margin: 10px 0; border-radius: 4px; }
+.eg-card .eg-h3 { margin-top: 0; }
+.eg-list { display: flex; flex-direction: column; gap: 6px; margin: 8px 0; }
+.eg-scroll { max-height: 220px; overflow-y: auto; }
+.eg-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line-soft); background: var(--panel); border-radius: 4px; min-width: 0; }
+.eg-item.eg-due { border-color: var(--cyan); box-shadow: 0 0 0 1px var(--accent-glow) inset; }
+.eg-item-main { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.eg-item-main strong { font-size: 12px; color: var(--text); overflow-wrap: anywhere; }
+.eg-item-main small { font-size: 10px; color: var(--muted); font-family: var(--mono); overflow-wrap: anywhere; }
+.eg-item-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.eg-item-actions .secondary-button, .eg-item-actions .primary-button { padding: 5px 9px; font-size: 10px; }
+.eg-item select { background: var(--bg); color: var(--cyan); border: 1px solid var(--line); padding: 4px 6px; font-family: var(--mono); font-size: 10px; }
+.eg-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-family: var(--mono); color: var(--muted); border: 1px solid var(--line); padding: 4px 8px; border-radius: 3px; cursor: pointer; }
+.eg-chip input { accent-color: var(--cyan); }
+.eg-code { margin-top: 10px; padding: 10px; border: 1px dashed var(--cyan); text-align: center; }
+.eg-code b { display: block; font-family: var(--mono); font-size: 30px; letter-spacing: .25em; color: var(--cyan-bright); }
+.eg-code small { color: var(--muted); font-size: 10px; }
+.eg-link { text-decoration: none; display: inline-flex; align-items: center; cursor: pointer; }
+.eg-danger { border-color: #ff1744 !important; color: #ff6b81 !important; }
+.eg-pre { max-height: 200px; overflow: auto; font-family: var(--mono); font-size: 9.5px; color: var(--muted); background: var(--bg); border: 1px solid var(--line); padding: 8px; white-space: pre-wrap; }
+.eg-risk { font-family: var(--mono); font-size: 9px; text-transform: uppercase; padding: 2px 6px; border-radius: 3px; border: 1px solid var(--line); }
+.eg-risk-low { color: #10b981; border-color: #10b98166; }
+.eg-risk-medium { color: #f59e0b; border-color: #f59e0b66; }
+.eg-risk-high { color: #ff1744; border-color: #ff174466; }
+.eg-cal-title { font-family: var(--display); min-width: 150px; text-align: center; }
+.eg-cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; margin: 8px 0; }
+.eg-cal-h { font-family: var(--mono); font-size: 9px; color: var(--dim); text-align: center; padding: 3px 0; }
+.eg-cal-c { min-height: 62px; border: 1px solid var(--line-soft); background: var(--panel); padding: 3px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+.eg-cal-c > span { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.eg-cal-c.eg-today { border-color: var(--cyan); }
+.eg-cal-c.eg-empty { background: transparent; border-color: transparent; }
+.eg-tag { font-style: normal; font-size: 8.5px; line-height: 1.25; padding: 1px 3px; border-radius: 2px; background: var(--accent-glow); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.eg-tag.eg-hol { background: rgba(255, 23, 68, 0.18); }
+.eg-tag.eg-birthday, .eg-tag.eg-anniversary { background: rgba(245, 158, 11, 0.22); }
+.eg-tag.eg-exam { background: rgba(124, 77, 255, 0.25); }
+.rail-button { position: relative; }
+.eg-badge { position: absolute; top: 2px; right: 2px; min-width: 14px; height: 14px; border-radius: 7px; background: #ff1744; color: #fff; font-size: 9px; line-height: 14px; text-align: center; font-family: var(--mono); }
+#eg-remote-banner { position: fixed; top: 8px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; align-items: center; gap: 10px; padding: 6px 12px; background: #2a0710; border: 1px solid #ff1744; color: #ffd6dc; font-family: var(--mono); font-size: 10.5px; letter-spacing: .06em; box-shadow: 0 0 18px rgba(255,23,68,.35); }
+#eg-remote-banner[hidden] { display: none; }
+#eg-toasts { position: fixed; right: 14px; bottom: 14px; z-index: 9998; display: flex; flex-direction: column; gap: 8px; max-width: min(360px, 92vw); }
+.eg-toast { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--cyan); box-shadow: 0 0 20px var(--accent-glow); }
+.eg-toast strong { font-size: 12px; color: var(--text); }
+.eg-toast small { grid-column: 1; font-size: 10px; color: var(--muted); }
+.eg-toast .icon-button { grid-row: 1 / span 2; grid-column: 2; }
+.online-status.eg-warn .status-dot { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
+.btn-emergency-top.eg-active { background: #ff1744; color: #fff; }
+/* Responsive fixes for the original dialogs on phones/small laptops */
+@media (max-width: 960px) { .dialog-wide { width: min(920px, 96vw) !important; } }
+@media (max-width: 640px) {
+  .dialog { width: 96vw !important; max-height: 92vh; }
+  .eg-item { flex-wrap: wrap; }
+  .eg-cal-c { min-height: 44px; }
+  .eg-tag { font-size: 7.5px; }
+}
+:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; } }

@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>E.D.I.T.H. Mobile</title>
+  
+  <!-- Progressive Web App Meta -->
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#080f15">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="EDITH">
+  
+  <link rel="icon" type="image/x-icon" href="./assets/favicon.ico">
+  <link rel="apple-touch-icon" href="./assets/icon-192.png">
+  
+  <!-- ASTRA 6 High-Tech Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="./style.css?v=3.0.0">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body class="theme-edith" data-theme="edith">
+
+  <!-- Background Ambience -->
+  <div class="hud-vignette"></div>
+
+  <!-- Primary Application Container -->
+  <div class="app-container">
+    
+    <!-- ── Top Header HUD ── -->
+    <header class="hud-header">
+      <div class="brand-section" id="btn-brand-theme" title="EDITH Autonomous OS">
+        <img src="./assets/spiderman_logo.svg" alt="EDITH Emblem" class="brand-logo-img">
+        <span class="brand-title">E.D.I.T.H.<span>.</span></span>
+      </div>
+
+      <div class="header-status-badge" id="btn-status-badge" onclick="openModal('settings')">
+        <span class="status-dot green" id="status-dot"></span>
+        <span id="status-text">SYSTEM ONLINE</span>
+      </div>
+
+      <div class="header-actions">
+        <button class="btn-icon" id="btn-open-mixer" onclick="openModal('mixer')" title="Audio Mixer">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+        </button>
+        <button class="btn-icon" id="btn-open-guide" onclick="openModal('guide')" title="Command Guide">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        </button>
+        <button class="btn-icon" id="btn-open-settings" onclick="openModal('settings')" title="Connection & Settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0 2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- ── Voice Persona & Theme Switcher Bar ── -->
+    <div class="voice-controls-bar">
+      <button class="voice-pill active" data-char="edith" onclick="setMobileTheme('edith')">EDITH</button>
+      <button class="voice-pill" data-char="jarvis" onclick="setMobileTheme('jarvis')">JARVIS</button>
+      <button class="voice-pill" data-char="friday" onclick="setMobileTheme('friday')">FRIDAY</button>
+      <button class="voice-pill" data-char="karen" onclick="setMobileTheme('karen')">KAREN</button>
+      <button class="voice-pill" data-char="spiderman" onclick="setMobileTheme('spiderman')">SPIDEY</button>
+      <button class="voice-pill" data-char="ultron" onclick="setMobileTheme('ultron')">ULTRON</button>
+    </div>
+
+    <!-- ── Center HUD Body (Scrollable) ── -->
+    <main class="hud-body" id="hud-body">
+
+      <!-- Holographic Core Reticle Stage -->
+      <div class="reticle-container">
+        <div class="orb-canvas-mobile" id="mobile-orb-canvas"></div>
+        <div class="spider-core" id="spider-core-trigger" onclick="toggleMobileMic()" title="Tap to Speak">
+          <img src="./assets/spiderman_logo.svg" alt="Core Insignia" class="spider-core-img">
+        </div>
+      </div>
+
+      <!-- Quick Action Protocols Bar -->
+      <div class="quick-actions-bar">
+        <button class="chip-btn cyan-chip" onclick="openRemoteOverlay()">🖥️ Remote Desktop</button>
+        <button class="chip-btn cyan-chip" onclick="openGamepadOverlay()">🎮 Game Controller</button>
+        <button class="chip-btn" onclick="sendMobileCommand('unlock screen')">🔓 Unlock PC</button>
+        <button class="chip-btn" onclick="sendMobileCommand('lock screen')">🔒 Lock PC</button>
+        <button class="chip-btn" onclick="sendMobileCommand('look at my screen')">👁️ See Screen</button>
+        <button class="chip-btn" onclick="sendMobileCommand('open youtube and play brand new day trailer')">▶ Play Video</button>
+        <button class="chip-btn" onclick="syncClipboard()">📋 Sync Clip</button>
+        <button class="chip-btn red-chip" onclick="toggleEmergencyStop()">🛑 E-STOP</button>
+      </div>
+
+      <!-- Laptop Vitals Status Card -->
+      <div class="vitals-card">
+        <div class="vitals-header">
+          <span>HOST TELEMETRY</span>
+          <span style="color:var(--cyan);">CONNECTED</span>
+        </div>
+        <div class="vitals-grid">
+          <div class="vital-item">
+            <div class="vital-item-top">
+              <span>CPU LOAD</span>
+              <span id="vital-cpu-val">--%</span>
+            </div>
+            <div class="vital-progress-track">
+              <div class="vital-progress-bar" id="vital-cpu-bar" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <div class="vital-item">
+            <div class="vital-item-top">
+              <span>RAM USAGE</span>
+              <span id="vital-ram-val">-- GB</span>
+            </div>
+            <div class="vital-progress-track">
+              <div class="vital-progress-bar" id="vital-ram-bar" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <div class="vital-item">
+            <div class="vital-item-top">
+              <span>BATTERY</span>
+              <span id="vital-bat-val">--%</span>
+            </div>
+            <div class="vital-progress-track">
+              <div class="vital-progress-bar" id="vital-bat-bar" style="width: 0%;"></div>
+            </div>
+          </div>
+
+          <div class="vital-item">
+            <div class="vital-item-top">
+              <span>STORAGE (C:)</span>
+              <span id="vital-disk-val">-- GB</span>
+            </div>
+            <div class="vital-progress-track">
+              <div class="vital-progress-bar" id="vital-disk-bar" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Live Feedback Console Card -->
+      <div class="live-console-card">
+        <div class="console-header">
+          <span id="console-channel">CHANNEL: READY</span>
+          <span id="console-ping">LATENCY: 12ms</span>
+        </div>
+        <div id="console-output" style="color:#dce6ee;">
+          EDITH Mainframe online. Reflex engine active.
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ── Bottom Command Input Capsule ── -->
+    <footer class="hud-footer">
+      <div class="input-capsule">
+        <input type="text" id="cmd-input" placeholder="Give EDITH instruction or query..." autocomplete="off">
+        <button class="btn-send" id="btn-send" onclick="submitMobileInput()" title="Send">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
+      </div>
+
+      <button class="btn-mic-mobile" id="btn-mic" onclick="toggleMobileMic()" title="Voice Input">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path></svg>
+      </button>
+      <button class="btn-mic-mobile" id="btn-continuous-mic" onclick="toggleContinuousSpeech()" title="Always-Listening Continuous Mic Toggle" style="width:38px; height:38px; margin-left:6px; background:#0d1b24; border:1px solid var(--border-color); border-radius:50%; display:grid; place-items:center; color:var(--text-dim);">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+      </button>
+    </footer>
+
+    <!-- ── Fixed Mobile Bottom Navbar ── -->
+    <nav class="mobile-navbar">
+      <button class="nav-tab-btn active" id="nav-btn-core" onclick="switchNavTab('core')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polygon points="12 6 12 12 16 14"></polygon></svg>
+        <span>CORE</span>
+      </button>
+      <button class="nav-tab-btn" id="nav-btn-remote" onclick="openRemoteOverlay()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+        <span>REMOTE</span>
+      </button>
+      <button class="nav-tab-btn" id="nav-btn-gamepad" onclick="openGamepadOverlay()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="6"></rect><line x1="6" y1="12" x2="10" y2="12"></line><line x1="8" y1="10" x2="8" y2="14"></line></svg>
+        <span>GAMEPAD</span>
+      </button>
+      <button class="nav-tab-btn" id="nav-btn-guide" onclick="openModal('guide')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+        <span>GUIDE</span>
+      </button>
+      <button class="nav-tab-btn" id="nav-btn-settings" onclick="openModal('settings')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0 2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        <span>SETTINGS</span>
+      </button>
+    </nav>
+
+  </div>
+
+  <!-- ============================================================
+       Fullscreen Remote Desktop & Virtual Gamepad Layers
+       ============================================================ -->
+
+  <!-- Remote Desktop Overlay -->
+  <div id="remote-desktop-overlay" class="remote-desktop-overlay" style="display: none;">
+    <div class="remote-top-bar">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="status-dot green"></span>
+        <span style="color:var(--cyan); font-weight:600;">HOST VIEW</span>
+      </div>
+
+      <div style="display:flex; gap:6px;">
+        <button class="chip-btn" onclick="sendMobileCommand('unlock screen')">🔓 Unlock</button>
+        <button class="chip-btn" onclick="refreshMobileRemoteStream()">🔄</button>
+        <button class="chip-btn" onclick="openGamepadOverlay()">🎮 Pad</button>
+        <button class="chip-btn red-chip" onclick="closeRemoteOverlay()">✕</button>
+      </div>
+    </div>
+
+    <div class="remote-viewport" id="remote-viewport">
+      <!-- Zoom pill -->
+      <div class="mobile-zoom-overlay">
+        <button class="zoom-pill-btn" onclick="zoomMobileRemote(0.8)">−</button>
+        <span id="lbl-mobile-zoom" style="color:var(--cyan);">100%</span>
+        <button class="zoom-pill-btn" onclick="zoomMobileRemote(1.2)">+</button>
+        <button class="zoom-pill-btn" onclick="resetMobileZoom()">FIT</button>
+      </div>
+
+      <img id="mobile-remote-img" src="" alt="Host Desktop Stream" style="max-width:100%; max-height:100%;" onclick="handleMobileRemoteClick(event)">
+    </div>
+  </div>
+
+  <!-- Virtual Gamepad Overlay -->
+  <div id="virtual-gamepad-overlay" class="virtual-gamepad-overlay" style="display: none;">
+    <div class="remote-top-bar">
+      <span style="color:var(--cyan);">🎮 TACTICAL GAME CONTROLLER</span>
+      <button class="chip-btn red-chip" onclick="closeGamepadOverlay()">✕ Exit</button>
+    </div>
+
+    <div style="flex:1; position:relative; background:#080f15;">
+      <!-- Left 360 Thumbstick & Select/Start -->
+      <div class="gamepad-stick-container" id="mobile-stick-base">
+        <div class="gamepad-stick-nub" id="mobile-stick-nub"></div>
+      </div>
+
+      <div style="position:absolute; top:20px; left:20px; display:flex; gap:10px;">
+        <button class="chip-btn" onmousedown="dispatchGamepadKey('Tab','down')" onmouseup="dispatchGamepadKey('Tab','up')">SELECT [Tab]</button>
+        <button class="chip-btn" onmousedown="dispatchGamepadKey('Escape','down')" onmouseup="dispatchGamepadKey('Escape','up')">START [Esc]</button>
+      </div>
+
+      <!-- Right Action Diamond (A, B, X, Y) -->
+      <div class="gamepad-actions-container">
+        <span></span>
+        <button class="game-btn" onmousedown="dispatchGamepadKey('r','down')" onmouseup="dispatchGamepadKey('r','up')">Y</button>
+        <span></span>
+        <button class="game-btn" onmousedown="dispatchGamepadKey('e','down')" onmouseup="dispatchGamepadKey('e','up')">X</button>
+        <span></span>
+        <button class="game-btn" onmousedown="dispatchGamepadKey('c','down')" onmouseup="dispatchGamepadKey('c','up')">B</button>
+        <span></span>
+        <button class="game-btn" onmousedown="dispatchGamepadKey('space','down')" onmouseup="dispatchGamepadKey('space','up')">A</button>
+        <span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Command Guide Modal -->
+  <div class="remote-desktop-overlay" id="modal-guide" style="display: none; background: rgba(8,15,21,0.95); padding: 16px;">
+    <div class="remote-top-bar" style="background:transparent; border-bottom:1px solid var(--line); margin-bottom:12px;">
+      <span style="color:var(--cyan); font-weight:bold;">TACTICAL COMMAND GUIDE</span>
+      <button class="chip-btn red-chip" onclick="closeModal('guide')">✕</button>
+    </div>
+    <div style="overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:8px;">
+      <button class="chip-btn" onclick="sendMobileCommand('open youtube and play brand new day trailer'); closeModal('guide');">open youtube and play brand new day trailer</button>
+      <button class="chip-btn" onclick="sendMobileCommand('play lofi beats on youtube'); closeModal('guide');">play lofi beats on youtube</button>
+      <button class="chip-btn" onclick="sendMobileCommand('unlock screen'); closeModal('guide');">unlock screen</button>
+      <button class="chip-btn" onclick="sendMobileCommand('lock screen'); closeModal('guide');">lock screen</button>
+      <button class="chip-btn" onclick="sendMobileCommand('open chrome'); closeModal('guide');">open chrome</button>
+      <button class="chip-btn" onclick="sendMobileCommand('open notepad'); closeModal('guide');">open notepad</button>
+      <button class="chip-btn" onclick="sendMobileCommand('take screenshot'); closeModal('guide');">take screenshot</button>
+      <button class="chip-btn" onclick="sendMobileCommand('battery status'); closeModal('guide');">battery status</button>
+    </div>
+  </div>
+
+  <!-- Settings Modal -->
+  <div class="remote-desktop-overlay" id="modal-settings" style="display: none; background: rgba(8,15,21,0.95); padding: 16px;">
+    <div class="remote-top-bar" style="background:transparent; border-bottom:1px solid var(--line); margin-bottom:12px;">
+      <span style="color:var(--cyan); font-weight:bold;">CONNECTION & SETTINGS</span>
+      <button class="chip-btn red-chip" onclick="closeModal('settings')">✕</button>
+    </div>
+    <div style="display:flex; flex-direction:column; gap:12px;">
+      <label style="font-family:var(--font-mono); font-size:9px; color:var(--muted);">HOST MAINFRAME URL</label>
+      <input type="text" id="setting-host-url" value="" placeholder="http://192.168.1.20:3000 or https://your-pc.ts.net" style="background:#0b141c; border:1px solid var(--line); padding:10px; color:var(--text); border-radius:6px; font-family:var(--font-mono); font-size:11px;">
+      <label for="setting-token" style="font-family:var(--font-mono); font-size:9px; color:var(--muted);">PAIRING CODE (6 digits from HUD → Devices & Remote)</label>
+      <input type="text" id="setting-token" inputmode="numeric" autocomplete="one-time-code" maxlength="64" placeholder="123456" style="background:#0b141c; border:1px solid var(--line); padding:10px; color:var(--text); border-radius:6px; font-family:var(--font-mono); font-size:11px;">
+      <button class="chip-btn cyan-chip" onclick="saveHostSettings()" style="padding:10px;">Connect to Host</button>
+    </div>
+  </div>
+
+  <script src="./edith-pair.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

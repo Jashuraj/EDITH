@@ -1,0 +1,578 @@
+/* ============================================================
+   EDITH Mobile HUD & Native APK — ASTRA 6 Design Architecture
+   v3.0.0 — Unified Responsive Cybernetic Interface
+   ============================================================ */
+
+:root,
+body.theme-edith,
+body[data-theme="edith"] {
+  --bg: #080f15;
+  --panel: #0d161e;
+  --line: #20303b;
+  --line-soft: #192730;
+  --text: #dce6ee;
+  --muted: #8293a2;
+  --dim: #536879;
+  --cyan: #6bddcf;
+  --cyan-bright: #80f0dd;
+  --accent: #6bddcf;
+  --accent-glow: rgba(107, 221, 207, 0.25);
+  --orb-core: #37dce9;
+  --orb-rim: #128395;
+  --font-mono: "IBM Plex Mono", monospace;
+  --font-display: "Space Grotesk", sans-serif;
+  --font-body: "Inter", -apple-system, sans-serif;
+  color-scheme: dark;
+}
+
+body.theme-jarvis,
+body[data-theme="jarvis"] {
+  --bg: #120902;
+  --panel: #1c1006;
+  --line: #3b2814;
+  --line-soft: #2a1b0c;
+  --text: #fbeee0;
+  --muted: #a38c75;
+  --dim: #715840;
+  --cyan: #f59e0b;
+  --cyan-bright: #fbbf24;
+  --accent: #f59e0b;
+  --accent-glow: rgba(245, 158, 11, 0.25);
+  --orb-core: #fbbf24;
+  --orb-rim: #b45309;
+}
+
+body.theme-friday,
+body[data-theme="friday"] {
+  --bg: #030f0a;
+  --panel: #071911;
+  --line: #123826;
+  --line-soft: #0c2519;
+  --text: #dcfaee;
+  --muted: #7ca893;
+  --dim: #487560;
+  --cyan: #10b981;
+  --cyan-bright: #34d399;
+  --accent: #10b981;
+  --accent-glow: rgba(16, 185, 129, 0.25);
+  --orb-core: #34d399;
+  --orb-rim: #047857;
+}
+
+body.theme-karen,
+body[data-theme="karen"] {
+  --bg: #130308;
+  --panel: #200610;
+  --line: #441124;
+  --line-soft: #2e0b18;
+  --text: #fce7ef;
+  --muted: #b47f93;
+  --dim: #794357;
+  --cyan: #f43f5e;
+  --cyan-bright: #fb7185;
+  --accent: #f43f5e;
+  --accent-glow: rgba(244, 63, 94, 0.25);
+  --orb-core: #fb7185;
+  --orb-rim: #be123c;
+}
+
+body.theme-spiderman,
+body[data-theme="spiderman"] {
+  --bg: #070914;
+  --panel: #0d1222;
+  --line: #1e284a;
+  --line-soft: #141b34;
+  --text: #e0e7ff;
+  --muted: #8c9ac9;
+  --dim: #505f8f;
+  --cyan: #e11d48;
+  --cyan-bright: #38bdf8;
+  --accent: #e11d48;
+  --accent-glow: rgba(225, 29, 72, 0.25);
+  --orb-core: #e11d48;
+  --orb-rim: #2563eb;
+}
+
+body.theme-ultron,
+body[data-theme="ultron"] {
+  --bg: #0c0203;
+  --panel: #1a0507;
+  --line: #450a0f;
+  --line-soft: #2e060a;
+  --text: #fee2e2;
+  --muted: #ba777b;
+  --dim: #7f3b3f;
+  --cyan: #ff1744;
+  --cyan-bright: #ff5252;
+  --accent: #ff1744;
+  --accent-glow: rgba(255, 23, 68, 0.25);
+  --orb-core: #ff1744;
+  --orb-rim: #990000;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  overflow: hidden;
+  position: fixed;
+}
+
+/* Background vignette */
+.hud-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 30%, var(--accent-glow) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Primary Mobile Container */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  position: relative;
+  z-index: 1;
+}
+
+/* ── Top Header HUD ── */
+.hud-header {
+  height: 58px;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(11, 19, 27, 0.9);
+  backdrop-filter: blur(10px);
+  z-index: 20;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.brand-logo-img {
+  width: 26px;
+  height: 26px;
+}
+.brand-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--text);
+}
+.brand-title span { color: var(--cyan); }
+
+.header-status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(16, 28, 38, 0.7);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.8px;
+  color: var(--cyan);
+}
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 6px var(--cyan);
+}
+.status-dot.green { background: #10b981; box-shadow: 0 0 6px #10b981; }
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.btn-icon {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: rgba(16, 28, 38, 0.6);
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+}
+.btn-icon:hover, .btn-icon:active {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+
+/* Voice Character Selector Bar */
+.voice-controls-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(10, 18, 26, 0.75);
+  border-bottom: 1px solid var(--line);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.voice-controls-bar::-webkit-scrollbar { display: none; }
+.voice-pill {
+  font-family: var(--font-mono);
+  font-size: 8.5px;
+  letter-spacing: 0.8px;
+  padding: 4px 10px;
+  border-radius: 12px;
+  color: var(--muted);
+  background: rgba(16, 28, 38, 0.5);
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.voice-pill.active {
+  color: #ffffff;
+  border-color: var(--cyan);
+  background: var(--accent-glow);
+  box-shadow: 0 0 8px var(--accent-glow);
+  font-weight: 600;
+}
+
+/* ── Center Content Body (Tabs) ── */
+.hud-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 14px 70px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* Reticle & Orb Stage */
+.reticle-container {
+  width: 100%;
+  height: 220px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.orb-canvas-mobile {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Central Mic Trigger */
+.spider-core {
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  border: 2px solid var(--cyan);
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle, rgba(107, 221, 207, 0.25) 0%, rgba(13, 22, 30, 0.9) 70%);
+  box-shadow: 0 0 25px var(--accent-glow);
+  position: relative;
+  z-index: 5;
+  cursor: pointer;
+}
+.spider-core.is-listening {
+  animation: mic-pulse 1.8s infinite;
+  background: var(--cyan);
+}
+.spider-core-img {
+  width: 36px;
+  height: 36px;
+}
+
+/* Quick Action Chips Bar */
+.quick-actions-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.chip-btn {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  background: rgba(16, 28, 38, 0.7);
+  border: 1px solid var(--line);
+  color: var(--text);
+  white-space: nowrap;
+}
+.chip-btn:active {
+  border-color: var(--cyan);
+  background: var(--accent-glow);
+}
+.chip-btn.cyan-chip { border-color: var(--cyan); color: var(--cyan); }
+.chip-btn.red-chip { border-color: #ff1744; color: #ff5252; }
+
+/* Vitals Card */
+.vitals-card {
+  background: linear-gradient(135deg, #101c26, #0c151e);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 12px;
+}
+.vitals-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--muted);
+}
+.vitals-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px 12px;
+}
+.vital-item-top {
+  display: flex;
+  justify-content: space-between;
+  font-size: 8.5px;
+  font-family: var(--font-mono);
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.vital-progress-track {
+  height: 4px;
+  background: #192732;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.vital-progress-bar {
+  height: 100%;
+  background: var(--cyan);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+}
+
+/* Live Console Card */
+.live-console-card {
+  background: linear-gradient(135deg, #101c26, #0c151e);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 12px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.6;
+}
+.console-header {
+  display: flex;
+  justify-content: space-between;
+  color: var(--muted);
+  font-size: 8px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+
+/* ── Bottom Command Capsule ── */
+.hud-footer {
+  position: fixed;
+  bottom: 50px;
+  left: 0;
+  right: 0;
+  padding: 8px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(8, 15, 21, 0.95);
+  backdrop-filter: blur(10px);
+  border-top: 1px solid var(--line);
+  z-index: 25;
+}
+.input-capsule {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: #0d1720;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 4px 10px;
+}
+.input-capsule input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--text);
+  font-size: 12px;
+}
+.btn-send {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--cyan);
+  color: #080f15;
+  border: 0;
+  display: grid;
+  place-items: center;
+}
+.btn-mic-mobile {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(16, 28, 38, 0.8);
+  border: 1px solid var(--cyan);
+  color: var(--cyan);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+/* ── Bottom Navigation Bar ── */
+.mobile-navbar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  background: #09121a;
+  border-top: 1px solid var(--line);
+  z-index: 30;
+}
+.nav-tab-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 7.5px;
+  letter-spacing: 0.5px;
+  border: 0;
+  background: none;
+}
+.nav-tab-btn svg { width: 17px; height: 17px; }
+.nav-tab-btn.active {
+  color: var(--cyan);
+  font-weight: 600;
+}
+
+/* ── Fullscreen Remote Desktop & Gamepad Overlays ── */
+.remote-desktop-overlay,
+.virtual-gamepad-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000000;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+}
+
+.remote-top-bar {
+  height: 44px;
+  background: #0b141c;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  z-index: 55;
+}
+.remote-viewport {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  touch-action: none;
+}
+.vnc-canvas {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+/* Floating Zoom Pill */
+.mobile-zoom-overlay {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(11, 20, 28, 0.85);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 3px 6px;
+  z-index: 60;
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+.zoom-pill-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #172732;
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-weight: bold;
+}
+
+/* Gamepad HUD Layout */
+.gamepad-stick-container {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  width: 140px;
+  height: 140px;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+  background: rgba(16, 28, 38, 0.6);
+  display: grid;
+  place-items: center;
+  touch-action: none;
+}
+.gamepad-stick-nub {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 16px var(--accent-glow);
+  position: absolute;
+}
+.gamepad-actions-container {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: grid;
+  grid-template-columns: repeat(3, 44px);
+  grid-template-rows: repeat(3, 44px);
+  gap: 8px;
+}
+
+@keyframes mic-pulse {
+  0%, 100% { box-shadow: 0 0 0 8px var(--accent-glow), 0 0 25px var(--accent-glow); }
+  50% { box-shadow: 0 0 0 14px var(--accent-glow), 0 0 40px var(--accent-glow); }
+}

@@ -1,0 +1,6 @@
+{
+  "_comment": "Copy to allowlist.json to approve extra apps. Format: name: [launch command or full path, process image for verification]. The gateway allowlist (src/lib/tools.ts) must also include the name.",
+  "apps": {
+    "obs": ["C:/Program Files/obs-studio/bin/64bit/obs64.exe", "obs64.exe"]
+  }
+}

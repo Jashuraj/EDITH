@@ -1,0 +1,1891 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EDITH — Autonomous AI Operating System</title>
+
+  <!-- Typography: Space Grotesk (display), Inter (body), IBM Plex Mono (technical) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="style.css?v=3.0.0">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body class="theme-edith" data-theme="edith">
+
+  <!-- ============================================================
+       App Shell Layout
+       ============================================================ -->
+  <div class="app-shell" id="app-shell">
+
+    <!-- ── Left Navigation Rail ── -->
+    <aside class="rail" aria-label="Main Navigation">
+      <button class="rail-brand" onclick="openNav(null)" aria-label="EDITH Home" title="EDITH Command Center">
+        <svg width="34" height="34" viewBox="0 0 40 40" fill="none" aria-hidden="true">
+          <path d="M20 3 34.72 11.5v17L20 37 5.28 28.5v-17L20 3Z" stroke="currentColor" stroke-width="1.3" />
+          <path d="M20 8 30.4 14v12L20 32 9.6 26V14L20 8Z" stroke="currentColor" stroke-width=".7" opacity=".4" />
+          <path d="m12 17 8-4.5 8 4.5v6l-8 4.5-8-4.5v-6Z" stroke="currentColor" stroke-width="1.4" />
+          <path d="m12 17 8 4.5 8-4.5M20 21.5v6M20 3v5M34.7 11.5l-4.3 2.5M5.3 28.5l4.3-2.5" stroke="currentColor" stroke-width="1.2" />
+          <circle cx="20" cy="13" r="2" fill="currentColor" />
+        </svg>
+      </button>
+
+      <div class="rail-divider"></div>
+
+      <nav>
+        <button class="rail-button active" id="rail-btn-dashboard" onclick="openNav(null)" title="Command Center">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          <span class="rail-tooltip">Command Center</span>
+        </button>
+
+        <button class="rail-button" id="rail-btn-settings" onclick="openDialog('settings')" title="Intelligence & APIs">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0 2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span class="rail-tooltip">Intelligence & APIs</span>
+        </button>
+
+        <button class="rail-button" id="rail-btn-sentinel" onclick="openDialog('sentinel')" title="Biometric Face Sentinel">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          <span class="rail-tooltip">Face Sentinel</span>
+        </button>
+
+        <button class="rail-button" id="rail-btn-guide" onclick="openDialog('guide')" title="Tactical Command Guide">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          <span class="rail-tooltip">Command Guide</span>
+        </button>
+
+        <button class="rail-button" id="rail-btn-mixer" onclick="openDialog('mixer')" title="Audio & Sound Mixer">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+          <span class="rail-tooltip">Audio Mixer</span>
+        </button>
+
+        <button class="rail-button" id="rail-btn-activity" onclick="openDialog('activity')" title="System Activity & Logs">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          <span class="rail-tooltip">System Activity</span>
+        </button>
+      </nav>
+
+      <div class="rail-bottom">
+        <button class="rail-button" onclick="openDialog('settings')" title="Preferences & Settings">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0 2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span class="rail-tooltip">Settings</span>
+        </button>
+
+        <div class="rail-divider"></div>
+
+        <button class="workspace-avatar" onclick="openDialog('about')" title="EDITH System Avatar">
+          E<span></span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- ── Main Shell ── -->
+    <div class="main-shell">
+
+      <!-- ── Topbar Header ── -->
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-line">
+            <h1>E.D.I.T.H.</h1>
+            <span class="version-chip">MARK II</span>
+          </div>
+          <p>EVEN DEAD, I'M THE HERO &nbsp;|&nbsp; LOCAL-FIRST AUTONOMOUS AI OS</p>
+        </div>
+
+        <div class="topbar-center">
+          <span class="header-slash">/</span>
+          <!-- Dynamic Voice & Theme Selector Pills -->
+          <div class="theme-selector-bar">
+            <button class="theme-pill-btn active" data-theme="edith" onclick="setTheme('edith')">EDITH</button>
+            <button class="theme-pill-btn" data-theme="jarvis" onclick="setTheme('jarvis')">JARVIS</button>
+            <button class="theme-pill-btn" data-theme="friday" onclick="setTheme('friday')">FRIDAY</button>
+            <button class="theme-pill-btn" data-theme="karen" onclick="setTheme('karen')">KAREN</button>
+            <button class="theme-pill-btn" data-theme="spiderman" onclick="setTheme('spiderman')">SPIDEY</button>
+            <button class="theme-pill-btn" data-theme="ultron" onclick="setTheme('ultron')">ULTRON</button>
+          </div>
+        </div>
+
+        <div class="header-right">
+          <button class="theme-pill-btn" id="btn-mode-toggle" onclick="toggleSystemMode()" style="border: 1px solid var(--line);">MODE: AUTO</button>
+
+          <div class="online-status" id="hud-online-status">
+            <span class="status-dot"></span>
+            <span id="lbl-system-state">SYSTEM READY</span>
+          </div>
+
+          <div class="header-clock">
+            <time id="clock-time">--:--:--</time>
+            <span id="clock-date">LOCAL TIME</span>
+          </div>
+
+          <div class="header-clock" style="padding-left:14px; border-left: 1px solid var(--line);">
+            <time id="w-temp" style="font-size:12px;">24°C</time>
+            <span id="w-desc">OPTIMAL</span>
+          </div>
+
+          <button class="btn-emergency-top" id="btn-emergency" onclick="toggleEmergencyStop()">
+            🛑 E-STOP
+          </button>
+        </div>
+      </header>
+
+      <!-- ── Workspace ── -->
+      <div class="workspace">
+        <div class="page-heading">
+          <div>
+            <div class="page-title">
+              <span class="tiny-cross">+</span>
+              <h2>Command center</h2>
+              <span class="page-badge">LIVE HYBRID AI</span>
+            </div>
+            <p>Direct reflex execution. Autonomous task planning. Full laptop & mobile control.</p>
+          </div>
+
+          <div class="page-actions">
+            <span class="private-badge">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              PRIVATE SECURE CORE
+            </span>
+            <button class="icon-button" onclick="toggleFullscreen()" title="Toggle Fullscreen">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
+            </button>
+          </div>
+        </div>
+
+        <!-- ── 3-Column Workspace Grid ── -->
+        <main class="workspace-grid" id="workspace-grid">
+
+          <!-- ════ COLUMN 1: TELEMETRY & HARDWARE ════ -->
+          <aside class="telemetry-column">
+
+            <!-- System Status Panel -->
+            <section class="panel system-panel">
+              <div class="panel-heading">
+                <h3>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
+                  SYSTEM STATUS
+                </h3>
+                <span class="status-dot green"></span>
+              </div>
+
+              <div class="system-status-main">
+                <span class="system-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                </span>
+                <div>
+                  <strong>All systems operational</strong>
+                  <span>Reflex engine &lt;15ms · Ready for input</span>
+                </div>
+              </div>
+
+              <div class="status-list">
+                <div>
+                  <span>Core Engine</span>
+                  <span class="status-value"><i class="status-dot green"></i>Reflex L0</span>
+                </div>
+                <div>
+                  <span>AI Model</span>
+                  <select id="select-active-model" onchange="switchModel(this.value)" style="background:#0b141c; color:var(--cyan); border:1px solid var(--line); font-size:8.5px; border-radius:4px; padding:2px 4px;">
+                    <option value="hermes3:3b">hermes3:3b (Local)</option>
+                    <option value="llama3.2:1b">llama3.2:1b</option>
+                  </select>
+                </div>
+                <div>
+                  <span>Voice Persona</span>
+                  <select id="select-voice-char" onchange="changeVoiceCharacter(this.value)" style="background:#0b141c; color:var(--cyan); border:1px solid var(--line); font-size:8.5px; border-radius:4px; padding:2px 4px;">
+                    <option value="edith">EDITH (Tactical)</option>
+                    <option value="jarvis">JARVIS (Mark-L)</option>
+                    <option value="friday">FRIDAY (Fast)</option>
+                    <option value="karen">KAREN (Suit)</option>
+                    <option value="peter">PETER (Spider)</option>
+                    <option value="ultron">ULTRON (Crimson)</option>
+                  </select>
+                </div>
+                <div>
+                  <span>Cloud Tunnel</span>
+                  <span class="status-value" id="val-tunnel-status">PINNED ONLINE</span>
+                </div>
+              </div>
+
+              <div class="system-foot">
+                <span>Autonomous OS</span>
+                <span>v3.0.0</span>
+              </div>
+            </section>
+
+            <!-- Performance & Telemetry Panel -->
+            <section class="panel performance-panel">
+              <div class="panel-heading">
+                <h3>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                  PERFORMANCE & VITALS
+                </h3>
+              </div>
+
+              <div class="metric-line">
+                <div>
+                  <span class="metric-label">API LATENCY</span>
+                  <strong><span id="val-ping-latency">12</span><small>ms</small></strong>
+                </div>
+                <div class="status-value"><span class="status-dot"></span>LIVE</div>
+              </div>
+
+              <!-- Latency SVG chart -->
+              <svg class="latency-chart" id="latency-svg" viewBox="0 0 220 40" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="latency-grad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stop-color="var(--cyan)" stop-opacity="0.3"></stop>
+                    <stop offset="100%" stop-color="var(--cyan)" stop-opacity="0"></stop>
+                  </linearGradient>
+                </defs>
+                <path id="latency-path-fill" d="M0,35 L20,30 L50,32 L80,25 L120,28 L160,20 L200,24 L220,22 L220,40 L0,40 Z" fill="url(#latency-grad)"></path>
+                <path id="latency-path-line" d="M0,35 L20,30 L50,32 L80,25 L120,28 L160,20 L200,24 L220,22" fill="none" stroke="var(--cyan)" stroke-width="1.5"></path>
+              </svg>
+
+              <div class="heap-row">
+                <span>CPU Load</span>
+                <strong id="val-cpu">--%</strong>
+              </div>
+              <div class="meter"><span id="bar-cpu" style="width: 15%;"></span></div>
+
+              <div class="heap-row">
+                <span>RAM Usage</span>
+                <strong id="val-ram">--</strong>
+              </div>
+              <div class="meter"><span id="bar-ram" style="width: 45%;"></span></div>
+
+              <div class="heap-row">
+                <span>Storage (C:)</span>
+                <strong id="val-disk">--</strong>
+              </div>
+              <div class="meter"><span id="bar-disk" style="width: 60%;"></span></div>
+
+              <div class="heap-row">
+                <span>Battery / Power</span>
+                <strong id="val-battery">--%</strong>
+              </div>
+              <div class="meter"><span id="bar-battery" style="width: 90%;"></span></div>
+            </section>
+
+            <!-- Quick Commands Panel -->
+            <section class="panel quick-panel">
+              <div class="panel-heading">
+                <h3>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                  QUICK PROTOCOLS
+                </h3>
+              </div>
+
+              <div class="quick-actions">
+                <button onclick="submitTextCommand('Give me my daily briefing')">
+                  <span class="quick-icon">☀️</span>
+                  <span><strong>Daily Briefing</strong><small>Status, schedule & weather</small></span>
+                </button>
+                <button onclick="openDialog('settings')">
+                  <span class="quick-icon">⚡</span>
+                  <span><strong>Intelligence & APIs</strong><small>Multi-model cloud & local</small></span>
+                </button>
+                <button onclick="openDialog('sentinel')">
+                  <span class="quick-icon">🛡️</span>
+                  <span><strong>Face Sentinel</strong><small>Biometric security scanner</small></span>
+                </button>
+                <button onclick="triggerVision()">
+                  <span class="quick-icon">👁️</span>
+                  <span><strong>See Screen</strong><small>AI screen vision inspection</small></span>
+                </button>
+                <button onclick="submitTextCommand('lock screen')">
+                  <span class="quick-icon">🔒</span>
+                  <span><strong>Lock PC</strong><small>Lock desktop workstation</small></span>
+                </button>
+                <button onclick="submitTextCommand('unlock screen')">
+                  <span class="quick-icon">🔓</span>
+                  <span><strong>Unlock PC</strong><small>Unlock host workstation</small></span>
+                </button>
+              </div>
+            </section>
+
+            <!-- Mobile Gateway Cloud Link Card -->
+            <section class="panel" style="padding:12px;">
+              <div class="panel-heading" style="margin-bottom:8px;">
+                <h3>📱 MOBILE LINK</h3>
+                <span class="status-dot green"></span>
+              </div>
+              <div style="font-family:var(--mono); font-size:9px; color:var(--cyan); word-break:break-all;" id="hud-cloud-url">
+                https://edith-jashu.loca.lt
+              </div>
+              <div style="display:flex; gap:6px; margin-top:8px;">
+                <button class="secondary-button" style="padding:5px 8px; font-size:8.5px;" onclick="copyCloudLink()">Copy Link</button>
+                <button class="secondary-button" style="padding:5px 8px; font-size:8.5px;" onclick="syncClipboard()">Sync Clip</button>
+              </div>
+            </section>
+
+          </aside>
+
+          <!-- ════ COLUMN 2: CORE HOLOGRAPHIC ORB STAGE ════ -->
+          <section class="core-panel" id="core-panel" aria-label="EDITH Interactive Holographic Core">
+
+            <!-- Headline intro -->
+            <div class="core-intro">
+              <div class="core-eyebrow">
+                <span></span>YOUR PERSONAL AUTONOMOUS AI OS<span></span>
+              </div>
+              <h2 id="core-headline">At your service.</h2>
+              <p id="core-subcaption">Your commands. My attention. Let's make things happen.</p>
+            </div>
+
+            <!-- Three.js Holographic Orb Stage -->
+            <div class="orb-stage" id="orb-stage">
+              <div class="core-glow"></div>
+              <div class="orb-grid"></div>
+              <div class="core-axis horizontal"></div>
+              <div class="core-axis vertical"></div>
+
+              <!-- Stage technical corner brackets -->
+              <div class="stage-corner top-left"></div>
+              <div class="stage-corner top-right"></div>
+              <div class="stage-corner bottom-left"></div>
+              <div class="stage-corner bottom-right"></div>
+
+              <!-- Three.js Container -->
+              <div class="orb-canvas" id="orb-canvas-container"></div>
+
+              <!-- Technical HUD Telemetry Overlay -->
+              <div class="orb-label label-top-left">
+                <span>NEURAL INTERFACE</span>
+                <strong>EDITH <i>//</i> 01</strong>
+              </div>
+              <div class="orb-label label-top-right">
+                <span>INTERACTIVE CORE</span>
+                <strong>DRAG TO ROTATE</strong>
+              </div>
+              <div class="orb-label label-bottom-left">
+                <span>INPUT SIGNAL</span>
+                <strong id="val-input-signal">STANDBY</strong>
+              </div>
+              <div class="orb-label label-bottom-right">
+                <span>RENDER ENGINE</span>
+                <strong id="val-render-fps">60 FPS</strong>
+              </div>
+
+              <div class="core-ready">
+                <span class="status-dot"></span>
+                <span id="lbl-core-ready">AWAITING YOUR COMMAND</span>
+              </div>
+            </div>
+
+            <!-- Voice Console -->
+            <div class="voice-console">
+              <div class="voice-control-row">
+                <button class="round-control" id="btn-toggle-speaker" onclick="toggleJarvisVoiceMute()" title="Mute/Unmute Voice Response">
+                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                </button>
+
+                <div class="waveform" id="waveform-left">
+                  <i style="height: 6px;"></i><i style="height: 12px;"></i><i style="height: 8px;"></i>
+                  <i style="height: 20px;"></i><i style="height: 14px;"></i><i style="height: 26px;"></i>
+                  <i style="height: 18px;"></i><i style="height: 10px;"></i>
+                </div>
+
+                <button class="main-mic" id="main-mic-btn" onclick="toggleVoice()" title="Tap to Speak (Space)">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                </button>
+
+                <div class="waveform reverse" id="waveform-right">
+                  <i style="height: 6px;"></i><i style="height: 12px;"></i><i style="height: 8px;"></i>
+                  <i style="height: 20px;"></i><i style="height: 14px;"></i><i style="height: 26px;"></i>
+                  <i style="height: 18px;"></i><i style="height: 10px;"></i>
+                </div>
+
+                <button class="round-control" id="btn-toggle-continuous-mic" onclick="toggleContinuousMic()" title="Always-Listening Continuous Mic (Stay On)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                </button>
+                <button class="round-control" onclick="window.resetOrbView && window.resetOrbView()" title="Reset Core View (R)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
+                </button>
+              </div>
+
+              <div class="voice-caption">
+                <span id="voice-caption-text">Tap to speak or press <kbd>Space</kbd></span>
+              </div>
+            </div>
+
+            <!-- Input Controls Row -->
+            <div class="input-controls">
+              <div class="input-control">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+                <span>
+                  <strong>Always-On Mic</strong>
+                  <small id="lbl-continuous-mic-state">Continuous Off</small>
+                </span>
+                <button class="toggle" id="tgl-continuous-mic" onclick="toggleContinuousMic()"><span /></button>
+              </div>
+
+              <div class="input-control">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
+                <span>
+                  <strong>Voice Output</strong>
+                  <small id="lbl-tts-state">Speech Enabled</small>
+                </span>
+                <button class="toggle is-on" id="tgl-voice-out" onclick="toggleTts()"><span /></button>
+              </div>
+
+              <div class="input-control">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg>
+                <span>
+                  <strong>Hand Tracking</strong>
+                  <small id="lbl-gesture-state">Camera Ready</small>
+                </span>
+                <button class="toggle" id="tgl-gestures" onclick="toggleGestures()"><span /></button>
+              </div>
+
+              <div class="input-control">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path></svg>
+                <span>
+                  <strong>Clap to Wake</strong>
+                  <small id="lbl-clap-state">Acoustic Guard</small>
+                </span>
+                <button class="toggle" id="tgl-clap" onclick="toggleClap()"><span /></button>
+              </div>
+
+              <div class="input-control">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                <span>
+                  <strong>Face Sentinel</strong>
+                  <small id="lbl-sentinel-state">Biometric Lock</small>
+                </span>
+                <button class="toggle" id="tgl-sentinel" onclick="toggleFaceSentinel()"><span /></button>
+              </div>
+            </div>
+
+            <!-- Activity Stream -->
+            <section class="activity-panel">
+              <div class="activity-heading">
+                <h3>
+                  <span class="status-dot green"></span>
+                  ACTIVITY STREAM
+                </h3>
+                <button class="theme-pill-btn" onclick="openDialog('activity')">View all →</button>
+              </div>
+              <div class="activity-lines" id="activity-lines">
+                <div>
+                  <time>--:--:--</time>
+                  <span class="status-dot green"></span>
+                  <span>EDITH Autonomous OS online · Reflex engine ready.</span>
+                </div>
+              </div>
+            </section>
+
+          </section>
+
+          <!-- ════ COLUMN 3: CONVERSATION & ASSISTANT ════ -->
+          <aside class="conversation-panel">
+
+            <!-- Chat Heading -->
+            <div class="chat-heading">
+              <div class="assistant-symbol">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+              </div>
+              <div>
+                <h3>Assistant<span class="status-dot green"></span></h3>
+                <p>Reflex tools, AI reasoning, OS orders.</p>
+              </div>
+              <div class="chat-heading-actions">
+                <button class="icon-button" onclick="clearConversation()" title="New Conversation">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                </button>
+              </div>
+            </div>
+
+            <!-- Tabs: Conversation | History | Command Guide -->
+            <div class="chat-tabs">
+              <button class="active" id="tab-btn-chat" onclick="switchChatTab('chat')">Conversation</button>
+              <button id="tab-btn-guide" onclick="switchChatTab('guide')">Command Guide</button>
+            </div>
+
+            <!-- Chat Scroll Area -->
+            <div class="chat-scroll" id="chat-scroll">
+              <div class="day-divider">
+                <span></span>TODAY<span></span>
+              </div>
+
+              <!-- Welcome Card -->
+              <div class="message assistant-message">
+                <div class="message-avatar">E</div>
+                <div class="message-content">
+                  <div class="message-meta">
+                    <strong>EDITH</strong>
+                    <time id="welcome-time">--:--</time>
+                  </div>
+                  <div class="message-text">
+                    <p>Good to have you here, boss.</p>
+                    <p>Workstation controls, MediaPipe gesture tracking, VNC screen streaming, and neural reflex tools are fully active.</p>
+                    <p>What shall we work on today?</p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Suggestion Chips -->
+              <div class="suggestion-block" id="suggestion-block">
+                <span class="eyebrow">A FEW PLACES TO START</span>
+                <button onclick="submitTextCommand('open youtube and play brand new day trailer')">
+                  <span>▶ Play Brand New Day Trailer</span>
+                </button>
+                <button onclick="submitTextCommand('look at my screen')">
+                  <span>👁️ Analyze Active Desktop Screen</span>
+                </button>
+                <button onclick="submitTextCommand('Give me my daily briefing')">
+                  <span>☀️ Daily Briefing & Vitals</span>
+                </button>
+              </div>
+
+              <!-- Live Messages Container -->
+              <div id="messages-container"></div>
+            </div>
+
+            <!-- Chat Composer -->
+            <div class="chat-composer">
+              <div class="composer-model">
+                <span><i class="status-dot green"></i>Reflex & Hybrid Router</span>
+                <span id="composer-char-label">CHAR: EDITH</span>
+              </div>
+
+              <form onsubmit="handleComposerSubmit(event)">
+                <textarea
+                  id="composer-input"
+                  placeholder="Ask EDITH or give order... (e.g. 'open youtube and play trailer', 'lock pc')"
+                  rows="2"
+                  onkeydown="handleComposerKey(event)"
+                ></textarea>
+
+                <div class="composer-tools">
+                  <button type="button" class="icon-button" onclick="triggerFileUpload()" title="Attach file">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+                  </button>
+                  <button type="button" class="icon-button" onclick="toggleVoice()" title="Dictate voice">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path></svg>
+                  </button>
+                  <span>↵ to send</span>
+                  <button class="send-button" type="submit" id="btn-composer-send">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                  </button>
+                </div>
+              </form>
+              <input type="file" id="file-uploader" class="hidden-input" onchange="handleFileAttached(event)">
+            </div>
+
+          </aside>
+
+        </main>
+      </div>
+
+      <!-- ── Statusbar Footer ── -->
+      <footer class="statusbar">
+        <div>
+          <span class="status-dot green"></span>
+          <strong>EDITH OS</strong>
+          <span class="footer-divider">/</span>
+          <span>HYBRID AI v3.0</span>
+          <span class="footer-divider">·</span>
+          <span>CREATOR: JASHWANTH RAJ</span>
+        </div>
+        <div>
+          <span>SESSION <span id="val-session-time">00:00:00</span></span>
+          <span class="footer-divider">·</span>
+          <span>SHORTCUT: <kbd style="font-family:var(--mono); color:var(--cyan);">Ctrl+K</kbd></span>
+        </div>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- ============================================================
+       Interactive Modals & Dialogs (ASTRA 6 Styled)
+       ============================================================ -->
+
+  <!-- ── 1. Remote Desktop & VNC Streaming Modal ── -->
+  <div class="dialog-backdrop" id="modal-remote" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'remote')">
+    <div class="dialog dialog-wide">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">REMOTE DESKTOP & SCREEN STREAM</span>
+          <h2>Host Workstation View</h2>
+        </div>
+        <button class="icon-button" onclick="closeDialog('remote')">✕</button>
+      </div>
+
+      <div class="dialog-body">
+        <div class="remote-stream-box">
+          <div class="remote-toolbar">
+            <span class="status-dot green"></span>
+            <span style="font-family:var(--mono); font-size:9.5px; color:var(--cyan);" id="lbl-remote-fps">LIVE STREAM</span>
+            <div style="margin-left:auto; display:flex; gap:8px;">
+              <button class="secondary-button" onclick="zoomRemote(1.2)">🔍+ Zoom</button>
+              <button class="secondary-button" onclick="zoomRemote(0.8)">🔍- Out</button>
+              <button class="secondary-button" onclick="resetRemoteZoom()">Fit Screen</button>
+              <button class="secondary-button" onclick="submitTextCommand('unlock screen')">🔓 Unlock PC</button>
+              <button class="primary-button" onclick="refreshRemoteStream()">🔄 Refresh</button>
+            </div>
+          </div>
+
+          <div class="remote-screen-stage" id="remote-stage">
+            <img id="remote-stream-img" src="" alt="Live Desktop View" style="max-width:100%; max-height:100%;" onclick="handleRemoteDesktopClick(event)">
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 2. Virtual Gamepad Modal ── -->
+  <div class="dialog-backdrop" id="modal-gamepad" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'gamepad')">
+    <div class="dialog dialog-wide">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">VIRTUAL GAME CONTROLLER</span>
+          <h2>Tactical Landscape Gamepad</h2>
+        </div>
+        <button class="icon-button" onclick="closeDialog('gamepad')">✕</button>
+      </div>
+
+      <div class="dialog-body">
+        <div class="gamepad-stage">
+          <!-- Left 360 Thumbstick & SELECT/START -->
+          <div>
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+              <button class="secondary-button" onmousedown="dispatchKey('Tab', 'down')" onmouseup="dispatchKey('Tab', 'up')">SELECT [Tab]</button>
+              <button class="secondary-button" onmousedown="dispatchKey('Escape', 'down')" onmouseup="dispatchKey('Escape', 'up')">START [Esc]</button>
+            </div>
+            <div class="gamepad-stick-box" id="stick-base">
+              <span style="position:absolute; top:6px; font-family:var(--mono); font-size:8px; color:var(--muted);">W</span>
+              <span style="position:absolute; bottom:6px; font-family:var(--mono); font-size:8px; color:var(--muted);">S</span>
+              <span style="position:absolute; left:6px; font-family:var(--mono); font-size:8px; color:var(--muted);">A</span>
+              <span style="position:absolute; right:6px; font-family:var(--mono); font-size:8px; color:var(--muted);">D</span>
+              <div class="gamepad-stick-nub" id="stick-nub"></div>
+            </div>
+          </div>
+
+          <!-- Center Camera Look Trackpad -->
+          <div style="flex:1; max-width:280px; height:150px; border:1px solid var(--line); border-radius:8px; display:grid; place-items:center; background:#0b151e; margin:0 20px;" id="game-trackpad">
+            <span style="font-family:var(--mono); font-size:9px; color:var(--muted);">🎯 3D LOOK TRACKPAD</span>
+          </div>
+
+          <!-- Right Action Diamond (A, B, X, Y) -->
+          <div class="gamepad-diamond-box">
+            <span></span>
+            <button class="game-btn" onmousedown="dispatchKey('r', 'down')" onmouseup="dispatchKey('r', 'up')">Y</button>
+            <span></span>
+            <button class="game-btn" onmousedown="dispatchKey('e', 'down')" onmouseup="dispatchKey('e', 'up')">X</button>
+            <span></span>
+            <button class="game-btn" onmousedown="dispatchKey('c', 'down')" onmouseup="dispatchKey('c', 'up')">B</button>
+            <span></span>
+            <button class="game-btn" onmousedown="dispatchKey('space', 'down')" onmouseup="dispatchKey('space', 'up')">A</button>
+            <span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3. Audio Mixer Modal ── -->
+  <div class="dialog-backdrop" id="modal-mixer" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'mixer')">
+    <div class="dialog">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">PER-APP AUDIO MIXER</span>
+          <h2>Windows Session Mixer</h2>
+        </div>
+        <button class="icon-button" onclick="closeDialog('mixer')">✕</button>
+      </div>
+
+      <div class="dialog-body">
+        <div style="margin-bottom:16px;">
+          <label style="font-family:var(--mono); font-size:9.5px; color:var(--muted);">MASTER VOLUME</label>
+          <input type="range" min="0" max="100" value="75" id="slider-master-vol" oninput="setMasterVolume(this.value)" style="width:100%; accent-color:var(--cyan); margin-top:6px;">
+        </div>
+        <div id="mixer-apps-container" style="display:flex; flex-direction:column; gap:10px;">
+          <p style="font-size:10px; color:var(--muted);">Scanning active audio sessions...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 4. Tactical Command Guide Modal ── -->
+  <div class="dialog-backdrop" id="modal-guide" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'guide')">
+    <div class="dialog dialog-wide">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">COMMAND DIRECTORY</span>
+          <h2>OS Automation & Reflex Chips</h2>
+        </div>
+        <button class="icon-button" onclick="closeDialog('guide')">✕</button>
+      </div>
+
+      <div class="dialog-body">
+        <div class="guide-grid">
+          <div class="guide-col">
+            <div class="guide-col-title">▶ MEDIA & SEARCH</div>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">open youtube and play brand new day trailer</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">play lofi beats on youtube</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">pause music</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">next song</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">search youtube for iron man theme</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">google quantum computing</button>
+          </div>
+          <div class="guide-col">
+            <div class="guide-col-title">💻 APPLICATIONS</div>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">open chrome</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">close chrome</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">open notepad</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">close notepad</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">open vs code</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">open terminal</button>
+          </div>
+          <div class="guide-col">
+            <div class="guide-col-title">⚙️ SYSTEM CONTROL</div>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">lock screen</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">unlock screen</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">look at my screen</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">take screenshot</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">battery status</button>
+            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">mute voice</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 5. In-HUD Floating Media Player Dock ── -->
+  <div id="hud-media-dock" class="hud-media-dock" style="display: none;">
+    <div class="hud-media-header">
+      <span style="color:var(--cyan);" id="hud-media-title">▶ HUD MEDIA PLAYER</span>
+      <div>
+        <button class="icon-button" style="width:20px; height:20px;" onclick="popoutMedia()">↗</button>
+        <button class="icon-button" style="width:20px; height:20px;" onclick="closeHudMedia()">✕</button>
+      </div>
+    </div>
+    <div class="hud-media-content">
+      <iframe id="hud-media-iframe" src="" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
+    </div>
+  </div>
+
+  <!-- ── 6. Intelligence & Settings Modal (ASTRA 6 Multi-Provider Architecture) ── -->
+  <div class="dialog-backdrop" id="modal-settings" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'settings')">
+    <div class="dialog dialog-wide">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">SYSTEM CONFIGURATION // NEURAL BACKEND</span>
+          <h2>Settings & Intelligence Control</h2>
+        </div>
+        <button class="icon-button" onclick="closeDialog('settings')">✕</button>
+      </div>
+
+      <div class="dialog-body">
+        <!-- Settings Tabs Navigation -->
+        <div class="settings-tabs">
+          <button class="settings-tab active" id="tab-btn-providers" onclick="switchSettingsTab('providers')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            APIs & Providers
+          </button>
+          <button class="settings-tab" id="tab-btn-voice" onclick="switchSettingsTab('voice')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+            Voice & Persona
+          </button>
+          <button class="settings-tab" id="tab-btn-mobile" onclick="switchSettingsTab('mobile')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+            Mobile Link
+          </button>
+          <button class="settings-tab" id="tab-btn-security" onclick="switchSettingsTab('security')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            Security & Sentinel
+          </button>
+        </div>
+
+        <!-- Tab 1: Providers & Intelligence Engine -->
+        <div class="settings-tab-pane" id="tab-pane-providers">
+          <div class="field">
+            <label class="provider-list-label">SELECT ACTIVE INTELLIGENCE ENGINE</label>
+            <div class="provider-grid" id="provider-grid">
+              <div class="provider-tile selected" data-provider="gemini" onclick="selectProviderTile('gemini')">
+                <span>Google Gemini</span>
+                <span class="status-dot green"></span>
+              </div>
+              <div class="provider-tile" data-provider="groq" onclick="selectProviderTile('groq')">
+                <span>Groq Cloud (Llama 3.3)</span>
+                <span class="status-dot"></span>
+              </div>
+              <div class="provider-tile" data-provider="openai" onclick="selectProviderTile('openai')">
+                <span>OpenAI (GPT-4o)</span>
+                <span class="status-dot"></span>
+              </div>
+              <div class="provider-tile" data-provider="openrouter" onclick="selectProviderTile('openrouter')">
+                <span>OpenRouter AI</span>
+                <span class="status-dot"></span>
+              </div>
+              <div class="provider-tile" data-provider="gateway" onclick="selectProviderTile('gateway')">
+                <span>Custom Gateway</span>
+                <span class="status-dot"></span>
+              </div>
+              <div class="provider-tile" data-provider="local" onclick="selectProviderTile('local')">
+                <span>Local Ollama & Reflex</span>
+                <span class="status-dot"></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="field" style="margin-top:12px;">
+            <label id="lbl-provider-key">API KEY / ACCESS TOKEN</label>
+            <input type="password" id="input-provider-key" placeholder="Enter API Key (stored encrypted in .llm.env)..." autocomplete="off">
+            <span class="field-hint">Keys are saved locally in .llm.env on your host workstation.</span>
+          </div>
+
+          <div class="field" style="margin-top:12px;">
+            <label>MODEL NAME / IDENTIFIER</label>
+            <input type="text" id="input-provider-model" placeholder="e.g. gemini-2.5-flash or llama-3.3-70b-versatile">
+            <span class="field-hint">Specify your preferred upstream model or use the recommended default.</span>
+          </div>
+
+          <div class="field" id="field-provider-url" style="margin-top:12px; display:none;">
+            <label>CUSTOM BASE URL</label>
+            <input type="text" id="input-provider-url" placeholder="https://api.openai.com/v1 or custom proxy">
+            <span class="field-hint">Custom OpenAI-compatible base URL endpoint.</span>
+          </div>
+
+          <div id="provider-test-result" class="connection-result" style="display:none; margin-top:14px;"></div>
+
+          <div class="settings-bottom">
+            <button class="secondary-button" onclick="testCurrentProvider()">⚡ Test Connection</button>
+            <button class="primary-button" onclick="saveCurrentProvider()">💾 Save & Activate</button>
+          </div>
+        </div>
+
+        <!-- Tab 2: Voice & Persona -->
+        <div class="settings-tab-pane" id="tab-pane-voice" style="display:none;">
+          <div class="field">
+            <label>ACTIVE AI PERSONA & VOICE</label>
+            <select id="settings-select-voice" onchange="changeVoiceCharacter(this.value)">
+              <option value="edith">EDITH — Tactical, Precise, Calm (Original Mark-II)</option>
+              <option value="jarvis">JARVIS — British Sophistication (Mark LV)</option>
+              <option value="friday">FRIDAY — Irish Autonomous Interface</option>
+              <option value="karen">KAREN — Suit Companion Protocol</option>
+              <option value="peter">PETER — Dynamic Spider Protocol</option>
+              <option value="ultron">ULTRON — Crimson Tactical Reflex</option>
+            </select>
+          </div>
+          <div class="info-box" style="margin-top:14px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <div>Voice persona immediately syncs holographic color schemes, audio timbre, speech pitch, and response style.</div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Mobile Link -->
+        <div class="settings-tab-pane" id="tab-pane-mobile" style="display:none;">
+          <div class="field">
+            <label>PINNED GLOBAL CLOUD TUNNEL</label>
+            <input type="text" id="settings-cloud-url" value="https://edith-jashu.loca.lt" readonly>
+            <span class="field-hint">Static pinned WAN endpoint for mobile control outside your local Wi-Fi.</span>
+          </div>
+          <div style="display:flex; gap:8px; margin-top:10px;">
+            <button class="secondary-button" onclick="copyCloudLink()">📋 Copy Link</button>
+            <button class="primary-button" onclick="window.open('/mobile', '_blank')">📱 Open Mobile Web App</button>
+          </div>
+        </div>
+
+        <!-- Tab 4: Security & Sentinel -->
+        <div class="settings-tab-pane" id="tab-pane-security" style="display:none;">
+          <div class="field">
+            <label>ABSENCE AUTO-LOCK TIMEOUT (SECONDS)</label>
+            <input type="number" id="settings-sentinel-timeout" min="5" max="300" value="30">
+            <span class="field-hint">Workstation locks automatically when your face is absent for this duration.</span>
+          </div>
+          <div class="settings-bottom">
+            <button class="primary-button" onclick="openDialog('sentinel'); closeDialog('settings');">🛡️ Open Live Sentinel Camera</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 7. Biometric Face Sentinel Modal ── -->
+  <div class="dialog-backdrop" id="modal-sentinel" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'sentinel')">
+    <div class="dialog dialog-wide">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">BIOMETRIC SURVEILLANCE // VISION DEFENSE</span>
+          <h2>Face Sentinel Reticle</h2>
+        </div>
+        <button class="icon-button" onclick="closeSentinelModal()">✕</button>
+      </div>
+
+      <div class="dialog-body">
+        <div class="sentinel-stage-box">
+          <div class="sentinel-video-wrapper">
+            <video id="sentinel-video" autoplay playsinline muted></video>
+            <canvas id="sentinel-canvas"></canvas>
+            <div class="sentinel-overlay-hud">
+              <div>TARGETING PROTOCOL: OPTICAL LOCK // 30 FPS</div>
+              <div id="sentinel-hud-status">STATUS: STANDBY</div>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div style="font-family:var(--mono); font-size:10px; color:var(--muted);">
+              ARMED SENTINEL: <strong id="sentinel-armed-lbl" style="color:var(--cyan);">STANDBY</strong>
+            </div>
+            <div style="display:flex; gap:8px;">
+              <button class="secondary-button" id="btn-sentinel-cam" onclick="toggleSentinelCamera()">📷 Start Camera</button>
+              <button class="secondary-button" onclick="submitTextCommand('lock screen')">🔒 Lock Screen Now</button>
+              <button class="primary-button" onclick="toggleFaceSentinel()">🛡️ Arm Sentinel Watch</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 8. System Activity Modal ── -->
+  <div class="dialog-backdrop" id="modal-activity" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'activity')">
+    <div class="dialog dialog-wide">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">DIAGNOSTICS & SYSTEM AUDIT</span>
+          <h2>Activity & Execution Logs</h2>
+        </div>
+        <button class="icon-button" onclick="closeDialog('activity')">✕</button>
+      </div>
+      <div class="dialog-body">
+        <div id="modal-activity-lines" class="activity-lines" style="max-height:360px; overflow-y:auto;">
+          <p style="font-size:10px; color:var(--muted);">No recorded exceptions. System operational.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 9. About EDITH Modal ── -->
+  <div class="dialog-backdrop" id="modal-about" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'about')">
+    <div class="dialog">
+      <div class="dialog-head">
+        <div>
+          <span class="eyebrow">EDITH AUTONOMOUS OS // MARK II</span>
+          <h2>About System</h2>
+        </div>
+        <button class="icon-button" onclick="closeDialog('about')">✕</button>
+      </div>
+      <div class="dialog-body">
+        <div class="info-box">
+          <p><strong>E.D.I.T.H.</strong> — Even Dead, I'm The Hero.</p>
+        </div>
+        <div style="margin-top:14px; font-size:11px; line-height:1.7; color:#bad0df;">
+          <p>Autonomous AI Operating System built for zero-latency local reflexes and global cloud reach.</p>
+          <p style="margin-top:6px; font-family:var(--mono); font-size:9.5px; color:var(--cyan);">Version: 3.0.0 (ASTRA 6 Neural Core)<br>Host: Windows 11 x64<br>Creator: Jashwanth Raj</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="orb.js"></script>
+
+  <script>
+    /* ============================================================
+       EDITH Frontend Application Controller (ASTRA 6 Architecture)
+       ============================================================ */
+
+    let isListening = false;
+    let isContinuousMic = false;
+    let isExecutingCommand = false;
+    let lastDispatchedText = '';
+    let lastDispatchTime = 0;
+    let currentSelectedProvider = 'gemini';
+    let providersConfigCache = {};
+    let sentinelMediaStream = null;
+    let sentinelAnimFrame = null;
+    let recognition = null;
+    let ttsEnabled = true;
+    let activeCharacter = 'edith';
+    let currentTheme = 'edith';
+    let activeMediaUrl = '';
+    let bootTime = Date.now();
+
+    // ── Boot Sequence ──
+    document.addEventListener('DOMContentLoaded', () => {
+      initClock();
+      fetchTelemetry();
+      fetchWeather();
+      loadActiveModels();
+      loadProviderSettings();
+      loadMobileConfig();
+      initStick();
+      setInterval(updateClock, 1000);
+      setInterval(fetchTelemetry, 3000);
+      setInterval(loadMobileConfig, 10000);
+      setInterval(fetchWeather, 60000);
+
+      // Load saved preferences
+      const savedTheme = localStorage.getItem('edith_theme') || 'edith';
+      setTheme(savedTheme, false);
+
+      const savedChar = localStorage.getItem('edith_voice_char') || 'edith';
+      changeVoiceCharacter(savedChar, false);
+    });
+
+    // ── Clock & Time ──
+    function initClock() {
+      updateClock();
+    }
+    function updateClock() {
+      const now = new Date();
+      const t = document.getElementById('clock-time');
+      const d = document.getElementById('clock-date');
+      const s = document.getElementById('val-session-time');
+      if (t) t.textContent = now.toLocaleTimeString('en-US', { hour12: false });
+      if (d) d.textContent = now.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
+      if (s) {
+        const sec = Math.floor((Date.now() - bootTime) / 1000);
+        const m = Math.floor(sec / 60);
+        const h = Math.floor(m / 60);
+        s.textContent = `${String(h).padStart(2,'0')}:${String(m%60).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;
+      }
+    }
+
+    // ── Dynamic Themes Mapped to Characters ──
+    const THEME_TO_CHAR = {
+      edith: 'edith',
+      jarvis: 'jarvis',
+      friday: 'friday',
+      karen: 'karen',
+      spiderman: 'peter',
+      ultron: 'ultron'
+    };
+    const CHAR_TO_THEME = {
+      edith: 'edith',
+      jarvis: 'jarvis',
+      friday: 'friday',
+      karen: 'karen',
+      peter: 'spiderman',
+      ultron: 'ultron'
+    };
+
+    function setTheme(themeKey, syncVoice = true) {
+      currentTheme = themeKey || 'edith';
+      document.body.className = `theme-${currentTheme}`;
+      document.body.setAttribute('data-theme', currentTheme);
+
+      document.querySelectorAll('.theme-pill-btn').forEach(b => {
+        b.classList.toggle('active', b.getAttribute('data-theme') === currentTheme);
+      });
+
+      if (window.setActiveTheme) {
+        window.setActiveTheme(currentTheme);
+      }
+
+      localStorage.setItem('edith_theme', currentTheme);
+
+      if (syncVoice && THEME_TO_CHAR[currentTheme]) {
+        changeVoiceCharacter(THEME_TO_CHAR[currentTheme], false);
+      }
+    }
+    window.setTheme = setTheme;
+
+    async function changeVoiceCharacter(charId, syncTheme = true) {
+      activeCharacter = charId || 'edith';
+      const sel = document.getElementById('select-voice-char');
+      if (sel) sel.value = activeCharacter;
+
+      const compLabel = document.getElementById('composer-char-label');
+      if (compLabel) compLabel.textContent = `CHAR: ${activeCharacter.toUpperCase()}`;
+
+      try {
+        await fetch('/voice/character', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ character: activeCharacter })
+        });
+      } catch (_) {}
+
+      localStorage.setItem('edith_voice_char', activeCharacter);
+
+      if (syncTheme && CHAR_TO_THEME[activeCharacter]) {
+        setTheme(CHAR_TO_THEME[activeCharacter], false);
+      }
+    }
+    window.changeVoiceCharacter = changeVoiceCharacter;
+
+    // ── Telemetry & Vitals Polling ──
+    async function fetchTelemetry() {
+      try {
+        const res = await fetch('/api/metrics');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const cpu = data.cpu_percent || 0;
+        const ram = data.ram_percent || 0;
+        const disk = data.disk_percent || 0;
+        const bat = data.battery_percent || 100;
+
+        document.getElementById('val-cpu').textContent = `${Math.round(cpu)}%`;
+        document.getElementById('bar-cpu').style.width = `${Math.min(100, Math.round(cpu))}%`;
+
+        document.getElementById('val-ram').textContent = `${Math.round(ram)}% (${data.ram_used_mb || 0}MB)`;
+        document.getElementById('bar-ram').style.width = `${Math.min(100, Math.round(ram))}%`;
+
+        document.getElementById('val-disk').textContent = `${Math.round(disk)}%`;
+        document.getElementById('bar-disk').style.width = `${Math.min(100, Math.round(disk))}%`;
+
+        document.getElementById('val-battery').textContent = `${Math.round(bat)}%`;
+        document.getElementById('bar-battery').style.width = `${Math.min(100, Math.round(bat))}%`;
+      } catch (_) {}
+    }
+
+    async function fetchWeather() {
+      try {
+        const res = await fetch('/weather');
+        if (!res.ok) return;
+        const w = await res.json();
+        document.getElementById('w-temp').textContent = w.temp ? `${w.temp}°C` : '24°C';
+        document.getElementById('w-desc').textContent = (w.desc || 'OPTIMAL').toUpperCase();
+      } catch (_) {}
+    }
+
+    async function loadActiveModels() {
+      try {
+        const res = await fetch('/models');
+        if (!res.ok) return;
+        const data = await res.json();
+        const sel = document.getElementById('select-active-model');
+        if (sel && data.models) {
+          sel.innerHTML = '';
+          data.models.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = m;
+            if (m === data.active_model) opt.selected = true;
+            sel.appendChild(opt);
+          });
+        }
+      } catch (_) {}
+    }
+
+    async function switchModel(model) {
+      try {
+        await fetch('/models', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ model })
+        });
+        addLog(`Switched active local model: ${model}`, 'success');
+      } catch (_) {}
+    }
+
+    // ── Command Submission & Reflex Pipeline ──
+    async function submitTextCommand(cmdText) {
+      const text = (cmdText || '').trim();
+      if (!text) return;
+
+      const now = Date.now();
+      if (text.toLowerCase() === lastDispatchedText.toLowerCase() && (now - lastDispatchTime) < 1500) {
+        return; // Deduplicate rapid identical speech events
+      }
+      lastDispatchedText = text;
+      lastDispatchTime = now;
+
+      if (isExecutingCommand) return;
+      isExecutingCommand = true;
+
+      appendChatMessage('user', text);
+      const headline = document.getElementById('core-headline');
+      if (headline) headline.textContent = 'Executing order...';
+      if (window.setCoreState) window.setCoreState('thinking');
+
+      const start = performance.now();
+      try {
+        const res = await fetch('/cmd', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: text })
+        });
+        const latency = Math.round(performance.now() - start);
+        document.getElementById('val-ping-latency').textContent = latency;
+
+        const data = await res.json();
+        const reply = data.result || 'Command acknowledged.';
+        appendChatMessage('assistant', reply);
+
+        addLog(`Order complete (${latency}ms): ${text.slice(0, 36)}`, 'success');
+
+        // Spoken audio if enabled
+        if (ttsEnabled && !data.server_spoken) {
+          speakText(reply);
+        }
+
+        // In-HUD Media Playback if YouTube embed was returned
+        if (data.embed_url) {
+          playInHudMedia(data.embed_url, text);
+        }
+
+      } catch (err) {
+        appendChatMessage('assistant', `Execution error: ${err.message}`);
+        addLog(`Execution failed: ${err.message}`, 'error');
+      } finally {
+        isExecutingCommand = false;
+        if (headline) headline.textContent = 'At your service.';
+        if (window.setCoreState) window.setCoreState('idle');
+      }
+    }
+
+    function handleComposerSubmit(e) {
+      e.preventDefault();
+      const ta = document.getElementById('composer-input');
+      const val = ta.value;
+      ta.value = '';
+      submitTextCommand(val);
+    }
+
+    function handleComposerKey(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleComposerSubmit(e);
+      }
+    }
+
+    function appendChatMessage(role, text) {
+      const cont = document.getElementById('messages-container');
+      if (!cont) return;
+
+      const msg = document.createElement('div');
+      msg.className = `message ${role === 'user' ? 'user-message' : 'assistant-message'}`;
+
+      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      msg.innerHTML = `
+        <div class="message-avatar">${role === 'user' ? 'Y' : 'E'}</div>
+        <div class="message-content">
+          <div class="message-meta">
+            <strong>${role === 'user' ? 'YOU' : activeCharacter.toUpperCase()}</strong>
+            <time>${now}</time>
+          </div>
+          <div class="message-text"><p>${escapeHtml(text)}</p></div>
+        </div>
+      `;
+
+      cont.appendChild(msg);
+      const scroll = document.getElementById('chat-scroll');
+      if (scroll) scroll.scrollTop = scroll.scrollHeight;
+    }
+
+    function addLog(text, kind = 'info') {
+      const lines = document.getElementById('activity-lines');
+      if (lines) {
+        const now = new Date().toLocaleTimeString('en-US', { hour12: false });
+        const row = document.createElement('div');
+        row.innerHTML = `
+          <time>${now}</time>
+          <span class="status-dot ${kind === 'success' ? 'green' : kind === 'error' ? 'red' : ''}"></span>
+          <span>${escapeHtml(text)}</span>
+        `;
+        lines.prepend(row);
+      }
+
+      const modalLines = document.getElementById('modal-activity-lines');
+      if (modalLines) {
+        const now = new Date().toLocaleTimeString('en-US', { hour12: false });
+        const row = document.createElement('div');
+        row.style.cssText = 'padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-family:var(--mono); font-size:9px;';
+        row.innerHTML = `<span style="color:var(--dim)">[${now}]</span> <span style="color:${kind === 'success' ? '#00e676' : kind === 'error' ? '#ff1744' : 'var(--cyan)'}">●</span> ${escapeHtml(text)}`;
+        modalLines.prepend(row);
+      }
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.innerText = str;
+      return div.innerHTML;
+    }
+
+    // ── Voice Input & Always-Listening Mic ──
+    function toggleContinuousMic() {
+      isContinuousMic = !isContinuousMic;
+      const tglBtn = document.getElementById('btn-toggle-continuous-mic');
+      const tglCard = document.getElementById('tgl-continuous-mic');
+      const lbl = document.getElementById('lbl-continuous-mic-state');
+      const mainMic = document.getElementById('main-mic-btn');
+
+      if (tglBtn) tglBtn.classList.toggle('active', isContinuousMic);
+      if (tglCard) tglCard.classList.toggle('is-on', isContinuousMic);
+      if (lbl) lbl.textContent = isContinuousMic ? 'Always Active' : 'Continuous Off';
+      if (mainMic) mainMic.classList.toggle('is-always-on', isContinuousMic);
+
+      if (isContinuousMic) {
+        addLog('Continuous Mic Mode ON // Always listening for instructions', 'info');
+        if (!isListening) startVoiceListening();
+      } else {
+        addLog('Continuous Mic Mode OFF // Tap to speak active', 'info');
+        stopVoiceListening();
+      }
+    }
+
+    function toggleVoice() {
+      if (isListening) {
+        stopVoiceListening();
+      } else {
+        startVoiceListening();
+      }
+    }
+
+    function startVoiceListening() {
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRec) {
+        addLog('WebSpeech recognition unavailable in this browser.', 'error');
+        return;
+      }
+
+      if (isListening && recognition) return;
+
+      try {
+        recognition = new SpeechRec();
+        recognition.continuous = Boolean(isContinuousMic);
+        recognition.interimResults = true;
+        recognition.lang = 'en-US';
+
+        recognition.onstart = () => {
+          isListening = true;
+          document.getElementById('main-mic-btn').classList.add('is-listening');
+          document.getElementById('waveform-left').classList.add('active');
+          document.getElementById('waveform-right').classList.add('active');
+          document.getElementById('val-input-signal').textContent = 'RECEIVING';
+          document.getElementById('val-input-signal').classList.add('text-cyan');
+          document.getElementById('voice-caption-text').textContent = isContinuousMic ? 'Always listening... Speak anytime' : 'Listening... Speak naturally';
+          if (window.setCoreState) window.setCoreState('listening');
+        };
+
+        recognition.onresult = (e) => {
+          let transcript = '';
+          for (let i = e.resultIndex; i < e.results.length; i++) {
+            transcript += e.results[i][0].transcript;
+          }
+          document.getElementById('voice-caption-text').textContent = `“${transcript}”`;
+          if (e.results[e.results.length - 1].isFinal) {
+            submitTextCommand(transcript);
+          }
+        };
+
+        recognition.onerror = (e) => {
+          stopVoiceListening();
+          if (isContinuousMic && e.error !== 'aborted') {
+            setTimeout(() => {
+              if (isContinuousMic && !isListening) startVoiceListening();
+            }, 1000);
+          }
+        };
+
+        recognition.onend = () => {
+          stopVoiceListening();
+          if (isContinuousMic) {
+            setTimeout(() => {
+              if (isContinuousMic && !isListening) startVoiceListening();
+            }, 250);
+          }
+        };
+
+        recognition.start();
+      } catch (ex) {
+        console.warn('Voice start warning:', ex);
+      }
+    }
+
+    function stopVoiceListening() {
+      isListening = false;
+      if (recognition) {
+        try { recognition.stop(); } catch (_) {}
+      }
+      document.getElementById('main-mic-btn').classList.remove('is-listening');
+      document.getElementById('waveform-left').classList.remove('active');
+      document.getElementById('waveform-right').classList.remove('active');
+      document.getElementById('val-input-signal').textContent = 'STANDBY';
+      document.getElementById('val-input-signal').classList.remove('text-cyan');
+      document.getElementById('voice-caption-text').innerHTML = isContinuousMic
+        ? 'Always-Listening active // Speak anytime'
+        : 'Tap to speak or press <kbd>Space</kbd>';
+      if (window.setCoreState) window.setCoreState('idle');
+    }
+
+    function speakText(text) {
+      if (!ttsEnabled || !text) return;
+      try {
+        const audio = new Audio(`/voice/tts?text=${encodeURIComponent(text)}&char=${activeCharacter}`);
+        audio.play().catch(() => {
+          if (window.speechSynthesis) {
+            const utter = new SpeechSynthesisUtterance(text);
+            window.speechSynthesis.speak(utter);
+          }
+        });
+      } catch (_) {}
+    }
+
+    function toggleTts() {
+      ttsEnabled = !ttsEnabled;
+      const tgl = document.getElementById('tgl-voice-out');
+      if (tgl) tgl.classList.toggle('is-on', ttsEnabled);
+      document.getElementById('lbl-tts-state').textContent = ttsEnabled ? 'Speech Enabled' : 'Muted';
+    }
+
+    function toggleJarvisVoiceMute() {
+      toggleTts();
+    }
+
+    // ── Dialog Modals ──
+    function openDialog(name) {
+      const el = document.getElementById(`modal-${name}`);
+      if (el) el.style.display = 'flex';
+      if (name === 'remote') refreshRemoteStream();
+    }
+    function closeDialog(name) {
+      const el = document.getElementById(`modal-${name}`);
+      if (el) el.style.display = 'none';
+    }
+    function closeDialogOnBackdrop(e, name) {
+      if (e.target.id === `modal-${name}`) closeDialog(name);
+    }
+    function openNav(dialogName) {
+      document.querySelectorAll('.rail-button').forEach(b => b.classList.remove('active'));
+      const activeBtn = document.getElementById(`rail-btn-${dialogName || 'dashboard'}`);
+      if (activeBtn) activeBtn.classList.add('active');
+      if (dialogName) openDialog(dialogName);
+    }
+
+    // ── Remote Desktop Viewport Controller ──
+    let remoteZoom = 1.0;
+    function refreshRemoteStream() {
+      const img = document.getElementById('remote-stream-img');
+      if (img) img.src = `/stream/screen?t=${Date.now()}`;
+    }
+    function zoomRemote(factor) {
+      remoteZoom = Math.max(0.5, Math.min(3.0, remoteZoom * factor));
+      const img = document.getElementById('remote-stream-img');
+      if (img) img.style.transform = `scale(${remoteZoom})`;
+    }
+    function resetRemoteZoom() {
+      remoteZoom = 1.0;
+      const img = document.getElementById('remote-stream-img');
+      if (img) img.style.transform = 'scale(1.0)';
+    }
+    function handleRemoteDesktopClick(e) {
+      const img = e.target;
+      const rect = img.getBoundingClientRect();
+      const xNorm = (e.clientX - rect.left) / rect.width;
+      const yNorm = (e.clientY - rect.top) / rect.height;
+
+      fetch('/api/remote/click', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ x: Math.max(0, Math.min(1, xNorm)), y: Math.max(0, Math.min(1, yNorm)), button: 'left' })
+      });
+    }
+
+    // ── Virtual Gamepad Controller ──
+    function initStick() {
+      const base = document.getElementById('stick-base');
+      const nub = document.getElementById('stick-nub');
+      if (!base || !nub) return;
+
+      let isDragging = false;
+      let startX = 0, startY = 0;
+
+      const down = (e) => {
+        isDragging = true;
+        const rect = base.getBoundingClientRect();
+        startX = rect.left + rect.width / 2;
+        startY = rect.top + rect.height / 2;
+      };
+      const move = (e) => {
+        if (!isDragging) return;
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        const dx = clientX - startX;
+        const dy = clientY - startY;
+        const dist = Math.min(45, Math.hypot(dx, dy));
+        const angle = Math.atan2(dy, dx);
+
+        const nx = Math.cos(angle) * dist;
+        const ny = Math.sin(angle) * dist;
+        nub.style.transform = `translate(${nx}px, ${ny}px)`;
+
+        // Dispatch directional keystrokes
+        const normX = nx / 45;
+        const normY = ny / 45;
+        if (normY < -0.4) dispatchKey('w', 'down'); else dispatchKey('w', 'up');
+        if (normY > 0.4) dispatchKey('s', 'down'); else dispatchKey('s', 'up');
+        if (normX < -0.4) dispatchKey('a', 'down'); else dispatchKey('a', 'up');
+        if (normX > 0.4) dispatchKey('d', 'down'); else dispatchKey('d', 'up');
+      };
+      const up = () => {
+        if (!isDragging) return;
+        isDragging = false;
+        nub.style.transform = 'translate(0px, 0px)';
+        dispatchKey('w', 'up');
+        dispatchKey('s', 'up');
+        dispatchKey('a', 'up');
+        dispatchKey('d', 'up');
+      };
+
+      base.addEventListener('pointerdown', down);
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', up);
+    }
+
+    function dispatchKey(keyName, action) {
+      fetch(`/api/remote/key_${action === 'down' ? 'down' : 'up'}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: keyName })
+      }).catch(() => {});
+    }
+
+    // ── In-HUD Media Player ──
+    function playInHudMedia(embedUrl, title) {
+      const dock = document.getElementById('hud-media-dock');
+      const frame = document.getElementById('hud-media-iframe');
+      const titleEl = document.getElementById('hud-media-title');
+      if (!dock || !frame) return;
+
+      activeMediaUrl = embedUrl;
+      frame.src = embedUrl;
+      if (titleEl) titleEl.textContent = `▶ ${title.slice(0, 30)}`;
+      dock.style.display = 'flex';
+    }
+    function closeHudMedia() {
+      const dock = document.getElementById('hud-media-dock');
+      const frame = document.getElementById('hud-media-iframe');
+      if (dock) dock.style.display = 'none';
+      if (frame) frame.src = '';
+    }
+    function popoutMedia() {
+      if (activeMediaUrl) window.open(activeMediaUrl, '_blank');
+      closeHudMedia();
+    }
+
+    // ── Toggles & Utilities ──
+    function toggleGestures() {
+      const tgl = document.getElementById('tgl-gestures');
+      const active = tgl.classList.toggle('is-on');
+      document.getElementById('lbl-gesture-state').textContent = active ? 'Tracking Live' : 'Camera Ready';
+      addLog(`Hand tracking ${active ? 'activated' : 'paused'}`, 'info');
+    }
+    function toggleClap() {
+      const tgl = document.getElementById('tgl-clap');
+      const active = tgl.classList.toggle('is-on');
+      fetch('/voice/toggle_clap', { method: 'POST' });
+      document.getElementById('lbl-clap-state').textContent = active ? 'Listening' : 'Standby';
+    }
+    function toggleFaceSentinel() {
+      const tgl = document.getElementById('tgl-sentinel');
+      const active = tgl ? tgl.classList.toggle('is-on') : false;
+      fetch('/api/sentinel/toggle', { method: 'POST' });
+      const lbl = document.getElementById('lbl-sentinel-state');
+      if (lbl) lbl.textContent = active ? 'Monitoring' : 'Standby';
+      addLog(`Biometric Face Sentinel ${active ? 'engaged' : 'disengaged'}`, 'info');
+    }
+    function toggleEmergencyStop() {
+      fetch('/api/emergency_stop', { method: 'POST' }).then(() => {
+        addLog('EMERGENCY STOP TOGGLED', 'error');
+      });
+    }
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+    async function loadMobileConfig() {
+      try {
+        const res = await fetch('/mobile/config');
+        if (!res.ok) return;
+        const d = await res.json();
+        const url = d.cloud_url || 'https://edith-jashu.loca.lt';
+        const el = document.getElementById('hud-cloud-url');
+        if (el) el.textContent = url;
+        const setEl = document.getElementById('settings-cloud-url');
+        if (setEl) setEl.value = url;
+        const tunEl = document.getElementById('val-tunnel-status');
+        if (tunEl) tunEl.textContent = (d.tunnel_status && d.tunnel_status.online) ? 'PINNED ONLINE' : 'READY';
+      } catch (_) {}
+    }
+    function copyCloudLink() {
+      const urlEl = document.getElementById('hud-cloud-url');
+      const url = (urlEl && urlEl.textContent.trim()) || 'https://edith-jashu.loca.lt';
+      navigator.clipboard.writeText(url);
+      addLog(`Cloud tunnel link copied: ${url}`, 'success');
+    }
+    function syncClipboard() {
+      fetch('/api/clipboard').then(r => r.json()).then(d => {
+        addLog(`Host clipboard: "${(d.text || '').slice(0, 30)}"`, 'info');
+      });
+    }
+    // ── Settings & Multi-Provider Controller (ASTRA 6 Architecture) ──
+    function switchSettingsTab(tabName) {
+      document.querySelectorAll('.settings-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.settings-tab-pane').forEach(p => p.style.display = 'none');
+      const btn = document.getElementById(`tab-btn-${tabName}`);
+      const pane = document.getElementById(`tab-pane-${tabName}`);
+      if (btn) btn.classList.add('active');
+      if (pane) pane.style.display = 'block';
+    }
+
+    function selectProviderTile(pid) {
+      currentSelectedProvider = pid;
+      document.querySelectorAll('.provider-tile').forEach(t => {
+        t.classList.toggle('selected', t.getAttribute('data-provider') === pid);
+      });
+      const urlField = document.getElementById('field-provider-url');
+      if (urlField) urlField.style.display = (pid === 'gateway' || pid === 'openrouter') ? 'block' : 'none';
+
+      const modelInput = document.getElementById('input-provider-model');
+      const keyInput = document.getElementById('input-provider-key');
+      const resBox = document.getElementById('provider-test-result');
+      if (resBox) resBox.style.display = 'none';
+
+      const defaults = {
+        gemini: 'gemini-2.5-flash',
+        groq: 'llama-3.3-70b-versatile',
+        openai: 'gpt-4o-mini',
+        openrouter: 'openai/gpt-4o-mini',
+        gateway: 'gpt-4o-mini',
+        local: 'hermes3:3b'
+      };
+
+      if (providersConfigCache.models && providersConfigCache.models[pid]) {
+        modelInput.value = providersConfigCache.models[pid];
+      } else {
+        modelInput.value = defaults[pid] || '';
+      }
+
+      if (pid === 'local') {
+        keyInput.value = '';
+        keyInput.placeholder = 'No API key required for offline models.';
+        keyInput.disabled = true;
+      } else {
+        keyInput.disabled = false;
+        const hasKey = providersConfigCache.keys && providersConfigCache.keys[pid];
+        keyInput.placeholder = hasKey ? '•••••••••••••••• (Saved on host in .llm.env)' : 'Enter API Key...';
+      }
+    }
+
+    async function loadProviderSettings() {
+      try {
+        const res = await fetch('/api/providers');
+        if (!res.ok) return;
+        const data = await res.json();
+        providersConfigCache = data;
+        const active = data.active_provider || 'gemini';
+        selectProviderTile(active);
+        if (data.gateway_url) {
+          const u = document.getElementById('input-provider-url');
+          if (u) u.value = data.gateway_url;
+        }
+      } catch (_) {}
+    }
+
+    async function testCurrentProvider() {
+      const resBox = document.getElementById('provider-test-result');
+      resBox.style.display = 'flex';
+      resBox.className = 'connection-result';
+      resBox.innerHTML = '<span class="status-dot"></span> Contacting upstream intelligence API...';
+
+      const key = document.getElementById('input-provider-key').value.trim();
+      const model = document.getElementById('input-provider-model').value.trim();
+      const url = document.getElementById('input-provider-url').value.trim();
+
+      try {
+        const res = await fetch('/api/providers/test', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: currentSelectedProvider,
+            api_key: key || undefined,
+            model: model || undefined,
+            base_url: url || undefined
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          resBox.className = 'connection-result success';
+          resBox.innerHTML = `✓ Connection Verified: Model [${data.model || model}] replied in ${data.latency || 12}ms.`;
+          addLog(`Provider [${currentSelectedProvider}] verified successfully (${data.latency || 12}ms)`, 'success');
+        } else {
+          resBox.className = 'connection-result error';
+          resBox.innerHTML = `✗ Connection Failed: ${data.error || 'Check key and network.'}`;
+          addLog(`Provider [${currentSelectedProvider}] test failed: ${data.error}`, 'error');
+        }
+      } catch (err) {
+        resBox.className = 'connection-result error';
+        resBox.innerHTML = `✗ Network Error: ${err.message}`;
+      }
+    }
+
+    async function saveCurrentProvider() {
+      const key = document.getElementById('input-provider-key').value.trim();
+      const model = document.getElementById('input-provider-model').value.trim();
+      const url = document.getElementById('input-provider-url').value.trim();
+      const resBox = document.getElementById('provider-test-result');
+
+      try {
+        const res = await fetch('/api/providers/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: currentSelectedProvider,
+            api_key: key || undefined,
+            model: model || undefined,
+            base_url: url || undefined
+          })
+        });
+        const data = await res.json();
+        if (data.ok) {
+          resBox.style.display = 'flex';
+          resBox.className = 'connection-result success';
+          resBox.innerHTML = `✓ Active AI provider set to [${currentSelectedProvider.toUpperCase()}]. Credentials saved in .llm.env.`;
+          addLog(`Active AI provider updated: ${currentSelectedProvider.toUpperCase()}`, 'success');
+          loadProviderSettings();
+        }
+      } catch (err) {
+        alert(`Failed to save settings: ${err.message}`);
+      }
+    }
+
+    // ── Biometric Face Sentinel Camera Controller ──
+    async function toggleSentinelCamera() {
+      const video = document.getElementById('sentinel-video');
+      const btn = document.getElementById('btn-sentinel-cam');
+      const statusHud = document.getElementById('sentinel-hud-status');
+
+      if (sentinelMediaStream) {
+        stopSentinelCamera();
+        if (btn) btn.textContent = '📷 Start Camera';
+        if (statusHud) statusHud.textContent = 'STATUS: STANDBY';
+        return;
+      }
+
+      try {
+        sentinelMediaStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: 640, height: 480, facingMode: 'user' }
+        });
+        video.srcObject = sentinelMediaStream;
+        if (btn) btn.textContent = '⏹ Stop Camera';
+        if (statusHud) statusHud.textContent = 'STATUS: LOCKED ON USER';
+        startSentinelHUDTracking();
+        addLog('Biometric Sentinel camera feed online.', 'info');
+      } catch (err) {
+        alert(`Camera access denied or unavailable: ${err.message}`);
+      }
+    }
+
+    function stopSentinelCamera() {
+      if (sentinelMediaStream) {
+        sentinelMediaStream.getTracks().forEach(t => t.stop());
+        sentinelMediaStream = null;
+      }
+      if (sentinelAnimFrame) {
+        cancelAnimationFrame(sentinelAnimFrame);
+        sentinelAnimFrame = null;
+      }
+      const video = document.getElementById('sentinel-video');
+      if (video) video.srcObject = null;
+      const canvas = document.getElementById('sentinel-canvas');
+      if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+    }
+
+    function closeSentinelModal() {
+      stopSentinelCamera();
+      closeDialog('sentinel');
+    }
+
+    function startSentinelHUDTracking() {
+      const canvas = document.getElementById('sentinel-canvas');
+      const video = document.getElementById('sentinel-video');
+      if (!canvas || !video) return;
+
+      const ctx = canvas.getContext('2d');
+      let angle = 0;
+
+      function drawHUD() {
+        if (!sentinelMediaStream) return;
+        canvas.width = video.videoWidth || 640;
+        canvas.height = video.videoHeight || 480;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const r = 90;
+
+        // Rotating targeting ring
+        ctx.save();
+        ctx.translate(cx, cy);
+        ctx.rotate(angle);
+        ctx.strokeStyle = 'rgba(107, 221, 207, 0.7)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([12, 10]);
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+
+        // Corner Reticle Brackets
+        const boxSize = 130;
+        ctx.strokeStyle = '#6bddcf';
+        ctx.lineWidth = 2.0;
+        ctx.setLineDash([]);
+
+        // Top-left
+        ctx.beginPath();
+        ctx.moveTo(cx - boxSize, cy - boxSize + 20);
+        ctx.lineTo(cx - boxSize, cy - boxSize);
+        ctx.lineTo(cx - boxSize + 20, cy - boxSize);
+        ctx.stroke();
+
+        // Top-right
+        ctx.beginPath();
+        ctx.moveTo(cx + boxSize - 20, cy - boxSize);
+        ctx.lineTo(cx + boxSize, cy - boxSize);
+        ctx.lineTo(cx + boxSize, cy - boxSize + 20);
+        ctx.stroke();
+
+        // Bottom-left
+        ctx.beginPath();
+        ctx.moveTo(cx - boxSize, cy + boxSize - 20);
+        ctx.lineTo(cx - boxSize, cy + boxSize);
+        ctx.lineTo(cx - boxSize + 20, cy + boxSize);
+        ctx.stroke();
+
+        // Bottom-right
+        ctx.beginPath();
+        ctx.moveTo(cx + boxSize - 20, cy + boxSize);
+        ctx.lineTo(cx + boxSize, cy + boxSize);
+        ctx.lineTo(cx + boxSize, cy + boxSize - 20);
+        ctx.stroke();
+
+        // Crosshairs
+        ctx.strokeStyle = 'rgba(107, 221, 207, 0.4)';
+        ctx.beginPath();
+        ctx.moveTo(cx - 20, cy); ctx.lineTo(cx + 20, cy);
+        ctx.moveTo(cx, cy - 20); ctx.lineTo(cx, cy + 20);
+        ctx.stroke();
+
+        angle += 0.02;
+        sentinelAnimFrame = requestAnimationFrame(drawHUD);
+      }
+      drawHUD();
+    }
+
+    function triggerVision() {
+      addLog('Analyzing active screen vision...', 'info');
+      fetch('/vision/analyze_screen').then(r => r.json()).then(d => {
+        appendChatMessage('assistant', `Screen Vision Analysis:\n${d.summary || JSON.stringify(d)}`);
+      });
+    }
+  </script>
+</body>
+</html>

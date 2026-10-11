@@ -1,0 +1,43 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Pytest & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Environments & Virtual Envs
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Temporary directories and debugging artifacts
+tmp_*
+*.log
+
+# Screenshots directory generated at runtime
+edith/data/screenshots/
+!edith/data/screenshots/.gitkeep
+
+# Operating System Files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# Mobile distribution artifacts
+dist_mobile/
+
+# PyInstaller intermediate build files
+build/
+
+# Signing tools and APK idsig files
+scripts/tools/
+*.idsig
+EDith sol test/
+cloudflared.exe

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Cleartext is allowed so the app can reach a gateway on your home LAN or Tailscale (100.x) address.
+     Traffic over Tailscale/WireGuard is encrypted by the VPN; for public access use HTTPS only. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors><certificates src="system" /></trust-anchors>
+    </base-config>
+</network-security-config>
