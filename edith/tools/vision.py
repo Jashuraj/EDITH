@@ -133,7 +133,52 @@ class VisionTools:
         b64_image = self.capture_screen_base64()
         context = self.get_desktop_context()
 
-        # 2. Attempt local Ollama vision model if available
+        # 2. Attempt Cloud Multi-Modal Vision if API key is configured (Gemini / OpenAI / OpenRouter)
+        if b64_image:
+            try:
+                from edith.providers.cloud_provider import CLOUD_AI
+                cloud_target = CLOUD_AI.resolve_target()
+                if cloud_target:
+                    pid, base_url, api_key, model = cloud_target
+                    if pid in ("gemini", "openai", "openrouter") and api_key:
+                        req_payload = {
+                            "model": model,
+                            "messages": [
+                                {
+                                    "role": "user",
+                                    "content": [
+                                        {"type": "text", "text": f"{prompt}\nAnalyze the desktop screen. What active app, website, or code is open? Be concise, informative, and direct."},
+                                        {"type": "image_url", "image_url": {"url": f"data:image/png;base64,{b64_image}"}}
+                                    ]
+                                }
+                            ],
+                            "max_tokens": 300,
+                        }
+                        req = urllib.request.Request(
+                            f"{base_url.rstrip('/')}/chat/completions",
+                            data=json.dumps(req_payload).encode("utf-8"),
+                            headers={
+                                "Content-Type": "application/json",
+                                "Authorization": f"Bearer {api_key}"
+                            }
+                        )
+                        with urllib.request.urlopen(req, timeout=12.0) as resp:
+                            res = json.loads(resp.read().decode("utf-8"))
+                            content = (res.get("choices", [{}])[0].get("message", {}).get("content") or "").strip()
+                            if content:
+                                logger.info("Cloud vision analysis successful via %s (%s).", pid, model)
+                                return {
+                                    "success": True,
+                                    "perception": content,
+                                    "source": f"cloud_vision_{pid}_{model}",
+                                    "message": f"I can see your screen, sir: {content}",
+                                    "apps": context["active_apps"],
+                                    "active_window": context.get("active_window", ""),
+                                }
+            except Exception as ex:
+                logger.debug("Cloud multimodal vision query skipped: %s", ex)
+
+        # 3. Attempt local Ollama vision model if available
         if b64_image:
             try:
                 vision_payload = {

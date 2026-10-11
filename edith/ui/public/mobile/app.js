@@ -301,8 +301,7 @@
     updateVoiceModeUI();
     triggerHaptic(25);
     if (state.ttsEnabled) {
-      logConsole("VOICE SYSTEM", "Voice response enabled. EDITH will speak all replies.");
-      speakResponse("Voice mode online.");
+      logConsole("VOICE SYSTEM", "Voice response enabled. EDITH will speak replies.");
     } else {
       if (activeAudioPlayer) {
         try { activeAudioPlayer.pause(); } catch (_) {}
@@ -470,9 +469,13 @@
   let recognition = null;
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
+  let isContinuousMic = localStorage.getItem("edith_mobile_continuous_mic") === "true";
+  let lastSpokenText = "";
+  let lastSpokenTime = 0;
+
   if (SpeechRecognition) {
     recognition = new SpeechRecognition();
-    recognition.continuous = false;
+    recognition.continuous = Boolean(isContinuousMic);
     recognition.interimResults = true;
     recognition.lang = "en-US";
 
@@ -480,7 +483,7 @@
       state.isListening = true;
       state.audioWaveLevel = 0.9;
       dom.btnMic.classList.add("listening");
-      logConsole("LISTENING", "Microphone active. Speak your command...");
+      logConsole("LISTENING", isContinuousMic ? "Always-Listening active. Speak anytime..." : "Microphone active. Speak your command...");
       triggerHaptic(30);
     };
 
@@ -500,7 +503,13 @@
         logConsole("VOICE DETECTED", `"${liveText}"`);
       }
       if (final) {
-        executeCommand(final.trim());
+        const textToRun = final.trim();
+        const now = Date.now();
+        if (textToRun && (textToRun.toLowerCase() !== lastSpokenText.toLowerCase() || (now - lastSpokenTime) > 1500)) {
+          lastSpokenText = textToRun;
+          lastSpokenTime = now;
+          executeCommand(textToRun);
+        }
       }
     };
 
@@ -515,6 +524,13 @@
         toggleFallbackSpeech();
         return;
       }
+      if (isContinuousMic && event.error !== "aborted") {
+        setTimeout(() => {
+          if (isContinuousMic && !state.isListening && recognition) {
+            try { recognition.start(); } catch (_) {}
+          }
+        }, 1000);
+      }
       if (event.error !== "no-speech") {
         logConsole("VOICE STATUS", `Speech recognition: ${event.error}`);
       }
@@ -524,6 +540,13 @@
       state.isListening = false;
       state.audioWaveLevel = 0.1;
       dom.btnMic.classList.remove("listening");
+      if (isContinuousMic) {
+        setTimeout(() => {
+          if (isContinuousMic && !state.isListening && recognition) {
+            try { recognition.start(); } catch (_) {}
+          }
+        }, 250);
+      }
     };
   }
 
@@ -606,6 +629,25 @@
         console.warn("Could not start recognition, using fallback:", err);
         toggleFallbackSpeech();
       }
+    }
+  }
+
+  function toggleContinuousSpeech() {
+    isContinuousMic = !isContinuousMic;
+    localStorage.setItem("edith_mobile_continuous_mic", isContinuousMic ? "true" : "false");
+    triggerHaptic(35);
+    const btnCont = document.getElementById("btn-continuous-mic");
+    if (btnCont) {
+      btnCont.style.color = isContinuousMic ? "var(--cyan-glow)" : "var(--text-dim)";
+      btnCont.style.borderColor = isContinuousMic ? "var(--cyan)" : "var(--border-color)";
+      btnCont.style.boxShadow = isContinuousMic ? "0 0 10px rgba(0,229,255,0.4)" : "none";
+    }
+    if (isContinuousMic) {
+      logConsole("ALWAYS-ON MIC", "Continuous microphone active. Speak anytime without tapping.");
+      if (!state.isListening) toggleSpeech();
+    } else {
+      logConsole("TAP MIC", "Continuous mic deactivated. Tap-to-speak restored.");
+      if (state.isListening && recognition) recognition.stop();
     }
   }
 
@@ -718,7 +760,6 @@
       if ((wasOffline || previousType !== "LOCAL") && !hasSpokenInitialLink) {
         hasSpokenInitialLink = true;
         logConsole("LINK ACCEPTED", `Connected to laptop via Local Wi-Fi (${latency}ms). Ready.`);
-        speakResponse("EDITH system linked on local Wi-Fi, Creator.");
         triggerHaptic(40);
       }
     } else if (type === "CLOUD") {
@@ -730,7 +771,6 @@
       if ((wasOffline || previousType !== "CLOUD") && !hasSpokenInitialLink) {
         hasSpokenInitialLink = true;
         logConsole("LINK ACCEPTED", `Connected to laptop via Global Cloud Tunnel (${latency}ms). Ready.`);
-        speakResponse("EDITH mainframe online via satellite cloud link.");
         triggerHaptic(40);
       }
     } else {
@@ -1415,27 +1455,49 @@
   }
 
   async function sendRemoteInput(action, params = {}) {
-    const ep = (state.activeEndpoint || defaultLocalUrl).replace(/\/+$/, "");
+    let ep = (state.activeEndpoint || defaultLocalUrl).replace(/\/+$/, "");
+    if (isCloudOrigin || window.location.protocol === "https:") {
+      ep = window.location.origin.replace(/\/+$/, "");
+    }
+    const payload = JSON.stringify({
+      action,
+      params,
+      x: params.x,
+      y: params.y,
+      button: params.button || "left",
+      token: state.token || undefined,
+      device_id: "edith_mobile_pwa",
+    });
+    const headers = {
+      "Content-Type": "application/json",
+      "Bypass-Tunnel-Reminder": "true",
+      "bypass-tunnel-reminder": "true",
+      "X-Token": state.token || "",
+    };
+
     try {
       const resp = await fetch(`${ep}/api/remote/input`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Bypass-Tunnel-Reminder": "true",
-          "X-Token": state.token,
-        },
-        body: JSON.stringify({
-          action,
-          params,
-          token: state.token || undefined,
-          device_id: "edith_mobile_pwa",
-        }),
+        headers,
+        body: payload,
       });
-      return await resp.json();
-    } catch (ex) {
-      console.warn("Remote input dispatch notice:", ex);
-      return { success: false, error: ex.message };
+      if (resp.ok) {
+        return await resp.json();
+      }
+    } catch (_) {
+      // If primary endpoint failed and cloud tunnel is available, try cloud tunnel
+      if (state.cloudUrl && ep !== state.cloudUrl) {
+        try {
+          const cResp = await fetch(`${state.cloudUrl.replace(/\/+$/, "")}/api/remote/input`, {
+            method: "POST",
+            headers,
+            body: payload,
+          });
+          if (cResp.ok) return await cResp.json();
+        } catch (_) {}
+      }
     }
+    return { success: false, action };
   }
 
   function openRemoteDesktop(gameMode = false) {
@@ -1593,8 +1655,32 @@
       const rect = el.getBoundingClientRect();
       if (!rect || rect.width <= 1 || rect.height <= 1) return { x: 0.5, y: 0.5 };
 
-      const normX = Math.max(0.0, Math.min(1.0, (clientX - rect.left) / rect.width));
-      const normY = Math.max(0.0, Math.min(1.0, (clientY - rect.top) / rect.height));
+      // Compute actual rendered screen aspect ratio (default 16:9 laptop display)
+      let naturalW = (el.naturalWidth && el.naturalWidth > 100) ? el.naturalWidth : 1920;
+      let naturalH = (el.naturalHeight && el.naturalHeight > 100) ? el.naturalHeight : 1080;
+      const targetRatio = naturalW / naturalH;
+      const containerRatio = rect.width / rect.height;
+
+      let renderedW = rect.width;
+      let renderedH = rect.height;
+      let padX = 0;
+      let padY = 0;
+
+      if (containerRatio > targetRatio) {
+        // Pillarbox: horizontal bars on left and right
+        renderedW = rect.height * targetRatio;
+        padX = (rect.width - renderedW) / 2;
+      } else {
+        // Letterbox: vertical bars on top and bottom
+        renderedH = rect.width / targetRatio;
+        padY = (rect.height - renderedH) / 2;
+      }
+
+      const relX = clientX - rect.left - padX;
+      const relY = clientY - rect.top - padY;
+
+      const normX = Math.max(0.0, Math.min(1.0, relX / Math.max(1, renderedW)));
+      const normY = Math.max(0.0, Math.min(1.0, relY / Math.max(1, renderedH)));
       return { x: normX, y: normY };
     }
 
@@ -1724,10 +1810,10 @@
       }
 
       const elapsed = Date.now() - touchStartTime;
-      if (!isLongPress && elapsed < 350 && e.changedTouches.length === 1) {
+      if (!isLongPress && elapsed < 500 && e.changedTouches.length === 1) {
         const t = e.changedTouches[0];
         const dist = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY);
-        if (dist < 15) {
+        if (dist < 30) {
           const coords = getNormalizedCoords(t.clientX, t.clientY);
           showRipple(t.clientX, t.clientY);
 
@@ -1759,6 +1845,18 @@
           }
         }
       }
+    });
+
+    dom.remoteViewport.addEventListener("click", (e) => {
+      if (remoteGamepadMode || e.target.closest("#virtual-gamepad-overlay") || e.target.closest(".remote-bottom-bar") || e.target.closest("#mobile-zoom-overlay")) {
+        return;
+      }
+      if ("ontouchstart" in window && touchStartTime && (Date.now() - touchStartTime < 600)) {
+        return; // Avoid duplicate dispatch on touch devices
+      }
+      const coords = getNormalizedCoords(e.clientX, e.clientY);
+      showRipple(e.clientX, e.clientY);
+      sendRemoteInput("click", coords);
     });
 
     if (dom.btnMzoomIn) {
@@ -2719,7 +2817,7 @@
       if (dom.cfgLocalUrl) dom.cfgLocalUrl.value = foundUrl;
       if (dom.quickHostInput) dom.quickHostInput.value = foundUrl;
       await resolveActiveEndpoint();
-      speakResponse("EDITH mainframe discovered and connected.");
+      triggerHaptic(30);
     } else {
       logConsole("SCANNER", "No EDITH host detected on 192.168.1.x. Try entering host IP manually.");
       alert("No EDITH host detected on 192.168.1.x.\\nPlease verify PC is on same Wi-Fi and EDITH is running.");
@@ -2897,6 +2995,7 @@
       }
     };
     window.toggleMobileMic = () => toggleSpeech();
+    window.toggleContinuousSpeech = () => toggleContinuousSpeech();
     window.openRemoteOverlay = (gameMode = false) => openRemoteDesktop(gameMode);
     window.closeRemoteOverlay = () => closeRemoteDesktop();
     window.openGamepadOverlay = () => openRemoteDesktop(true);

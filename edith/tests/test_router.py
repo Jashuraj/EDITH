@@ -25,6 +25,8 @@ class TestModelRouter(unittest.TestCase):
     def setUp(self):
         self.cloud = MockCloudProvider()
         self.router = ModelRouter(cloud_provider=self.cloud)
+        self.router.cloud_ai.keys.clear()
+        self.router.cloud_ai.active_provider = "auto"
         CONFIG.offline_mode = False
         CONFIG.zero_credit_mode = False
         SECURITY.set_privacy_mode(False)

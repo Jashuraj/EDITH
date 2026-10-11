@@ -29,6 +29,7 @@ from edith.core.security_sentinels import (
 from edith.core.single_question import enforce_single_question
 from edith.providers.base import LLMProvider, ModelResponse, ToolCall
 from edith.providers.free_online_provider import FREE_ONLINE
+from edith.providers.cloud_provider import CLOUD_AI
 from edith.providers.ollama_provider import OLLAMA
 from edith.providers.omniroute_provider import OMNIROUTE
 from edith.tools.reflex import REFLEX
@@ -305,6 +306,7 @@ class ModelRouter:
     def __init__(self, local_provider: Optional[LLMProvider] = None, cloud_provider: Optional[LLMProvider] = None):
         self.local = local_provider or OLLAMA
         self.cloud = cloud_provider
+        self.cloud_ai = CLOUD_AI
         self.free_online = FREE_ONLINE
         self.omniroute = OMNIROUTE
         self._internet_available: bool = True
@@ -334,11 +336,22 @@ class ModelRouter:
         if not is_online:
             return self._route_local(category, has_tools, reason="Offline mode active: routing to local models.")
 
-        # 4. Tool calling with explicit external cloud provider
+        # 4. User-configured Cloud API Keys (Gemini, Groq, OpenAI, OpenRouter)
+        target = self.cloud_ai.resolve_target()
+        if target is not None:
+            pid, _, _, m = target
+            return RoutingDecision(
+                provider="cloud_ai",
+                model=f"{pid.upper()}:{m}",
+                category=category,
+                reason=f"Connected to user API provider: {pid.upper()} ({m})",
+            )
+
+        # 5. Tool calling with explicit external cloud provider
         if (has_tools or category == TaskCategory.TOOL_CALLING) and (self.cloud is not None):
             return self._route_local(category, has_tools, reason="Tool execution bound to local Hermes 3B engine.")
 
-        # 5. Connected to free zero-auth cloud AI
+        # 6. Connected to free zero-auth cloud AI
         return RoutingDecision(
             provider="free_online",
             model="FREE_CLOUD_AI",
@@ -473,8 +486,25 @@ class ModelRouter:
 
         response: Optional[ModelResponse] = None
 
+        # Tier 0: User-Configured Multi-Provider Cloud AI (Gemini, Groq, OpenAI, OpenRouter)
+        if (decision.provider == "cloud_ai" or self.cloud_ai.resolve_target()) and self.cloud_ai.circuit_breaker.can_execute():
+            try:
+                if tools:
+                    response = await self.cloud_ai.generate_with_tools(
+                        prompt=clean_prompt,
+                        tools=tools,
+                        system_prompt=system_prompt,
+                    )
+                else:
+                    response = await self.cloud_ai.generate(
+                        prompt=clean_prompt,
+                        system_prompt=system_prompt,
+                    )
+            except Exception as ex:
+                logger.warning("Tier 0 (Cloud AI API) failed (%s). Stepping down to Tier 1 Free Online.", ex)
+
         # Tier 1: Free Online Cloud AI (if routed online)
-        if decision.provider == "free_online" and self.free_online.circuit_breaker.can_execute():
+        if response is None and decision.provider in ("free_online", "cloud_ai") and self.free_online.circuit_breaker.can_execute():
             try:
                 if tools:
                     response = await self.free_online.generate_with_tools(

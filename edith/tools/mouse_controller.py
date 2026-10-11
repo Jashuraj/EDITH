@@ -8,6 +8,7 @@ without third-party lag.
 from __future__ import annotations
 
 import ctypes
+from ctypes import wintypes
 import logging
 import platform
 import time
@@ -95,30 +96,53 @@ class MouseController:
         self._last_move_time = time.perf_counter()
         return True
 
+    def _get_abs_coords(self) -> tuple[int, int]:
+        """Return current cursor position in normalized Win32 0..65535 space."""
+        if not self._u32:
+            return 0, 0
+        self.update_screen_metrics()
+        pt = wintypes.POINT()
+        if self._u32.GetCursorPos(ctypes.byref(pt)):
+            abs_x = int((pt.x / max(1, self.screen_width)) * 65535.0)
+            abs_y = int((pt.y / max(1, self.screen_height)) * 65535.0)
+            return abs_x, abs_y
+        return 0, 0
+
     def left_click(self) -> bool:
-        """Simulate primary left mouse button click instantaneously."""
+        """Simulate primary left mouse button click reliably."""
         if not self._u32:
             return False
-        self._u32.mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-        self._u32.mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+        abs_x, abs_y = self._get_abs_coords()
+        flags = MOUSEEVENTF_ABSOLUTE if (abs_x or abs_y) else 0
+        self._u32.mouse_event(flags | MOUSEEVENTF_LEFTDOWN, abs_x, abs_y, 0, 0)
+        time.sleep(0.025)
+        self._u32.mouse_event(flags | MOUSEEVENTF_LEFTUP, abs_x, abs_y, 0, 0)
         return True
 
     def right_click(self) -> bool:
-        """Simulate secondary right mouse button click instantaneously."""
+        """Simulate secondary right mouse button click reliably."""
         if not self._u32:
             return False
-        self._u32.mouse_event(MOUSEEVENTF_RIGHTDOWN, 0, 0, 0, 0)
-        self._u32.mouse_event(MOUSEEVENTF_RIGHTUP, 0, 0, 0, 0)
+        abs_x, abs_y = self._get_abs_coords()
+        flags = MOUSEEVENTF_ABSOLUTE if (abs_x or abs_y) else 0
+        self._u32.mouse_event(flags | MOUSEEVENTF_RIGHTDOWN, abs_x, abs_y, 0, 0)
+        time.sleep(0.025)
+        self._u32.mouse_event(flags | MOUSEEVENTF_RIGHTUP, abs_x, abs_y, 0, 0)
         return True
 
     def double_click(self) -> bool:
         """Simulate rapid double left click."""
         if not self._u32:
             return False
-        self._u32.mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-        self._u32.mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
-        self._u32.mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0)
-        self._u32.mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0)
+        abs_x, abs_y = self._get_abs_coords()
+        flags = MOUSEEVENTF_ABSOLUTE if (abs_x or abs_y) else 0
+        self._u32.mouse_event(flags | MOUSEEVENTF_LEFTDOWN, abs_x, abs_y, 0, 0)
+        time.sleep(0.02)
+        self._u32.mouse_event(flags | MOUSEEVENTF_LEFTUP, abs_x, abs_y, 0, 0)
+        time.sleep(0.05)
+        self._u32.mouse_event(flags | MOUSEEVENTF_LEFTDOWN, abs_x, abs_y, 0, 0)
+        time.sleep(0.02)
+        self._u32.mouse_event(flags | MOUSEEVENTF_LEFTUP, abs_x, abs_y, 0, 0)
         return True
 
     def drag_start(self) -> bool:

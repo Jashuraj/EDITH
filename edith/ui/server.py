@@ -226,6 +226,11 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                 "active_character": SPEAKER.active_character,
             })
 
+        elif parsed.path == "/api/providers":
+            from edith.providers.cloud_provider import CLOUD_AI
+            self._send_json(CLOUD_AI.get_public_providers())
+            return
+
         elif parsed.path in ("/api/voice/tts", "/voice/tts"):
             qs = urllib.parse.parse_qs(parsed.query)
             text = qs.get("text", [""])[0]
@@ -623,11 +628,10 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                             tool_outputs.append(f"[{tc.name}]: Execution notice - {te}")
 
                 final_text = resp.content.strip()
-                if tool_outputs:
-                    prefix = "\n".join(tool_outputs)
-                    final_text = f"{prefix}\n\n{final_text}" if final_text else prefix
-
-                if not final_text:
+                if not final_text and tool_outputs:
+                    clean_outs = [o.split("]: ", 1)[-1] if "]: " in o else o for o in tool_outputs]
+                    final_text = " ".join(clean_outs)
+                elif not final_text:
                     final_text = "Action executed successfully, sir."
 
                 STATE.set_state_sync(SystemState.READY, reason="Command processing complete")
@@ -655,10 +659,32 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                     "state": "READY",
                 })
 
+        # Provider Intelligence Settings & Testing
+        elif parsed.path in ("/api/providers/test", "/api/providers"):
+            from edith.providers.cloud_provider import CLOUD_AI
+            p = str(data.get("provider", "gemini"))
+            k = data.get("apiKey") or data.get("api_key")
+            m = data.get("model")
+            res = CLOUD_AI.test_connection(provider=p, api_key=k, model=m)
+            self._send_json(res)
+            return
+
+        elif parsed.path == "/api/providers/save":
+            from edith.providers.cloud_provider import CLOUD_AI
+            p = str(data.get("provider", "auto"))
+            k = data.get("apiKey") or data.get("api_key")
+            m = data.get("model")
+            base_url = data.get("baseUrl") or data.get("base_url")
+            res = CLOUD_AI.save_provider_config(provider=p, api_key=k, model=m, base_url=base_url)
+            self._send_json({"ok": True, "data": res})
+            return
+
         # Universal Remote Input (Mouse, Keyboard, Joystick, Gamepad)
         elif parsed.path in ("/api/remote/input", "/api/mouse"):
             action = data.get("action", "")
-            params = data.get("params", data)
+            params = dict(data)
+            if isinstance(data.get("params"), dict):
+                params.update(data["params"])
             res = REMOTE_INPUT.dispatch(action, params)
             if not res.get("success") and action in ("volume", "desktop"):
                 res = MOUSE.handle_gesture_action(action, params)

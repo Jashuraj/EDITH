@@ -399,16 +399,19 @@ class RemoteInputDispatcher:
             # Optional coordinate tap
             if "x" in params and "y" in params:
                 MOUSE.move(float(params["x"]), float(params["y"]))
+                time.sleep(0.015)
             return {"success": MOUSE.left_click(), "action": "left_click"}
 
         elif action == "right_click":
             if "x" in params and "y" in params:
                 MOUSE.move(float(params["x"]), float(params["y"]))
+                time.sleep(0.015)
             return {"success": MOUSE.right_click(), "action": "right_click"}
 
         elif action == "double_click":
             if "x" in params and "y" in params:
                 MOUSE.move(float(params["x"]), float(params["y"]))
+                time.sleep(0.015)
             return {"success": MOUSE.double_click(), "action": "double_click"}
 
         elif action == "mouse_down":

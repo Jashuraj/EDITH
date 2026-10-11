@@ -60,7 +60,7 @@ class ClapDetector:
         self.selected_device: Optional[int] = None
         self._last_double_time: float = 0.0
         self.welcome_phrase = (
-            "Welcome home, sir. All EDITH subsystems are online and nominal. Ready for your instructions."
+            "Welcome home, sir. Systems operational and ready for your instructions."
         )
 
     @staticmethod

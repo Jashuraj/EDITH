@@ -29,7 +29,7 @@ VOICE_CHARACTERS: Dict[str, Dict[str, Any]] = {
         "web_rate": 1.05,
         "web_pitch": 1.05,
         "description": "Calm, analytical, high-efficiency tactical OS.",
-        "welcome": "EDITH systems online. Standing by for instructions.",
+        "welcome": "Systems initialized. Standing by for instructions.",
     },
     "jarvis": {
         "id": "jarvis",

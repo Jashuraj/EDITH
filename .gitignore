@@ -40,3 +40,4 @@ build/
 scripts/tools/
 *.idsig
 EDith sol test/
+cloudflared.exe
