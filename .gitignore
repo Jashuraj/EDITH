@@ -21,3 +21,4 @@ edith/data/screenshots/
 !edith/data/screenshots/.gitkeep
 .gemini/
 *mcp_config.json
+.edith_db/

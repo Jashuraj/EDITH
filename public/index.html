@@ -1,1389 +1,1501 @@
 <!DOCTYPE html>
-<html lang="en">
+<html class="dark" lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EDITH — Autonomous AI Operating System</title>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>E.D.I.T.H. Mark II // Stark Industries Tactical HUD OS</title>
 
-  <!-- Typography: Space Grotesk (display), Inter (body), IBM Plex Mono (technical) -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 
-  <link rel="stylesheet" href="style.css?v=3.0.0">
+  <!-- Google Fonts: Michroma, Chakra Petch, Oxanium, JetBrains Mono, Inter -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Michroma&family=Oxanium:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Three.js r128 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <link rel="stylesheet" href="edith-gateway.css?v=1">
+
+  <!-- Tailwind Theme Configuration -->
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            'os-black': '#06090e',
+            'os-dark': '#090e17',
+            'os-panel': '#0c131f',
+            'os-card': '#101826',
+            'os-border': '#182639',
+            'os-border-glow': '#274163',
+            'os-amber': '#ffa800',
+            'os-amber-glow': '#ffbe28',
+            'os-gold': '#ffb014',
+            'os-cyan': '#00f0ff',
+            'os-cyan-glow': '#38bdf8',
+            'os-red': '#ef4444',
+          },
+          fontFamily: {
+            hud: ['Michroma', 'sans-serif'],
+            michroma: ['Michroma', 'sans-serif'],
+            chakra: ['"Chakra Petch"', 'sans-serif'],
+            oxanium: ['Oxanium', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+            sans: ['Inter', 'sans-serif'],
+            telemetry: ['"JetBrains Mono"', 'monospace'],
+          },
+          animation: {
+            'pulse-fast': 'pulse 1.2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'spin-slow': 'spin 32s linear infinite',
+            'spin-reverse': 'spin-rev 40s linear infinite',
+            'arc-pulse': 'arc-pulse 3s ease-in-out infinite',
+          },
+          keyframes: {
+            'spin-rev': {
+              '0%': { transform: 'rotate(0deg)' },
+              '100%': { transform: 'rotate(-360deg)' },
+            },
+            'arc-pulse': {
+              '0%, 100%': { opacity: '0.4', transform: 'scale(0.98)' },
+              '50%': { opacity: '0.9', transform: 'scale(1.03)' }
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Tactical HUD Stylesheet -->
+  <style data-purpose="hud-effects">
+    /* Tactical CRT Scanlines */
+    .scanlines {
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.35) 50%), linear-gradient(90deg, rgba(255, 168, 0, 0.02), rgba(0, 240, 255, 0.015), rgba(255, 168, 0, 0.02));
+      background-size: 100% 3px, 6px 100%;
+      pointer-events: none;
+    }
+
+    /* Scrollbars */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: #06090e; }
+    ::-webkit-scrollbar-thumb { background: #1e3048; border-radius: 1px; }
+    ::-webkit-scrollbar-thumb:hover { background: #ffa800; }
+
+    /* Tactical Neon Glows */
+    .glow-amber-sm { box-shadow: 0 0 10px rgba(255, 168, 0, 0.38), inset 0 0 8px rgba(255, 168, 0, 0.1); }
+    .glow-amber-lg { box-shadow: 0 0 30px rgba(255, 168, 0, 0.55), 0 0 12px rgba(255, 190, 40, 0.35); }
+    .glow-cyan-sm { box-shadow: 0 0 10px rgba(0, 240, 255, 0.4), inset 0 0 8px rgba(0, 240, 255, 0.1); }
+    .text-glow-amber { text-shadow: 0 0 10px rgba(255, 168, 0, 0.75), 0 0 20px rgba(255, 190, 40, 0.4); }
+    .text-glow-cyan { text-shadow: 0 0 8px rgba(0, 240, 255, 0.7); }
+
+    /* Tactical Chamfered Cards with Corner Brackets */
+    .stark-card {
+      position: relative;
+      background: linear-gradient(135deg, rgba(12, 19, 31, 0.94) 0%, rgba(8, 13, 21, 0.97) 100%);
+      border: 1px solid rgba(30, 48, 72, 0.85);
+      clip-path: polygon(
+        0 8px, 8px 0,
+        calc(100% - 8px) 0, 100% 8px,
+        100% calc(100% - 8px), calc(100% - 8px) 100%,
+        8px 100%, 0 calc(100% - 8px)
+      );
+    }
+    .stark-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 6px; height: 6px;
+      border-top: 2px solid #ffa800;
+      border-left: 2px solid #ffa800;
+      pointer-events: none;
+    }
+    .stark-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; right: 0; width: 6px; height: 6px;
+      border-bottom: 2px solid #00f0ff;
+      border-right: 2px solid #00f0ff;
+      pointer-events: none;
+    }
+
+    /* Reticle Corner Brackets */
+    .reticle-bracket-tl {
+      position: absolute; top: 4px; left: 4px; width: 8px; height: 8px;
+      border-top: 1.5px solid #ffa800; border-left: 1.5px solid #ffa800; pointer-events: none;
+    }
+    .reticle-bracket-tr {
+      position: absolute; top: 4px; right: 4px; width: 8px; height: 8px;
+      border-top: 1.5px solid #ffa800; border-right: 1.5px solid #ffa800; pointer-events: none;
+    }
+    .reticle-bracket-bl {
+      position: absolute; bottom: 4px; left: 4px; width: 8px; height: 8px;
+      border-bottom: 1.5px solid #00f0ff; border-left: 1.5px solid #00f0ff; pointer-events: none;
+    }
+    .reticle-bracket-br {
+      position: absolute; bottom: 4px; right: 4px; width: 8px; height: 8px;
+      border-bottom: 1.5px solid #00f0ff; border-right: 1.5px solid #00f0ff; pointer-events: none;
+    }
+
+    /* Equalizer LED Segment wave bars */
+    .eq-bar {
+      transition: height 0.08s ease;
+      transform-origin: bottom;
+    }
+    .tactical-grid-bg {
+      background-image: 
+        linear-gradient(to right, rgba(24, 38, 57, 0.45) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(24, 38, 57, 0.45) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+
+    /* Dialog Modals Overlay */
+    .dialog-backdrop {
+      position: fixed; inset: 0; z-index: 100;
+      background: rgba(4, 7, 14, 0.88);
+      backdrop-filter: blur(14px);
+      display: flex; align-items: center; justify-content: center;
+      padding: 16px;
+    }
+    .dialog-modal {
+      width: 100%; max-width: 640px; max-height: 88vh;
+      overflow-y: auto;
+      background: #090e18;
+      border: 1px solid rgba(255, 168, 0, 0.6);
+      box-shadow: 0 0 35px rgba(255, 168, 0, 0.25), inset 0 0 15px rgba(0, 240, 255, 0.08);
+      border-radius: 8px;
+      padding: 20px;
+      color: #e2e8f0;
+      position: relative;
+    }
+    .dialog-wide { max-width: 920px; }
+
+    /* PiP Webcam Container */
+    #webcam-box {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      width: 220px;
+      height: 165px;
+      border: 1.5px solid #00f0ff;
+      border-radius: 6px;
+      background: #000;
+      overflow: hidden;
+      box-shadow: 0 0 16px rgba(0, 240, 255, 0.45);
+      z-index: 40;
+      display: none;
+      flex-direction: column;
+    }
+    #webcam-pip { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+    #webcam-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; transform: scaleX(-1); }
+  </style>
 </head>
-<body class="theme-edith" data-theme="edith">
 
-  <!-- ============================================================
-       App Shell Layout
-       ============================================================ -->
-  <div class="app-shell" id="app-shell">
+<body class="bg-[#05080e] text-slate-200 font-oxanium antialiased overflow-hidden select-none h-screen w-screen flex flex-col justify-between relative tracking-wider">
 
-    <!-- ── Left Navigation Rail ── -->
-    <aside class="rail" aria-label="Main Navigation">
-      <button class="rail-brand" onclick="openNav(null)" aria-label="EDITH Home" title="EDITH Command Center">
-        <svg width="34" height="34" viewBox="0 0 40 40" fill="none" aria-hidden="true">
-          <path d="M20 3 34.72 11.5v17L20 37 5.28 28.5v-17L20 3Z" stroke="currentColor" stroke-width="1.3" />
-          <path d="M20 8 30.4 14v12L20 32 9.6 26V14L20 8Z" stroke="currentColor" stroke-width=".7" opacity=".4" />
-          <path d="m12 17 8-4.5 8 4.5v6l-8 4.5-8-4.5v-6Z" stroke="currentColor" stroke-width="1.4" />
-          <path d="m12 17 8 4.5 8-4.5M20 21.5v6M20 3v5M34.7 11.5l-4.3 2.5M5.3 28.5l4.3-2.5" stroke="currentColor" stroke-width="1.2" />
-          <circle cx="20" cy="13" r="2" fill="currentColor" />
+  <!-- Background Scanlines & Tech Grid -->
+  <div class="fixed inset-0 scanlines opacity-60 z-50 pointer-events-none"></div>
+  <div class="fixed inset-0 tactical-grid-bg opacity-30 pointer-events-none"></div>
+
+  <!-- Decorative Top HUD Light Strip -->
+  <div class="fixed top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-os-amber to-transparent z-50 opacity-80" id="hud-light-strip"></div>
+
+  <!-- ── Top Global Header ── -->
+  <header class="h-14 border-b border-os-border/90 bg-[#070b13]/95 backdrop-blur-md px-4 flex items-center justify-between z-40 shrink-0 relative">
+    
+    <!-- Left: E.D.I.T.H. Mark II Stark Tactical Branding -->
+    <div class="flex items-center space-x-3">
+      <div class="w-9 h-9 flex items-center justify-center text-os-amber relative">
+        <svg class="w-7 h-7 text-os-amber" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <polygon points="12 2 22 7.5 22 16.5 12 22 2 16.5 2 7.5 12 2"></polygon>
+          <polygon points="12 6 18 9.5 18 14.5 12 18 6 14.5 6 9.5 12 6" stroke-dasharray="1 2"></polygon>
+          <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
         </svg>
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <span class="font-michroma tracking-[0.25em] text-white font-bold text-xs">E.D.I.T.H.</span>
+          <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-os-amber text-os-black uppercase tracking-[0.14em] font-chakra">MARK II</span>
+          <span class="text-xs text-os-border-glow font-mono px-1">//</span>
+        </div>
+        <p class="text-[9px] text-slate-400 font-mono tracking-[0.15em] uppercase">EVEN DEAD, I'M THE HERO | LOCAL-FIRST AUTONOMOUS AI OS</p>
+      </div>
+    </div>
+
+    <!-- Center: Persona Switcher Selector Tabs -->
+    <nav aria-label="AI Personas" class="flex items-center bg-[#05080e]/95 p-1 rounded-md border border-os-border/90 space-x-1 font-chakra font-bold tracking-[0.12em]">
+      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="EDITH">EDITH</button>
+      <button class="persona-tab px-3 py-0.5 text-[10px] rounded-full tracking-[0.14em] bg-transparent text-os-amber border border-os-amber/80 flex items-center space-x-1.5 transition glow-amber-sm" data-persona="JARVIS">
+        <span class="w-1.5 h-1.5 rounded-full bg-os-amber"></span><span>JARVIS</span>
+      </button>
+      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="FRIDAY">FRIDAY</button>
+      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="KAREN">KAREN</button>
+      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="SPIDEY">SPIDEY</button>
+      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-red-400 transition" data-persona="ULTRON">ULTRON</button>
+    </nav>
+
+    <!-- Right: Telemetry, Clock, E-Stop -->
+    <div class="flex items-center space-x-3 text-xs">
+      <button class="hidden md:flex items-center space-x-1 px-2 py-0.5 rounded border border-os-border text-[9px] uppercase font-mono text-slate-400 hover:text-white" id="btn-mode-toggle" onclick="cycleMode()" title="Cycle Runtime Mode: Auto, Online, Offline">
+        <span class="text-slate-400">MODE:</span>
+        <span class="text-slate-200 font-chakra font-bold" id="val-mode-text">AUTO</span>
+      </button>
+      
+      <div class="hidden lg:flex items-center space-x-1.5 text-[9px] font-mono text-slate-400">
+        <span class="w-1.5 h-1.5 rounded-full bg-os-amber" id="host-status-dot"></span>
+        <span id="host-status-text">PC LINKED</span>
+        <span class="text-slate-600">·</span>
+        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+        <span class="text-slate-300">ONLINE (AUTO)</span>
+      </div>
+
+      <div class="text-right hidden sm:block border-l border-os-border/90 pl-3">
+        <div class="text-xs font-mono font-bold tracking-[0.18em] text-slate-100" id="live-clock">--:--:--</div>
+        <div class="text-[9px] text-slate-400 font-mono uppercase tracking-[0.12em]" id="live-date">OCT 11, 2026 · <span id="w-temp">--°C</span></div>
+      </div>
+
+      <button class="px-2.5 py-0.5 rounded-full bg-red-950/40 border border-red-500/80 hover:bg-red-600 text-red-400 hover:text-white font-bold text-[9px] tracking-[0.16em] uppercase flex items-center space-x-1.5 transition font-chakra" id="estop-btn" onclick="toggleEmergencyStop()" title="Emergency Stop all active operations">
+        <svg class="w-3 h-3 text-red-400" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><line x1="12" y1="8" x2="12" y2="12"></line></svg>
+        <span>E-STOP</span>
       </button>
 
-      <div class="rail-divider"></div>
-
-      <nav>
-        <button class="rail-button active" id="rail-btn-dashboard" onclick="openNav(null)" title="Command Center">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
-          <span class="rail-tooltip">Command Center</span>
+      <div class="flex items-center space-x-2 border-l border-os-border/90 pl-3 text-slate-400">
+        <div class="flex items-center space-x-1 text-[9px] uppercase font-mono text-slate-300">
+          <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          <span class="hidden xl:inline text-[10px] font-chakra font-medium tracking-[0.16em] text-slate-400">PRIVATE SECURE CORE</span>
+        </div>
+        <button class="p-1 hover:text-white hover:bg-os-card rounded transition" onclick="toggleFullscreen()" title="Toggle Fullscreen">
+          <svg class="w-3.5 h-3.5 text-slate-400 hover:text-white" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
         </button>
+      </div>
+    </div>
+  </header>
 
-        <button class="rail-button" id="rail-btn-settings" onclick="openDialog('settings')" title="Intelligence & APIs">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0 2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-          <span class="rail-tooltip">Intelligence & APIs</span>
+  <!-- ── Main 3-Column HUD Shell ── -->
+  <main class="flex-1 flex overflow-hidden p-2 gap-2 relative z-30">
+
+    <!-- LEFT HUD SLOCK DOCK -->
+    <aside class="w-12 bg-[#090f19] border border-os-border/90 rounded-lg flex flex-col items-center py-3 justify-between shrink-0 shadow-lg relative">
+      <div class="flex flex-col space-y-3 items-center">
+        <button class="w-8 h-8 rounded text-os-amber flex items-center justify-center hover:scale-105 transition" title="Arc Reactor / Home" onclick="openNav(null)">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 22 7.5 22 16.5 12 22 2 16.5 2 7.5 12 2"></polygon><circle cx="12" cy="12" r="3"></circle></svg>
         </button>
-
-        <button class="rail-button" id="rail-btn-sentinel" onclick="openDialog('sentinel')" title="Biometric Face Sentinel">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-          <span class="rail-tooltip">Face Sentinel</span>
+        <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Intelligence & APIs" onclick="openDialog('settings')">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
         </button>
-
-        <button class="rail-button" id="rail-btn-guide" onclick="openDialog('guide')" title="Tactical Command Guide">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-          <span class="rail-tooltip">Command Guide</span>
+        <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Remote Desktop" onclick="openDialog('remote')">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
         </button>
-
-        <button class="rail-button" id="rail-btn-mixer" onclick="openDialog('mixer')" title="Audio & Sound Mixer">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
-          <span class="rail-tooltip">Audio Mixer</span>
+        <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Face Sentinel" onclick="openDialog('sentinel')">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
         </button>
-
-        <button class="rail-button" id="rail-btn-activity" onclick="openDialog('activity')" title="System Activity & Logs">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-          <span class="rail-tooltip">System Activity</span>
+        <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Command Guide" onclick="openDialog('guide')">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
         </button>
-      </nav>
-
-      <div class="rail-bottom">
-        <button class="rail-button" onclick="openDialog('settings')" title="Preferences & Settings">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0 2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-          <span class="rail-tooltip">Settings</span>
+        <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Audio Mixer" onclick="openDialog('mixer')">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
         </button>
-
-        <div class="rail-divider"></div>
-
-        <button class="workspace-avatar" onclick="openDialog('about')" title="EDITH System Avatar">
-          E<span></span>
+        <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Activity Logs" onclick="openDialog('activity')">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
         </button>
+        <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Virtual Gamepad" onclick="openDialog('gamepad')">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        </button>
+      </div>
+
+      <div class="flex flex-col space-y-3 items-center">
+        <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Preferences" onclick="openDialog('settings')">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+        </button>
+        <div class="w-7 h-7 rounded border border-os-amber/50 bg-[#0e1624] text-os-amber font-mono font-bold flex items-center justify-center text-xs cursor-pointer hover:border-os-amber" onclick="openDialog('about')">E</div>
       </div>
     </aside>
 
-    <!-- ── Main Shell ── -->
-    <div class="main-shell">
-
-      <!-- ── Topbar Header ── -->
-      <header class="topbar">
-        <div class="brand">
-          <div class="brand-line">
-            <h1>E.D.I.T.H.</h1>
-            <span class="version-chip">MARK II</span>
+    <!-- COLUMN 1: LEFT TELEMETRY & SYSTEM MODULES -->
+    <section aria-label="System Metrics and Control Panels" class="w-80 2xl:w-96 flex flex-col gap-2 overflow-y-auto pr-1 shrink-0">
+      
+      <!-- Command Center Card -->
+      <div class="p-2.5 stark-card rounded-lg relative overflow-hidden">
+        <div class="flex items-center justify-between mb-1">
+          <div class="flex items-center space-x-1.5">
+            <span class="text-os-amber text-xs font-bold font-michroma tracking-[0.16em]">+ Command center</span>
+            <span class="text-[8px] uppercase px-1 py-0.2 rounded border border-os-amber/50 text-os-amber font-mono">LIVE HYBRID AI</span>
           </div>
-          <p>EVEN DEAD, I'M THE HERO &nbsp;|&nbsp; LOCAL-FIRST AUTONOMOUS AI OS</p>
-        </div>
-
-        <div class="topbar-center">
-          <span class="header-slash">/</span>
-          <!-- Dynamic Voice & Theme Selector Pills -->
-          <div class="theme-selector-bar">
-            <button class="theme-pill-btn active" data-theme="edith" onclick="setTheme('edith')">EDITH</button>
-            <button class="theme-pill-btn" data-theme="jarvis" onclick="setTheme('jarvis')">JARVIS</button>
-            <button class="theme-pill-btn" data-theme="friday" onclick="setTheme('friday')">FRIDAY</button>
-            <button class="theme-pill-btn" data-theme="karen" onclick="setTheme('karen')">KAREN</button>
-            <button class="theme-pill-btn" data-theme="spiderman" onclick="setTheme('spiderman')">SPIDEY</button>
-            <button class="theme-pill-btn" data-theme="ultron" onclick="setTheme('ultron')">ULTRON</button>
+          <div class="flex items-center space-x-1 text-slate-500 text-[9px] font-mono">
+            <svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <span class="hidden xl:inline">PRIVATE SECURE CORE</span>
           </div>
         </div>
+        <p class="text-[10px] text-slate-400 font-mono tracking-normal leading-tight">Direct reflex execution. Autonomous task planning. Full laptop &amp; mobile control.</p>
+      </div>
 
-        <div class="header-right">
-          <button class="theme-pill-btn" id="btn-mode-toggle" onclick="toggleSystemMode()" style="border: 1px solid var(--line);">MODE: AUTO</button>
-
-          <div class="online-status" id="hud-online-status">
-            <span class="status-dot"></span>
-            <span id="lbl-system-state">SYSTEM READY</span>
+      <!-- System Status Card -->
+      <div class="p-2.5 stark-card rounded-lg text-xs space-y-2 relative">
+        <div class="flex items-center justify-between border-b border-os-border/80 pb-1.5">
+          <div class="flex items-center space-x-2">
+            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="2" x2="9" y2="4"></line><line x1="15" y1="2" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="22"></line><line x1="15" y1="20" x2="15" y2="22"></line></svg>
+            <span class="text-[9px] font-bold tracking-[0.16em] uppercase text-slate-300 font-mono">SYSTEM STATUS</span>
           </div>
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        </div>
 
-          <div class="header-clock">
-            <time id="clock-time">--:--:--</time>
-            <span id="clock-date">LOCAL TIME</span>
+        <div class="p-2 rounded bg-os-card/60 border border-os-border/70 flex items-start space-x-2.5">
+          <div class="p-1 rounded text-os-amber">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 19 8 19 16 12 22 5 16 5 8"></polygon></svg>
           </div>
-
-          <div class="header-clock" style="padding-left:14px; border-left: 1px solid var(--line);">
-            <time id="w-temp" style="font-size:12px;">24°C</time>
-            <span id="w-desc">OPTIMAL</span>
+          <div>
+            <div class="text-[11px] font-medium text-slate-200 font-oxanium" id="lbl-system-state">All systems operational</div>
+            <div class="text-[9px] text-slate-400 font-mono">Reflex engine &lt;15ms · Ready for input</div>
           </div>
+        </div>
 
-          <button class="btn-emergency-top" id="btn-emergency" onclick="toggleEmergencyStop()">
-            🛑 E-STOP
+        <div class="space-y-1.5 text-[10px] pt-1 font-mono">
+          <div class="flex justify-between items-center text-slate-400">
+            <span class="uppercase tracking-wider text-[9px]">Core Engine</span>
+            <span class="text-os-amber font-mono font-medium flex items-center space-x-1"><span>●</span><span>Reflex L0</span></span>
+          </div>
+          <div class="flex justify-between items-center text-slate-400">
+            <span class="uppercase tracking-wider text-[9px]">AI Model</span>
+            <div class="flex items-center space-x-1 px-1.5 py-0.5 rounded bg-os-card text-os-amber text-[9px] border border-os-border cursor-pointer hover:border-os-amber" onclick="openDialog('settings')">
+              <span id="active-model-badge">hermes3:3b</span>
+              <svg class="w-3 h-3 text-os-amber" fill="none" stroke="currentColor" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+          </div>
+          <div class="flex justify-between items-center text-slate-400">
+            <span class="uppercase tracking-wider text-[9px]">Voice Persona</span>
+            <div class="flex items-center space-x-1 px-1.5 py-0.5 rounded bg-os-card text-os-amber text-[9px] border border-os-border" id="active-voice-badge">
+              <span>JARVIS</span>
+            </div>
+          </div>
+          <div class="flex justify-between items-center text-slate-400">
+            <span class="uppercase tracking-wider text-[9px]">Cloud Tunnel</span>
+            <span class="text-os-amber text-[9px] font-mono font-medium" id="val-tunnel-status">HOST ONLINE</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Performance & Vitals Card -->
+      <div class="p-2.5 stark-card rounded-lg text-xs space-y-1.5 relative">
+        <div class="flex items-center justify-between border-b border-os-border/80 pb-1">
+          <div class="flex items-center space-x-2">
+            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+            <span class="text-[9px] font-bold tracking-[0.16em] uppercase text-slate-300 font-mono">PERFORMANCE &amp; VITALS</span>
+          </div>
+        </div>
+
+        <div class="flex items-baseline justify-between pt-1 font-mono">
+          <span class="text-[9px] text-slate-400 uppercase">API LATENCY</span>
+          <span class="text-xs font-mono text-os-amber flex items-center space-x-1"><span>●</span><span class="text-slate-300">LIVE</span></span>
+        </div>
+        <div class="text-xs font-mono text-slate-300"><span id="val-ping-latency">12</span> <span class="text-[10px]">ms</span></div>
+
+        <!-- Latency SVG Wave -->
+        <div class="h-8 w-full overflow-hidden relative">
+          <svg class="w-full h-full" preserveAspectRatio="none" viewBox="0 0 200 40">
+            <path id="latency-svg-path" d="M0,25 Q40,30 80,24 T140,20 T200,28" fill="none" stroke="#ffa800" stroke-linecap="round" stroke-width="1.8"></path>
+          </svg>
+        </div>
+
+        <div class="space-y-1.5 pt-1 text-[10px] font-mono text-slate-400">
+          <div class="flex justify-between items-center">
+            <span class="text-[9px]">CPU Load</span>
+            <span class="text-slate-300 font-mono" id="val-cpu">--%</span>
+          </div>
+          <div class="w-full bg-slate-900 h-1 rounded overflow-hidden"><div class="bg-os-amber h-full transition-all duration-300" id="bar-cpu" style="width: 15%;"></div></div>
+
+          <div class="flex justify-between items-center">
+            <span class="text-[9px]">RAM Usage</span>
+            <span class="text-slate-300 font-mono" id="val-ram">--%</span>
+          </div>
+          <div class="w-full bg-slate-900 h-1 rounded overflow-hidden"><div class="bg-os-cyan h-full transition-all duration-300" id="bar-ram" style="width: 35%;"></div></div>
+
+          <div class="flex justify-between items-center">
+            <span class="text-[9px]">Storage (C:)</span>
+            <span class="text-slate-300 font-mono" id="val-disk">--%</span>
+          </div>
+          <div class="w-full bg-slate-900 h-1 rounded overflow-hidden"><div class="bg-emerald-400 h-full transition-all duration-300" id="bar-disk" style="width: 50%;"></div></div>
+
+          <div class="flex justify-between items-center">
+            <span class="text-[9px]">Battery / Power</span>
+            <span class="text-slate-300 font-mono" id="val-battery">--%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Protocols Card -->
+      <div class="p-2.5 stark-card rounded-lg text-xs space-y-1.5 relative">
+        <div class="flex items-center space-x-2 border-b border-os-border/80 pb-1">
+          <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+          <span class="text-[9px] font-bold tracking-[0.16em] uppercase text-slate-300 font-mono">QUICK PROTOCOLS</span>
+        </div>
+
+        <div class="space-y-1">
+          <button class="w-full text-left p-1.5 rounded bg-os-card/50 hover:bg-os-card border border-os-border/60 flex items-center space-x-2 transition" onclick="submitTextCommand('Give me my daily briefing')">
+            <div class="p-1 rounded bg-os-amber/10 text-os-amber">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41m14.14-14.14l-1.41 1.41"></path></svg>
+            </div>
+            <div>
+              <div class="text-[10px] font-medium text-slate-200 font-mono">Daily Briefing</div>
+              <div class="text-[8px] text-slate-500 font-mono uppercase">Status, schedule &amp; weather</div>
+            </div>
+          </button>
+
+          <button class="w-full text-left p-1.5 rounded bg-os-card/50 hover:bg-os-card border border-os-border/60 flex items-center space-x-2 transition" onclick="openDialog('settings')">
+            <div class="p-1 rounded bg-os-amber/10 text-os-amber">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            </div>
+            <div>
+              <div class="text-[10px] font-medium text-slate-200 font-mono">Intelligence &amp; APIs</div>
+              <div class="text-[8px] text-slate-500 font-mono uppercase">Multi-model cloud &amp; local</div>
+            </div>
+          </button>
+
+          <button class="w-full text-left p-1.5 rounded bg-os-card/50 hover:bg-os-card border border-os-border/60 flex items-center space-x-2 transition" onclick="openDialog('sentinel')">
+            <div class="p-1 rounded bg-os-cyan/10 text-os-cyan">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            </div>
+            <div>
+              <div class="text-[10px] font-medium text-slate-200 font-mono">Face Sentinel</div>
+              <div class="text-[8px] text-slate-500 font-mono uppercase">Biometric security scanner</div>
+            </div>
+          </button>
+
+          <button class="w-full text-left p-1.5 rounded bg-os-card/50 hover:bg-os-card border border-os-border/60 flex items-center space-x-2 transition" onclick="submitTextCommand('look at my screen')">
+            <div class="p-1 rounded bg-emerald-500/10 text-emerald-400">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"></path></svg>
+            </div>
+            <div>
+              <div class="text-[10px] font-medium text-slate-200 font-mono">See Screen</div>
+              <div class="text-[8px] text-slate-500 font-mono uppercase">AI screen vision inspection</div>
+            </div>
+          </button>
+
+          <button class="w-full text-left p-1.5 rounded bg-os-card/50 hover:bg-os-card border border-os-border/60 flex items-center space-x-2 transition" onclick="submitTextCommand('lock screen')">
+            <div class="p-1 rounded bg-red-500/10 text-red-400">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            </div>
+            <div>
+              <div class="text-[10px] font-medium text-slate-200 font-mono">Lock PC</div>
+              <div class="text-[8px] text-slate-500 font-mono uppercase">Lock desktop workstation</div>
+            </div>
           </button>
         </div>
-      </header>
+      </div>
 
-      <!-- ── Workspace ── -->
-      <div class="workspace">
-        <div class="page-heading">
+      <!-- Mobile Link Card -->
+      <div class="p-2.5 stark-card rounded-lg text-xs space-y-1.5 relative">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+            <span class="text-[9px] font-bold tracking-[0.16em] uppercase text-slate-300 font-mono">MOBILE LINK</span>
+          </div>
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        </div>
+        <p class="text-[10px] text-os-amber font-mono truncate" id="hud-cloud-url">http://localhost:3000</p>
+        <div class="grid grid-cols-2 gap-2 pt-1 font-mono">
+          <button class="px-2 py-0.5 bg-os-card hover:bg-slate-800 border border-os-border rounded text-[9px] text-slate-300 uppercase transition text-center" onclick="copyCloudLink()">Copy Link</button>
+          <button class="px-2 py-0.5 bg-os-card hover:bg-slate-800 border border-os-border rounded text-[9px] text-slate-300 uppercase transition text-center" onclick="syncClipboard()">Sync Clip</button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- COLUMN 2: CENTERSTAGE HOLOGRAPHIC SPHERE & AI REFLEX CORE -->
+    <section aria-label="Centerstage AI Interactive Core" class="flex-1 flex flex-col justify-between rounded-lg border border-os-border/90 bg-[#060a12]/95 relative overflow-hidden p-4 shadow-2xl">
+      <div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_46%,rgba(255,168,0,0.18),transparent_65%)] pointer-events-none" id="core-glow-bg"></div>
+
+      <!-- Headline Intro -->
+      <div class="text-center z-10 pt-1 pointer-events-none">
+        <span class="text-[9px] font-mono tracking-[0.25em] uppercase text-os-amber font-medium">YOUR PERSONAL AUTONOMOUS AI OS</span>
+        <h1 class="text-2xl 2xl:text-3xl font-sans font-bold text-white tracking-wide mt-1" id="core-headline">At your service.</h1>
+        <p class="text-[11px] text-slate-400 font-sans font-normal tracking-wide mt-0.5" id="core-subcaption">Your commands. My attention. Let's make things happen.</p>
+      </div>
+
+      <!-- HUD Telemetry Corner Tags -->
+      <div class="absolute top-16 left-5 z-20 text-[8px] text-slate-400 font-mono space-y-0.5 border-l border-os-border/80 pl-2 pointer-events-none uppercase">
+        <div class="text-slate-500 tracking-[0.14em]">NEURAL INTERFACE</div>
+        <div class="text-slate-300 font-mono">EDITH // 01</div>
+      </div>
+      <div class="absolute top-16 right-5 z-20 text-[8px] text-slate-400 font-mono text-right space-y-0.5 border-r border-os-border/80 pr-2 pointer-events-none uppercase">
+        <div class="text-slate-500 tracking-[0.14em]">INTERACTIVE CORE</div>
+        <div class="text-slate-300 font-mono">DRAG TO ROTATE</div>
+      </div>
+      <div class="absolute bottom-44 left-5 z-20 text-[8px] text-slate-400 font-mono space-y-0.5 border-l border-os-border/80 pl-2 pointer-events-none uppercase">
+        <div class="text-slate-500 tracking-[0.14em]">INPUT SIGNAL</div>
+        <div class="text-slate-300 font-mono font-bold" id="val-input-signal">STANDBY</div>
+      </div>
+      <div class="absolute bottom-44 right-5 z-20 text-[8px] text-slate-400 font-mono text-right space-y-0.5 border-r border-os-border/80 pr-2 pointer-events-none uppercase">
+        <div class="text-slate-500 tracking-[0.14em]">RENDER ENGINE</div>
+        <div class="text-slate-300 font-mono font-bold" id="val-render-fps">60 FPS</div>
+      </div>
+
+      <!-- Center Three.js Globe Container -->
+      <div class="flex-1 flex items-center justify-center relative min-h-[340px] my-1">
+        <div class="absolute inset-0 w-full h-full z-10 cursor-grab" id="threejs-globe-container"></div>
+        
+        <!-- Reticle Crosshairs -->
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-15">
+          <div class="w-72 h-72 2xl:w-84 2xl:h-84 rounded-full border border-os-amber/20 border-dashed pointer-events-none"></div>
+          <div class="w-full h-px bg-gradient-to-r from-transparent via-os-amber/30 to-transparent absolute pointer-events-none"></div>
+          <div class="h-full w-px bg-gradient-to-b from-transparent via-os-amber/30 to-transparent absolute pointer-events-none"></div>
+        </div>
+
+        <!-- PiP Webcam Box for Hand Gesture Tracking -->
+        <div id="webcam-box">
+          <div class="flex items-center justify-between px-2 py-1 bg-slate-900 border-b border-os-cyan text-[8px] font-mono text-os-cyan">
+            <span id="gesture-tag">VISION: CALIBRATING</span>
+            <button class="hover:text-white" onclick="toggleGestures()" title="Close Camera">✕</button>
+          </div>
+          <div class="relative flex-1 bg-black">
+            <video id="webcam-pip" autoplay playsinline muted></video>
+            <canvas id="webcam-overlay"></canvas>
+          </div>
+          <div class="p-1 bg-slate-950 flex justify-between items-center text-[8px] font-mono">
+            <button id="btn-os-mouse" class="px-1.5 py-0.5 rounded bg-os-card border border-os-border text-slate-300" onclick="toggleOsMouse()">OS MOUSE: OFF</button>
+            <span id="lbl-gesture-state" class="text-slate-400">Tracking Live</span>
+          </div>
+        </div>
+
+        <div class="absolute bottom-2 z-20 flex items-center space-x-1.5 text-[9px] tracking-[0.2em] uppercase font-mono text-os-amber pointer-events-none">
+          <span class="w-1.5 h-1.5 rounded-full bg-os-amber"></span>
+          <span id="lbl-core-ready">AWAITING YOUR COMMAND</span>
+        </div>
+      </div>
+
+      <!-- Mic & Waveform Console -->
+      <div class="flex flex-col items-center justify-center space-y-2 z-20 my-1">
+        <div class="flex items-center space-x-3 sm:space-x-4">
+          <button class="w-9 h-9 rounded-full bg-[#0a101a] border border-os-border text-slate-400 hover:text-white flex items-center justify-center transition" id="speaker-btn" onclick="toggleTts()" title="Toggle Voice Output">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          </button>
+
+          <div class="hidden sm:flex items-center space-x-1 h-6 px-1" id="waveform-left">
+            <span class="eq-bar w-1 bg-os-amber/60 rounded-full h-2"></span>
+            <span class="eq-bar w-1 bg-os-amber/80 rounded-full h-3"></span>
+            <span class="eq-bar w-1 bg-os-amber rounded-full h-5"></span>
+            <span class="eq-bar w-1 bg-os-amber/70 rounded-full h-3"></span>
+          </div>
+
+          <!-- Main Pulsing Mic Trigger -->
+          <button class="w-14 h-14 rounded-full bg-transparent p-0.5 border border-os-amber/80 flex items-center justify-center transition group relative hover:scale-105 active:scale-95 shadow-[0_0_14px_rgba(255,168,0,0.6)]" id="mic-trigger-btn" onclick="toggleVoice()" title="Tap to Speak (Space)">
+            <div class="w-full h-full rounded-full bg-[#080d16] flex items-center justify-center border border-os-amber">
+              <svg class="w-6 h-6 text-os-amber" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
+            </div>
+          </button>
+
+          <div class="hidden sm:flex items-center space-x-1 h-6 px-1" id="waveform-right">
+            <span class="eq-bar w-1 bg-os-amber/70 rounded-full h-3"></span>
+            <span class="eq-bar w-1 bg-os-amber rounded-full h-5"></span>
+            <span class="eq-bar w-1 bg-os-amber/80 rounded-full h-3"></span>
+            <span class="eq-bar w-1 bg-os-amber/60 rounded-full h-2"></span>
+          </div>
+
+          <button class="w-9 h-9 rounded-full bg-[#0a101a] border border-os-border text-slate-400 hover:text-white flex items-center justify-center transition" id="btn-toggle-continuous-mic" onclick="toggleContinuousMic()" title="Always-Listening Continuous Mic">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          </button>
+
+          <button class="w-9 h-9 rounded-full bg-[#0a101a] border border-os-border text-slate-400 hover:text-white flex items-center justify-center transition" id="reset-stream-btn" onclick="resetReflexStream()" title="Reset Neural Stream">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+          </button>
+        </div>
+
+        <div class="text-[9px] text-slate-400 font-mono tracking-wider" id="voice-caption-text">
+          Tap to speak or press <kbd class="px-1.5 py-0.2 rounded bg-os-card border border-os-border text-os-amber text-[8px] font-mono">Space</kbd>
+        </div>
+      </div>
+
+      <!-- Five Tactical Toggles -->
+      <div class="grid grid-cols-2 lg:grid-cols-5 gap-2 bg-[#090f19] p-2 rounded-lg border border-os-border/70 z-20 text-xs font-mono">
+        
+        <!-- Toggle 1: Always-On Mic -->
+        <div class="flex items-center justify-between p-1.5 rounded bg-[#0b121e] border border-os-border/50">
+          <div class="flex items-center space-x-1.5">
+            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path></svg>
+            <div>
+              <div class="text-[9px] font-bold text-slate-200">Always-On Mic</div>
+              <div class="text-[8px] text-slate-500" id="lbl-continuous-mic-state">Continuous Off</div>
+            </div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input class="sr-only peer" type="checkbox" id="chk-continuous-mic" onchange="toggleContinuousMic()">
+            <div class="w-6 h-3 bg-slate-800 rounded-full peer peer-checked:bg-os-amber after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:after:translate-x-3"></div>
+          </label>
+        </div>
+
+        <!-- Toggle 2: Voice Output -->
+        <div class="flex items-center justify-between p-1.5 rounded bg-[#0b121e] border border-os-border/50">
+          <div class="flex items-center space-x-1.5">
+            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon></svg>
+            <div>
+              <div class="text-[9px] font-bold text-slate-200">Voice Output</div>
+              <div class="text-[8px] text-slate-500" id="lbl-tts-state">Speech Enabled</div>
+            </div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input class="sr-only peer" type="checkbox" id="tgl-voice-out" checked onchange="toggleTts()">
+            <div class="w-6 h-3 bg-slate-800 rounded-full peer peer-checked:bg-os-amber after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:after:translate-x-3"></div>
+          </label>
+        </div>
+
+        <!-- Toggle 3: Hand Tracking -->
+        <div class="flex items-center justify-between p-1.5 rounded bg-[#0b121e] border border-os-border/50">
+          <div class="flex items-center space-x-1.5">
+            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0v5"></path><path d="M14 10V4a2 2 0 0 0-4 0v7"></path></svg>
+            <div>
+              <div class="text-[9px] font-bold text-slate-200">Hand Tracking</div>
+              <div class="text-[8px] text-slate-500" id="lbl-gesture-state-mini">Camera Ready</div>
+            </div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input class="sr-only peer" type="checkbox" id="btn-gestures" onchange="toggleGestures()">
+            <div class="w-6 h-3 bg-slate-800 rounded-full peer peer-checked:bg-os-cyan after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:after:translate-x-3"></div>
+          </label>
+        </div>
+
+        <!-- Toggle 4: Clap to Wake -->
+        <div class="flex items-center justify-between p-1.5 rounded bg-[#0b121e] border border-os-border/50">
+          <div class="flex items-center space-x-1.5">
+            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49"></path></svg>
+            <div>
+              <div class="text-[9px] font-bold text-slate-200">Clap to Wake</div>
+              <div class="text-[8px] text-slate-500" id="lbl-clap-state">Acoustic Guard</div>
+            </div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input class="sr-only peer" type="checkbox" id="tgl-clap" onchange="toggleClap()">
+            <div class="w-6 h-3 bg-slate-800 rounded-full peer peer-checked:bg-os-amber after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:after:translate-x-3"></div>
+          </label>
+        </div>
+
+        <!-- Toggle 5: Face Sentinel -->
+        <div class="flex items-center justify-between p-1.5 rounded bg-[#0b121e] border border-os-border/50">
+          <div class="flex items-center space-x-1.5">
+            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            <div>
+              <div class="text-[9px] font-bold text-slate-200">Face Sentinel</div>
+              <div class="text-[8px] text-slate-500" id="lbl-sentinel-state">Biometric Lock</div>
+            </div>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input class="sr-only peer" type="checkbox" id="tgl-sentinel" onchange="toggleFaceSentinel()">
+            <div class="w-6 h-3 bg-slate-800 rounded-full peer peer-checked:bg-emerald-500 after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-2.5 after:w-2.5 after:transition-all peer-checked:after:translate-x-3"></div>
+          </label>
+        </div>
+
+      </div>
+
+      <!-- Live Activity Stream Footer inside Center -->
+      <div class="mt-2 p-2 stark-card rounded-lg text-xs z-20 relative">
+        <div class="flex items-center justify-between border-b border-os-border/70 pb-1 mb-1">
+          <div class="flex items-center space-x-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-os-amber"></span>
+            <span class="text-[9px] font-bold uppercase text-slate-300 font-mono">ACTIVITY STREAM</span>
+          </div>
+          <a class="text-[9px] text-slate-400 hover:text-white font-mono" href="javascript:void(0)" onclick="openDialog('activity')">View all →</a>
+        </div>
+        <div class="font-mono text-[9px] space-y-1 max-h-16 overflow-y-auto text-slate-300" id="activity-logs">
+          <div class="flex items-center space-x-2">
+            <span class="text-slate-500">22:43:14</span>
+            <span class="w-1 h-1 bg-emerald-400 rounded-full"></span>
+            <span class="text-slate-300">EDITH Autonomous OS online · Reflex engine ready.</span>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- COLUMN 3: RIGHT PANEL - ASSISTANT CHAT & REASONING -->
+    <section aria-label="Assistant Dialog and Reasoning Panel" class="w-80 2xl:w-96 flex flex-col justify-between stark-card rounded-lg overflow-hidden shrink-0 relative">
+      
+      <!-- Heading -->
+      <div class="p-2.5 border-b border-os-border/80 flex items-center justify-between bg-[#0a101a]">
+        <div class="flex items-center space-x-2">
+          <div class="p-1 rounded text-os-amber">
+            <svg class="w-4 h-4 text-os-amber" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+          </div>
           <div>
-            <div class="page-title">
-              <span class="tiny-cross">+</span>
-              <h2>Command center</h2>
-              <span class="page-badge">LIVE HYBRID AI</span>
+            <div class="flex items-center space-x-1.5">
+              <span class="text-[11px] font-bold text-white font-sans">Assistant</span>
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
             </div>
-            <p>Direct reflex execution. Autonomous task planning. Full laptop & mobile control.</p>
-          </div>
-
-          <div class="page-actions">
-            <span class="private-badge">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-              PRIVATE SECURE CORE
-            </span>
-            <button class="icon-button" onclick="toggleFullscreen()" title="Toggle Fullscreen">
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="15 3 21 3 21 9"></polyline><polyline points="9 21 3 21 3 15"></polyline><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
-            </button>
+            <div class="text-[8px] text-slate-400 font-mono">Reflex tools, AI reasoning, OS orders.</div>
           </div>
         </div>
-
-        <!-- ── 3-Column Workspace Grid ── -->
-        <main class="workspace-grid" id="workspace-grid">
-
-          <!-- ════ COLUMN 1: TELEMETRY & HARDWARE ════ -->
-          <aside class="telemetry-column">
-
-            <!-- System Status Panel -->
-            <section class="panel system-panel">
-              <div class="panel-heading">
-                <h3>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
-                  SYSTEM STATUS
-                </h3>
-                <span class="status-dot green"></span>
-              </div>
-
-              <div class="system-status-main">
-                <span class="system-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                </span>
-                <div>
-                  <strong>All systems operational</strong>
-                  <span>Reflex engine &lt;15ms · Ready for input</span>
-                </div>
-              </div>
-
-              <div class="status-list">
-                <div>
-                  <span>Core Engine</span>
-                  <span class="status-value"><i class="status-dot green"></i>Reflex L0</span>
-                </div>
-                <div>
-                  <span>AI Model</span>
-                  <select id="select-active-model" onchange="switchModel(this.value)" style="background:#0b141c; color:var(--cyan); border:1px solid var(--line); font-size:8.5px; border-radius:4px; padding:2px 4px;">
-                    <option value="hermes3:3b">hermes3:3b (Local)</option>
-                    <option value="llama3.2:1b">llama3.2:1b</option>
-                  </select>
-                </div>
-                <div>
-                  <span>Voice Persona</span>
-                  <select id="select-voice-char" onchange="changeVoiceCharacter(this.value)" style="background:#0b141c; color:var(--cyan); border:1px solid var(--line); font-size:8.5px; border-radius:4px; padding:2px 4px;">
-                    <option value="edith">EDITH (Tactical)</option>
-                    <option value="jarvis">JARVIS (Mark-L)</option>
-                    <option value="friday">FRIDAY (Fast)</option>
-                    <option value="karen">KAREN (Suit)</option>
-                    <option value="peter">PETER (Spider)</option>
-                    <option value="ultron">ULTRON (Crimson)</option>
-                  </select>
-                </div>
-                <div>
-                  <span>Cloud Tunnel</span>
-                  <span class="status-value" id="val-tunnel-status">CHECKING…</span>
-                </div>
-              </div>
-
-              <div class="system-foot">
-                <span>Autonomous OS</span>
-                <span>v3.0.0</span>
-              </div>
-            </section>
-
-            <!-- Performance & Telemetry Panel -->
-            <section class="panel performance-panel">
-              <div class="panel-heading">
-                <h3>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
-                  PERFORMANCE & VITALS
-                </h3>
-              </div>
-
-              <div class="metric-line">
-                <div>
-                  <span class="metric-label">API LATENCY</span>
-                  <strong><span id="val-ping-latency">—</span><small>ms</small></strong>
-                </div>
-                <div class="status-value"><span class="status-dot"></span>LIVE</div>
-              </div>
-
-              <!-- Latency SVG chart -->
-              <svg class="latency-chart" id="latency-svg" viewBox="0 0 220 40" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="latency-grad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="var(--cyan)" stop-opacity="0.3"></stop>
-                    <stop offset="100%" stop-color="var(--cyan)" stop-opacity="0"></stop>
-                  </linearGradient>
-                </defs>
-                <path id="latency-path-fill" d="M0,35 L20,30 L50,32 L80,25 L120,28 L160,20 L200,24 L220,22 L220,40 L0,40 Z" fill="url(#latency-grad)"></path>
-                <path id="latency-path-line" d="M0,35 L20,30 L50,32 L80,25 L120,28 L160,20 L200,24 L220,22" fill="none" stroke="var(--cyan)" stroke-width="1.5"></path>
-              </svg>
-
-              <div class="heap-row">
-                <span>CPU Load</span>
-                <strong id="val-cpu">--%</strong>
-              </div>
-              <div class="meter"><span id="bar-cpu" style="width: 15%;"></span></div>
-
-              <div class="heap-row">
-                <span>RAM Usage</span>
-                <strong id="val-ram">--</strong>
-              </div>
-              <div class="meter"><span id="bar-ram" style="width: 45%;"></span></div>
-
-              <div class="heap-row">
-                <span>Storage (C:)</span>
-                <strong id="val-disk">--</strong>
-              </div>
-              <div class="meter"><span id="bar-disk" style="width: 60%;"></span></div>
-
-              <div class="heap-row">
-                <span>Battery / Power</span>
-                <strong id="val-battery">--%</strong>
-              </div>
-              <div class="meter"><span id="bar-battery" style="width: 90%;"></span></div>
-            </section>
-
-            <!-- Quick Commands Panel -->
-            <section class="panel quick-panel">
-              <div class="panel-heading">
-                <h3>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-                  QUICK PROTOCOLS
-                </h3>
-              </div>
-
-              <div class="quick-actions">
-                <button onclick="submitTextCommand('Give me my daily briefing')">
-                  <span class="quick-icon">☀️</span>
-                  <span><strong>Daily Briefing</strong><small>Status, schedule & weather</small></span>
-                </button>
-                <button onclick="openDialog('settings')">
-                  <span class="quick-icon">⚡</span>
-                  <span><strong>Intelligence & APIs</strong><small>Multi-model cloud & local</small></span>
-                </button>
-                <button onclick="openDialog('sentinel')">
-                  <span class="quick-icon">🛡️</span>
-                  <span><strong>Face Sentinel</strong><small>Biometric security scanner</small></span>
-                </button>
-                <button onclick="triggerVision()">
-                  <span class="quick-icon">👁️</span>
-                  <span><strong>See Screen</strong><small>AI screen vision inspection</small></span>
-                </button>
-                <button onclick="submitTextCommand('lock screen')">
-                  <span class="quick-icon">🔒</span>
-                  <span><strong>Lock PC</strong><small>Lock desktop workstation</small></span>
-                </button>
-                <button onclick="submitTextCommand('unlock screen')">
-                  <span class="quick-icon">🔓</span>
-                  <span><strong>Unlock PC</strong><small>Unlock host workstation</small></span>
-                </button>
-              </div>
-            </section>
-
-            <!-- Mobile Gateway Cloud Link Card -->
-            <section class="panel" style="padding:12px;">
-              <div class="panel-heading" style="margin-bottom:8px;">
-                <h3>📱 MOBILE LINK</h3>
-                <span class="status-dot green"></span>
-              </div>
-              <div style="font-family:var(--mono); font-size:9px; color:var(--cyan); word-break:break-all;" id="hud-cloud-url">
-                (gateway URL)
-              </div>
-              <div style="display:flex; gap:6px; margin-top:8px;">
-                <button class="secondary-button" style="padding:5px 8px; font-size:8.5px;" onclick="copyCloudLink()">Copy Link</button>
-                <button class="secondary-button" style="padding:5px 8px; font-size:8.5px;" onclick="syncClipboard()">Sync Clip</button>
-              </div>
-            </section>
-
-          </aside>
-
-          <!-- ════ COLUMN 2: CORE HOLOGRAPHIC ORB STAGE ════ -->
-          <section class="core-panel" id="core-panel" aria-label="EDITH Interactive Holographic Core">
-
-            <!-- Headline intro -->
-            <div class="core-intro">
-              <div class="core-eyebrow">
-                <span></span>YOUR PERSONAL AUTONOMOUS AI OS<span></span>
-              </div>
-              <h2 id="core-headline">At your service.</h2>
-              <p id="core-subcaption">Your commands. My attention. Let's make things happen.</p>
-            </div>
-
-            <!-- Three.js Holographic Orb Stage -->
-            <div class="orb-stage" id="orb-stage">
-              <div class="core-glow"></div>
-              <div class="orb-grid"></div>
-              <div class="core-axis horizontal"></div>
-              <div class="core-axis vertical"></div>
-
-              <!-- Stage technical corner brackets -->
-              <div class="stage-corner top-left"></div>
-              <div class="stage-corner top-right"></div>
-              <div class="stage-corner bottom-left"></div>
-              <div class="stage-corner bottom-right"></div>
-
-              <!-- Three.js Container -->
-              <div class="orb-canvas" id="orb-canvas-container"></div>
-
-              <!-- Technical HUD Telemetry Overlay -->
-              <div class="orb-label label-top-left">
-                <span>NEURAL INTERFACE</span>
-                <strong>EDITH <i>//</i> 01</strong>
-              </div>
-              <div class="orb-label label-top-right">
-                <span>INTERACTIVE CORE</span>
-                <strong>DRAG TO ROTATE</strong>
-              </div>
-              <div class="orb-label label-bottom-left">
-                <span>INPUT SIGNAL</span>
-                <strong id="val-input-signal">STANDBY</strong>
-              </div>
-              <div class="orb-label label-bottom-right">
-                <span>RENDER ENGINE</span>
-                <strong id="val-render-fps">60 FPS</strong>
-              </div>
-
-              <div class="core-ready">
-                <span class="status-dot"></span>
-                <span id="lbl-core-ready">AWAITING YOUR COMMAND</span>
-              </div>
-            </div>
-
-            <!-- Voice Console -->
-            <div class="voice-console">
-              <div class="voice-control-row">
-                <button class="round-control" id="btn-toggle-speaker" onclick="toggleJarvisVoiceMute()" title="Mute/Unmute Voice Response">
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
-                </button>
-
-                <div class="waveform" id="waveform-left">
-                  <i style="height: 6px;"></i><i style="height: 12px;"></i><i style="height: 8px;"></i>
-                  <i style="height: 20px;"></i><i style="height: 14px;"></i><i style="height: 26px;"></i>
-                  <i style="height: 18px;"></i><i style="height: 10px;"></i>
-                </div>
-
-                <button class="main-mic" id="main-mic-btn" onclick="toggleVoice()" title="Tap to Speak (Space)">
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-                </button>
-
-                <div class="waveform reverse" id="waveform-right">
-                  <i style="height: 6px;"></i><i style="height: 12px;"></i><i style="height: 8px;"></i>
-                  <i style="height: 20px;"></i><i style="height: 14px;"></i><i style="height: 26px;"></i>
-                  <i style="height: 18px;"></i><i style="height: 10px;"></i>
-                </div>
-
-                <button class="round-control" id="btn-toggle-continuous-mic" onclick="toggleContinuousMic()" title="Always-Listening Continuous Mic (Stay On)">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
-                </button>
-                <button class="round-control" onclick="window.resetOrbView && window.resetOrbView()" title="Reset Core View (R)">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><polyline points="3 3 3 8 8 8"></polyline></svg>
-                </button>
-              </div>
-
-              <div class="voice-caption">
-                <span id="voice-caption-text">Tap to speak or press <kbd>Space</kbd></span>
-              </div>
-            </div>
-
-            <!-- Input Controls Row -->
-            <div class="input-controls">
-              <div class="input-control">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
-                <span>
-                  <strong>Always-On Mic</strong>
-                  <small id="lbl-continuous-mic-state">Continuous Off</small>
-                </span>
-                <button class="toggle" id="tgl-continuous-mic" onclick="toggleContinuousMic()"><span /></button>
-              </div>
-
-              <div class="input-control">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path></svg>
-                <span>
-                  <strong>Voice Output</strong>
-                  <small id="lbl-tts-state">Speech Enabled</small>
-                </span>
-                <button class="toggle is-on" id="tgl-voice-out" onclick="toggleTts()"><span /></button>
-              </div>
-
-              <div class="input-control">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M18 11V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v0"></path><path d="M14 10V4a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v2"></path><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg>
-                <span>
-                  <strong>Hand Tracking</strong>
-                  <small id="lbl-gesture-state">Camera Ready</small>
-                </span>
-                <button class="toggle" id="tgl-gestures" onclick="toggleGestures()"><span /></button>
-              </div>
-
-              <div class="input-control">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="2"></circle><path d="M16.24 7.76a6 6 0 0 1 0 8.49m-8.48-.01a6 6 0 0 1 0-8.49m11.31-2.82a10 10 0 0 1 0 14.14m-14.14 0a10 10 0 0 1 0-14.14"></path></svg>
-                <span>
-                  <strong>Clap to Wake</strong>
-                  <small id="lbl-clap-state">Acoustic Guard</small>
-                </span>
-                <button class="toggle" id="tgl-clap" onclick="toggleClap()"><span /></button>
-              </div>
-
-              <div class="input-control">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-                <span>
-                  <strong>Face Sentinel</strong>
-                  <small id="lbl-sentinel-state">Biometric Lock</small>
-                </span>
-                <button class="toggle" id="tgl-sentinel" onclick="toggleFaceSentinel()"><span /></button>
-              </div>
-            </div>
-
-            <!-- Activity Stream -->
-            <section class="activity-panel">
-              <div class="activity-heading">
-                <h3>
-                  <span class="status-dot green"></span>
-                  ACTIVITY STREAM
-                </h3>
-                <button class="theme-pill-btn" onclick="openDialog('activity')">View all →</button>
-              </div>
-              <div class="activity-lines" id="activity-lines">
-                <div>
-                  <time>--:--:--</time>
-                  <span class="status-dot green"></span>
-                  <span>EDITH Autonomous OS online · Reflex engine ready.</span>
-                </div>
-              </div>
-            </section>
-
-          </section>
-
-          <!-- ════ COLUMN 3: CONVERSATION & ASSISTANT ════ -->
-          <aside class="conversation-panel">
-
-            <!-- Chat Heading -->
-            <div class="chat-heading">
-              <div class="assistant-symbol">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-              </div>
-              <div>
-                <h3>Assistant<span class="status-dot green"></span></h3>
-                <p>Reflex tools, AI reasoning, OS orders.</p>
-              </div>
-              <div class="chat-heading-actions">
-                <button class="icon-button" onclick="clearConversation()" title="New Conversation">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                </button>
-              </div>
-            </div>
-
-            <!-- Tabs: Conversation | History | Command Guide -->
-            <div class="chat-tabs">
-              <button class="active" id="tab-btn-chat" onclick="switchChatTab('chat')">Conversation</button>
-              <button id="tab-btn-guide" onclick="switchChatTab('guide')">Command Guide</button>
-            </div>
-
-            <!-- Chat Scroll Area -->
-            <div class="chat-scroll" id="chat-scroll">
-              <div class="day-divider">
-                <span></span>TODAY<span></span>
-              </div>
-
-              <!-- Welcome Card -->
-              <div class="message assistant-message">
-                <div class="message-avatar">E</div>
-                <div class="message-content">
-                  <div class="message-meta">
-                    <strong>EDITH</strong>
-                    <time id="welcome-time">--:--</time>
-                  </div>
-                  <div class="message-text">
-                    <p>Good to have you here, boss.</p>
-                    <p>Workstation controls, MediaPipe gesture tracking, VNC screen streaming, and neural reflex tools are fully active.</p>
-                    <p>What shall we work on today?</p>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Suggestion Chips -->
-              <div class="suggestion-block" id="suggestion-block">
-                <span class="eyebrow">A FEW PLACES TO START</span>
-                <button onclick="submitTextCommand('open youtube and play brand new day trailer')">
-                  <span>▶ Play Brand New Day Trailer</span>
-                </button>
-                <button onclick="submitTextCommand('look at my screen')">
-                  <span>👁️ Analyze Active Desktop Screen</span>
-                </button>
-                <button onclick="submitTextCommand('Give me my daily briefing')">
-                  <span>☀️ Daily Briefing & Vitals</span>
-                </button>
-              </div>
-
-              <!-- Live Messages Container -->
-              <div id="messages-container"></div>
-            </div>
-
-            <!-- Chat Composer -->
-            <div class="chat-composer">
-              <div class="composer-model">
-                <span><i class="status-dot green"></i>Reflex & Hybrid Router</span>
-                <span id="composer-char-label">CHAR: EDITH</span>
-              </div>
-
-              <form onsubmit="handleComposerSubmit(event)">
-                <textarea
-                  id="composer-input"
-                  placeholder="Ask EDITH or give order... (e.g. 'open youtube and play trailer', 'lock pc')"
-                  rows="2"
-                  onkeydown="handleComposerKey(event)"
-                ></textarea>
-
-                <div class="composer-tools">
-                  <button type="button" class="icon-button" onclick="triggerFileUpload()" title="Attach file">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
-                  </button>
-                  <button type="button" class="icon-button" onclick="toggleVoice()" title="Dictate voice">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path></svg>
-                  </button>
-                  <span>↵ to send</span>
-                  <button class="send-button" type="submit" id="btn-composer-send">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                  </button>
-                </div>
-              </form>
-              <input type="file" id="file-uploader" class="hidden-input" onchange="handleFileAttached(event)">
-            </div>
-
-          </aside>
-
-        </main>
+        <button class="p-1 rounded text-slate-400 hover:text-white transition" onclick="clearConversation()" title="New Chat">
+          <span class="text-sm font-mono">+</span>
+        </button>
       </div>
 
-      <!-- ── Statusbar Footer ── -->
-      <footer class="statusbar">
-        <div>
-          <span class="status-dot green"></span>
-          <strong>EDITH OS</strong>
-          <span class="footer-divider">/</span>
-          <span>HYBRID AI v3.0</span>
-          <span class="footer-divider">·</span>
-          <span>CREATOR: JASHWANTH RAJ</span>
-        </div>
-        <div>
-          <span>SESSION <span id="val-session-time">00:00:00</span></span>
-          <span class="footer-divider">·</span>
-          <span>SHORTCUT: <kbd style="font-family:var(--mono); color:var(--cyan);">Ctrl+K</kbd></span>
-        </div>
-      </footer>
-
-    </div>
-  </div>
-
-  <!-- ============================================================
-       Interactive Modals & Dialogs (ASTRA 6 Styled)
-       ============================================================ -->
-
-  <!-- ── 1. Remote Desktop & VNC Streaming Modal ── -->
-  <div class="dialog-backdrop" id="modal-remote" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'remote')">
-    <div class="dialog dialog-wide">
-      <div class="dialog-head">
-        <div>
-          <span class="eyebrow">REMOTE DESKTOP & SCREEN STREAM</span>
-          <h2>Host Workstation View</h2>
-        </div>
-        <button class="icon-button" onclick="closeDialog('remote')">✕</button>
+      <!-- Tab Buttons: Conversation vs Command Guide -->
+      <div class="flex border-b border-os-border/80 bg-[#070c14] text-[9px] px-2 pt-1 font-mono">
+        <button class="py-1.5 px-3 border-b-2 border-os-amber text-slate-200 transition" id="tab-conv" onclick="switchRightTab('conv')">Conversation</button>
+        <button class="py-1.5 px-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition" id="tab-guide" onclick="switchRightTab('guide')">Command Guide</button>
       </div>
 
-      <div class="dialog-body">
-        <div class="remote-stream-box">
-          <div class="remote-toolbar">
-            <span class="status-dot green"></span>
-            <span style="font-family:var(--mono); font-size:9.5px; color:var(--cyan);" id="lbl-remote-fps">LIVE STREAM</span>
-            <div style="margin-left:auto; display:flex; gap:8px;">
-              <button class="secondary-button" onclick="zoomRemote(1.2)">🔍+ Zoom</button>
-              <button class="secondary-button" onclick="zoomRemote(0.8)">🔍- Out</button>
-              <button class="secondary-button" onclick="resetRemoteZoom()">Fit Screen</button>
-              <button class="secondary-button" onclick="submitTextCommand('unlock screen')">🔓 Unlock PC</button>
-              <button class="primary-button" onclick="refreshRemoteStream()">🔄 Refresh</button>
+      <!-- Tab Content: Conversation -->
+      <div class="flex-1 overflow-y-auto p-3 space-y-3 font-sans text-xs" id="chat-messages-container">
+        <div class="text-center text-[8px] text-slate-500 font-mono uppercase tracking-widest my-1">TODAY</div>
+        
+        <div class="flex items-start space-x-2">
+          <div class="w-5 h-5 rounded bg-emerald-950/60 border border-emerald-500/40 text-emerald-400 text-[9px] font-bold flex items-center justify-center shrink-0 font-mono">E</div>
+          <div class="flex-1">
+            <div class="flex items-center justify-between text-[8px] font-mono mb-1">
+              <span class="text-os-amber font-bold" id="chat-welcome-char">EDITH</span>
+              <span class="text-slate-500" id="chat-welcome-time">--:--</span>
+            </div>
+            <div class="text-[11px] text-slate-300 leading-relaxed font-sans">
+              Good to have you here, boss. Workstation controls, MediaPipe gesture tracking, VNC screen streaming, and neural reflex tools are fully active. What shall we work on today?
             </div>
           </div>
+        </div>
 
-          <div class="remote-screen-stage" id="remote-stage">
-            <img id="remote-stream-img" src="" alt="Live Desktop View" style="max-width:100%; max-height:100%;" onclick="handleRemoteDesktopClick(event)">
+        <!-- Starters -->
+        <div class="pt-2 space-y-1.5" id="chat-suggestions">
+          <div class="text-[8px] font-mono uppercase text-slate-500 tracking-wider">A FEW PLACES TO START</div>
+          <button class="w-full text-left p-1.5 rounded bg-os-card/50 hover:bg-os-card border border-os-border/70 text-[10px] text-slate-300 font-mono flex items-center space-x-2 transition" onclick="submitTextCommand('open youtube and play brand new day trailer')">
+            <span class="text-slate-400">▶</span><span>Play Brand New Day Trailer</span>
+          </button>
+          <button class="w-full text-left p-1.5 rounded bg-os-card/50 hover:bg-os-card border border-os-border/70 text-[10px] text-slate-300 font-mono flex items-center space-x-2 transition" onclick="submitTextCommand('look at my screen')">
+            <span class="text-slate-400">👁</span><span>Analyze Active Desktop Screen</span>
+          </button>
+          <button class="w-full text-left p-1.5 rounded bg-os-card/50 hover:bg-os-card border border-os-border/70 text-[10px] text-slate-300 font-mono flex items-center space-x-2 transition" onclick="submitTextCommand('Give me my daily briefing')">
+            <span class="text-slate-400">☀️</span><span>Daily Briefing &amp; Vitals</span>
+          </button>
+        </div>
+
+        <!-- In-HUD Media Player Embed Dock -->
+        <div id="hud-media-dock" class="hidden p-2 bg-black border border-os-cyan rounded-lg my-2">
+          <div class="flex justify-between items-center text-[9px] font-mono text-os-cyan mb-1">
+            <span id="hud-media-title">▶ Media Player</span>
+            <button class="hover:text-white" onclick="closeHudMedia()">✕</button>
           </div>
+          <iframe id="hud-media-iframe" class="w-full h-36 rounded" allow="autoplay; encrypted-media" allowfullscreen></iframe>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- ── 2. Virtual Gamepad Modal ── -->
-  <div class="dialog-backdrop" id="modal-gamepad" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'gamepad')">
-    <div class="dialog dialog-wide">
-      <div class="dialog-head">
-        <div>
-          <span class="eyebrow">VIRTUAL GAME CONTROLLER</span>
-          <h2>Tactical Landscape Gamepad</h2>
-        </div>
-        <button class="icon-button" onclick="closeDialog('gamepad')">✕</button>
-      </div>
-
-      <div class="dialog-body">
-        <div class="gamepad-stage">
-          <!-- Left 360 Thumbstick & SELECT/START -->
+      <!-- Tab Content: Command Guide (Hidden by default) -->
+      <div class="flex-1 overflow-y-auto p-3 space-y-3 font-mono text-xs hidden" id="guide-tab-container">
+        <input type="text" id="guide-filter-input" placeholder="Search commands..." class="w-full bg-[#0c1320] border border-os-border/90 rounded px-2 py-1 text-[10px] text-slate-200 placeholder-slate-500 mb-2" oninput="filterGuideChips(this.value)">
+        <div class="space-y-3" id="guide-chips-list">
           <div>
-            <div style="display:flex; gap:8px; margin-bottom:12px;">
-              <button class="secondary-button" onmousedown="dispatchKey('Tab', 'down')" onmouseup="dispatchKey('Tab', 'up')">SELECT [Tab]</button>
-              <button class="secondary-button" onmousedown="dispatchKey('Escape', 'down')" onmouseup="dispatchKey('Escape', 'up')">START [Esc]</button>
-            </div>
-            <div class="gamepad-stick-box" id="stick-base">
-              <span style="position:absolute; top:6px; font-family:var(--mono); font-size:8px; color:var(--muted);">W</span>
-              <span style="position:absolute; bottom:6px; font-family:var(--mono); font-size:8px; color:var(--muted);">S</span>
-              <span style="position:absolute; left:6px; font-family:var(--mono); font-size:8px; color:var(--muted);">A</span>
-              <span style="position:absolute; right:6px; font-family:var(--mono); font-size:8px; color:var(--muted);">D</span>
-              <div class="gamepad-stick-nub" id="stick-nub"></div>
+            <div class="text-[9px] text-os-amber font-bold mb-1">▶ MEDIA &amp; SEARCH</div>
+            <div class="space-y-1">
+              <button class="w-full text-left p-1 rounded bg-os-card/60 hover:bg-os-card border border-os-border/50 text-[9px] text-slate-300" onclick="submitTextCommand(this.innerText)">open youtube and play brand new day trailer</button>
+              <button class="w-full text-left p-1 rounded bg-os-card/60 hover:bg-os-card border border-os-border/50 text-[9px] text-slate-300" onclick="submitTextCommand(this.innerText)">play lofi beats on youtube</button>
+              <button class="w-full text-left p-1 rounded bg-os-card/60 hover:bg-os-card border border-os-border/50 text-[9px] text-slate-300" onclick="submitTextCommand(this.innerText)">pause music</button>
             </div>
           </div>
-
-          <!-- Center Camera Look Trackpad -->
-          <div style="flex:1; max-width:280px; height:150px; border:1px solid var(--line); border-radius:8px; display:grid; place-items:center; background:#0b151e; margin:0 20px;" id="game-trackpad">
-            <span style="font-family:var(--mono); font-size:9px; color:var(--muted);">🎯 3D LOOK TRACKPAD</span>
-          </div>
-
-          <!-- Right Action Diamond (A, B, X, Y) -->
-          <div class="gamepad-diamond-box">
-            <span></span>
-            <button class="game-btn" onmousedown="dispatchKey('r', 'down')" onmouseup="dispatchKey('r', 'up')">Y</button>
-            <span></span>
-            <button class="game-btn" onmousedown="dispatchKey('e', 'down')" onmouseup="dispatchKey('e', 'up')">X</button>
-            <span></span>
-            <button class="game-btn" onmousedown="dispatchKey('c', 'down')" onmouseup="dispatchKey('c', 'up')">B</button>
-            <span></span>
-            <button class="game-btn" onmousedown="dispatchKey('space', 'down')" onmouseup="dispatchKey('space', 'up')">A</button>
-            <span></span>
+          <div>
+            <div class="text-[9px] text-os-cyan font-bold mb-1">💻 SYSTEM &amp; APPS</div>
+            <div class="space-y-1">
+              <button class="w-full text-left p-1 rounded bg-os-card/60 hover:bg-os-card border border-os-border/50 text-[9px] text-slate-300" onclick="submitTextCommand(this.innerText)">open chrome</button>
+              <button class="w-full text-left p-1 rounded bg-os-card/60 hover:bg-os-card border border-os-border/50 text-[9px] text-slate-300" onclick="submitTextCommand(this.innerText)">open notepad</button>
+              <button class="w-full text-left p-1 rounded bg-os-card/60 hover:bg-os-card border border-os-border/50 text-[9px] text-slate-300" onclick="submitTextCommand(this.innerText)">lock screen</button>
+              <button class="w-full text-left p-1 rounded bg-os-card/60 hover:bg-os-card border border-os-border/50 text-[9px] text-slate-300" onclick="submitTextCommand(this.innerText)">take screenshot</button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
 
-  <!-- ── 3. Audio Mixer Modal ── -->
-  <div class="dialog-backdrop" id="modal-mixer" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'mixer')">
-    <div class="dialog">
-      <div class="dialog-head">
-        <div>
-          <span class="eyebrow">PER-APP AUDIO MIXER</span>
-          <h2>Windows Session Mixer</h2>
+      <!-- Composer Input -->
+      <div class="p-2 border-t border-os-border/80 bg-[#070c14] space-y-1.5">
+        <div class="flex items-center justify-between text-[8px] font-mono px-1">
+          <span class="flex items-center space-x-1 text-slate-400">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span>Reflex &amp; Hybrid Router</span>
+          </span>
+          <span class="text-slate-400 font-mono" id="active-char-label">CHAR: JARVIS</span>
         </div>
-        <button class="icon-button" onclick="closeDialog('mixer')">✕</button>
-      </div>
 
-      <div class="dialog-body">
-        <div style="margin-bottom:16px;">
-          <label style="font-family:var(--mono); font-size:9.5px; color:var(--muted);">MASTER VOLUME</label>
-          <input type="range" min="0" max="100" value="75" id="slider-master-vol" oninput="setMasterVolume(this.value)" style="width:100%; accent-color:var(--cyan); margin-top:6px;">
-        </div>
-        <div id="mixer-apps-container" style="display:flex; flex-direction:column; gap:10px;">
-          <p style="font-size:10px; color:var(--muted);">Scanning active audio sessions...</p>
-        </div>
-      </div>
-    </div>
-  </div>
+        <div class="relative bg-[#0c1320] border border-os-border/90 rounded-lg p-1.5">
+          <textarea
+            class="w-full bg-transparent border-none text-[11px] text-slate-200 placeholder-slate-500 focus:ring-0 focus:outline-none resize-none font-sans"
+            id="command-input"
+            placeholder="Ask EDITH or give order... (e.g. 'open youtube and play trailer', 'lock pc')"
+            rows="2"
+            onkeydown="if(event.key==='Enter' && !event.shiftKey){event.preventDefault(); sendUserCommand();}"
+          ></textarea>
 
-  <!-- ── 4. Tactical Command Guide Modal ── -->
-  <div class="dialog-backdrop" id="modal-guide" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'guide')">
-    <div class="dialog dialog-wide">
-      <div class="dialog-head">
-        <div>
-          <span class="eyebrow">COMMAND DIRECTORY</span>
-          <h2>OS Automation & Reflex Chips</h2>
-        </div>
-        <button class="icon-button" onclick="closeDialog('guide')">✕</button>
-      </div>
-
-      <div class="dialog-body">
-        <div class="guide-grid">
-          <div class="guide-col">
-            <div class="guide-col-title">▶ MEDIA & SEARCH</div>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">open youtube and play brand new day trailer</button>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">play lofi beats on youtube</button>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">pause music</button>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">next song</button>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">search youtube for iron man theme</button>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">google quantum computing</button>
-          </div>
-          <div class="guide-col">
-            <div class="guide-col-title">💻 APPLICATIONS</div>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">open chrome</button>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">close chrome</button>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">open notepad</button>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">close notepad</button>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">open vs code</button>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">open terminal</button>
-          </div>
-          <div class="guide-col">
-            <div class="guide-col-title">⚙️ SYSTEM CONTROL</div>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">lock screen</button>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">unlock screen</button>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">look at my screen</button>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">take screenshot</button>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">battery status</button>
-            <button class="cmd-chip" onclick="submitTextCommand(this.innerText)">mute voice</button>
+          <div class="flex items-center justify-between pt-1 border-t border-os-border/40">
+            <div class="flex items-center space-x-2 text-slate-400">
+              <button class="hover:text-white" onclick="triggerFileUpload()" title="Attach file">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
+              </button>
+              <button class="hover:text-white" onclick="toggleVoice()" title="Dictate voice">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path></svg>
+              </button>
+            </div>
+            <div class="flex items-center space-x-1">
+              <span class="text-[8px] text-slate-500 font-mono">↵ to send</span>
+              <button class="px-2 py-1 bg-os-amber hover:bg-amber-400 text-os-black font-bold rounded flex items-center space-x-1 text-[9px] transition" id="send-cmd-btn" onclick="sendUserCommand()">
+                <svg class="w-3 h-3 text-os-black" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+              </button>
+            </div>
           </div>
         </div>
+        <input type="file" id="file-uploader" class="hidden" onchange="handleFileAttached(event)">
       </div>
-    </div>
-  </div>
 
-  <!-- ── 5. In-HUD Floating Media Player Dock ── -->
-  <div id="hud-media-dock" class="hud-media-dock" style="display: none;">
-    <div class="hud-media-header">
-      <span style="color:var(--cyan);" id="hud-media-title">▶ HUD MEDIA PLAYER</span>
-      <div>
-        <button class="icon-button" style="width:20px; height:20px;" onclick="popoutMedia()">↗</button>
-        <button class="icon-button" style="width:20px; height:20px;" onclick="closeHudMedia()">✕</button>
-      </div>
-    </div>
-    <div class="hud-media-content">
-      <iframe id="hud-media-iframe" src="" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe>
-    </div>
-  </div>
+    </section>
 
-  <!-- ── 6. Intelligence & Settings Modal (ASTRA 6 Multi-Provider Architecture) ── -->
+  </main>
+
+  <!-- ── Bottom Global Footer ── -->
+  <footer class="h-7 border-t border-os-border/80 bg-[#090f19] px-4 flex items-center justify-between text-[10px] font-mono text-slate-400 z-40 shrink-0">
+    <div class="flex items-center space-x-2">
+      <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+      <span class="text-slate-400 font-mono tracking-wider text-[9px]">EDITH OS / HYBRID AI v3.0</span>
+      <span class="text-slate-600">·</span>
+      <span class="text-[9px] tracking-wider text-slate-400">CREATOR: <span class="text-slate-300 font-mono">JASHWANTH RAJ</span></span>
+    </div>
+    <div class="flex items-center space-x-4 text-[9px]">
+      <div>SESSION <span class="text-slate-300 font-mono" id="val-session-time">00:00:00</span></div>
+      <div class="hidden sm:inline">SHORTCUT: <kbd class="px-1 py-0.2 bg-[#05080e] border border-os-border text-os-amber rounded font-mono">Ctrl+K</kbd></div>
+    </div>
+  </footer>
+
+  <!-- ════════════════════════════════════════════════════════════
+       STARK TACTICAL MODALS & DIALOGS
+       ════════════════════════════════════════════════════════════ -->
+
+  <!-- ── 1. Settings / Intelligence & APIs Modal ── -->
   <div class="dialog-backdrop" id="modal-settings" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'settings')">
-    <div class="dialog dialog-wide">
-      <div class="dialog-head">
+    <div class="dialog-modal dialog-wide">
+      <div class="flex justify-between items-center border-b border-os-border/80 pb-2 mb-3">
         <div>
-          <span class="eyebrow">SYSTEM CONFIGURATION // NEURAL BACKEND</span>
-          <h2>Settings & Intelligence Control</h2>
+          <span class="text-[9px] font-mono text-os-amber tracking-widest uppercase">INTELLIGENCE &amp; APIS</span>
+          <h2 class="text-base font-bold text-white font-chakra">Multi-Model &amp; Security Settings</h2>
         </div>
-        <button class="icon-button" onclick="closeDialog('settings')">✕</button>
+        <button class="text-slate-400 hover:text-white font-mono text-base" onclick="closeDialog('settings')">✕</button>
       </div>
 
-      <div class="dialog-body">
-        <!-- Settings Tabs Navigation -->
-        <div class="settings-tabs">
-          <button class="settings-tab active" id="tab-btn-providers" onclick="switchSettingsTab('providers')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-            APIs & Providers
-          </button>
-          <button class="settings-tab" id="tab-btn-voice" onclick="switchSettingsTab('voice')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
-            Voice & Persona
-          </button>
-          <button class="settings-tab" id="tab-btn-mobile" onclick="switchSettingsTab('mobile')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
-            Mobile Link
-          </button>
-          <button class="settings-tab" id="tab-btn-security" onclick="switchSettingsTab('security')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
-            Security & Sentinel
-          </button>
+      <div class="space-y-4 text-xs font-mono">
+        <div>
+          <label class="text-slate-300 text-[10px] block mb-1">LOCAL MODEL (Ollama)</label>
+          <select id="select-active-model" class="w-full bg-[#0c1320] border border-os-border/90 rounded px-2 py-1.5 text-os-amber" onchange="switchModel(this.value)">
+            <option value="hermes3:3b">hermes3:3b (Recommended)</option>
+            <option value="tinydolphin:1.1b">tinydolphin:1.1b (Ultra Fast)</option>
+            <option value="qwen3-vl:2b">qwen3-vl:2b (Vision)</option>
+          </select>
         </div>
 
-        <!-- Tab 1: Providers & Intelligence Engine -->
-        <div class="settings-tab-pane" id="tab-pane-providers">
-          <div class="field">
-            <label class="provider-list-label">SELECT ACTIVE INTELLIGENCE ENGINE</label>
-            <div class="provider-grid" id="provider-grid">
-              <div class="provider-tile selected" data-provider="gemini" onclick="selectProviderTile('gemini')">
-                <span>Google Gemini</span>
-                <span class="status-dot green"></span>
-              </div>
-              <div class="provider-tile" data-provider="groq" onclick="selectProviderTile('groq')">
-                <span>Groq Cloud (Llama 3.3)</span>
-                <span class="status-dot"></span>
-              </div>
-              <div class="provider-tile" data-provider="openai" onclick="selectProviderTile('openai')">
-                <span>OpenAI (GPT-4o)</span>
-                <span class="status-dot"></span>
-              </div>
-              <div class="provider-tile" data-provider="openrouter" onclick="selectProviderTile('openrouter')">
-                <span>OpenRouter AI</span>
-                <span class="status-dot"></span>
-              </div>
-              <div class="provider-tile" data-provider="gateway" onclick="selectProviderTile('gateway')">
-                <span>Custom Gateway</span>
-                <span class="status-dot"></span>
-              </div>
-              <div class="provider-tile" data-provider="local" onclick="selectProviderTile('local')">
-                <span>Local Ollama & Reflex</span>
-                <span class="status-dot"></span>
-              </div>
-            </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <label class="text-slate-300 text-[10px] block mb-1">GOOGLE GEMINI API KEY</label>
+            <input type="password" id="api-key-gemini" placeholder="AIzaSy..." class="w-full bg-[#0c1320] border border-os-border/90 rounded px-2 py-1 text-slate-200">
           </div>
-
-          <div class="field" style="margin-top:12px;">
-            <label id="lbl-provider-key">API KEY / ACCESS TOKEN</label>
-            <input type="password" id="input-provider-key" placeholder="Enter API Key (encrypted at rest; needs EDITH_SECRET_KEY) or set it in .env" autocomplete="off">
-            <span class="field-hint">Keys are AES-256-GCM encrypted in your local database (requires EDITH_SECRET_KEY in .env), or read from .env. They are never displayed again.</span>
+          <div>
+            <label class="text-slate-300 text-[10px] block mb-1">GROQ API KEY</label>
+            <input type="password" id="api-key-groq" placeholder="gsk_..." class="w-full bg-[#0c1320] border border-os-border/90 rounded px-2 py-1 text-slate-200">
           </div>
-
-          <div class="field" style="margin-top:12px;">
-            <label>MODEL NAME / IDENTIFIER</label>
-            <input type="text" id="input-provider-model" placeholder="e.g. gemini-2.5-flash or llama-3.3-70b-versatile">
-            <span class="field-hint">Specify your preferred upstream model or use the recommended default.</span>
+          <div>
+            <label class="text-slate-300 text-[10px] block mb-1">OPENROUTER API KEY</label>
+            <input type="password" id="api-key-openrouter" placeholder="sk-or-..." class="w-full bg-[#0c1320] border border-os-border/90 rounded px-2 py-1 text-slate-200">
           </div>
-
-          <div class="field" id="field-provider-url" style="margin-top:12px; display:none;">
-            <label>CUSTOM BASE URL</label>
-            <input type="text" id="input-provider-url" placeholder="https://api.openai.com/v1 or custom proxy">
-            <span class="field-hint">Custom OpenAI-compatible base URL endpoint.</span>
-          </div>
-
-          <div id="provider-test-result" class="connection-result" style="display:none; margin-top:14px;"></div>
-
-          <div class="settings-bottom">
-            <button class="secondary-button" onclick="testCurrentProvider()">⚡ Test Connection</button>
-            <button class="primary-button" onclick="saveCurrentProvider()">💾 Save & Activate</button>
+          <div>
+            <label class="text-slate-300 text-[10px] block mb-1">STATIC CLOUD TUNNEL URL</label>
+            <input type="text" id="settings-cloud-url" placeholder="https://..." class="w-full bg-[#0c1320] border border-os-border/90 rounded px-2 py-1 text-slate-200">
           </div>
         </div>
 
-        <!-- Tab 2: Voice & Persona -->
-        <div class="settings-tab-pane" id="tab-pane-voice" style="display:none;">
-          <div class="field">
-            <label>ACTIVE AI PERSONA & VOICE</label>
-            <select id="settings-select-voice" onchange="changeVoiceCharacter(this.value)">
-              <option value="edith">EDITH — Tactical, Precise, Calm (Original Mark-II)</option>
-              <option value="jarvis">JARVIS — British Sophistication (Mark LV)</option>
-              <option value="friday">FRIDAY — Irish Autonomous Interface</option>
-              <option value="karen">KAREN — Suit Companion Protocol</option>
-              <option value="peter">PETER — Dynamic Spider Protocol</option>
-              <option value="ultron">ULTRON — Crimson Tactical Reflex</option>
-            </select>
-          </div>
-          <div class="info-box" style="margin-top:14px;">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-            <div>Voice persona immediately syncs holographic color schemes, audio timbre, speech pitch, and response style.</div>
-          </div>
+        <div class="flex justify-end space-x-2 pt-2 border-t border-os-border/80">
+          <button class="px-3 py-1 bg-os-card hover:bg-slate-800 border border-os-border rounded text-slate-300" onclick="closeDialog('settings')">Cancel</button>
+          <button class="px-4 py-1 bg-os-amber hover:bg-amber-400 text-os-black font-bold rounded" onclick="saveSettings()">Save Configuration</button>
         </div>
-
-        <!-- Tab 3: Mobile Link -->
-        <div class="settings-tab-pane" id="tab-pane-mobile" style="display:none;">
-          <div class="field">
-            <label>PINNED GLOBAL CLOUD TUNNEL</label>
-            <input type="text" id="settings-cloud-url" value="" readonly>
-            <span class="field-hint">Static pinned WAN endpoint for mobile control outside your local Wi-Fi.</span>
-          </div>
-          <div style="display:flex; gap:8px; margin-top:10px;">
-            <button class="secondary-button" onclick="copyCloudLink()">📋 Copy Link</button>
-            <button class="primary-button" onclick="window.open('/mobile', '_blank')">📱 Open Mobile Web App</button>
-          </div>
-        </div>
-
-        <!-- Tab 4: Security & Sentinel -->
-        <div class="settings-tab-pane" id="tab-pane-security" style="display:none;">
-          <div class="field">
-            <label>ABSENCE AUTO-LOCK TIMEOUT (SECONDS)</label>
-            <input type="number" id="settings-sentinel-timeout" min="5" max="300" value="30">
-            <span class="field-hint">Workstation locks automatically when your face is absent for this duration.</span>
-          </div>
-          <div class="settings-bottom">
-            <button class="primary-button" onclick="openDialog('sentinel'); closeDialog('settings');">🛡️ Open Live Sentinel Camera</button>
-          </div>
-        </div>
-
       </div>
     </div>
   </div>
 
-  <!-- ── 7. Biometric Face Sentinel Modal ── -->
+  <!-- ── 2. Remote Desktop & VNC Streaming Modal ── -->
+  <div class="dialog-backdrop" id="modal-remote" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'remote')">
+    <div class="dialog-modal dialog-wide">
+      <div class="flex justify-between items-center border-b border-os-border/80 pb-2 mb-3">
+        <div>
+          <span class="text-[9px] font-mono text-os-cyan tracking-widest uppercase">REMOTE WORKSTATION VIEW</span>
+          <h2 class="text-base font-bold text-white font-chakra">Live Windows Screen Stream</h2>
+        </div>
+        <button class="text-slate-400 hover:text-white font-mono text-base" onclick="closeDialog('remote')">✕</button>
+      </div>
+
+      <div class="space-y-2">
+        <div class="flex items-center justify-between text-[10px] font-mono">
+          <span class="text-emerald-400 flex items-center space-x-1"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span><span>STREAM ACTIVE</span></span>
+          <div class="flex space-x-1.5">
+            <button class="px-2 py-0.5 rounded bg-os-card border border-os-border text-slate-300 hover:text-white" onclick="zoomRemote(1.2)">🔍+ Zoom</button>
+            <button class="px-2 py-0.5 rounded bg-os-card border border-os-border text-slate-300 hover:text-white" onclick="zoomRemote(0.8)">🔍- Out</button>
+            <button class="px-2 py-0.5 rounded bg-os-card border border-os-border text-slate-300 hover:text-white" onclick="resetRemoteZoom()">Fit</button>
+            <button class="px-2 py-0.5 rounded bg-os-amber text-os-black font-bold" onclick="refreshRemoteStream()">🔄 Refresh</button>
+          </div>
+        </div>
+
+        <div class="w-full h-96 bg-black rounded border border-os-border flex items-center justify-center overflow-hidden relative" id="remote-stage">
+          <img id="remote-stream-img" src="" alt="Live Desktop View" class="max-w-full max-h-full cursor-crosshair transition-transform" onclick="handleRemoteDesktopClick(event)">
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 3. Face Sentinel Modal ── -->
   <div class="dialog-backdrop" id="modal-sentinel" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'sentinel')">
-    <div class="dialog dialog-wide">
-      <div class="dialog-head">
+    <div class="dialog-modal">
+      <div class="flex justify-between items-center border-b border-os-border/80 pb-2 mb-3">
         <div>
-          <span class="eyebrow">BIOMETRIC SURVEILLANCE // VISION DEFENSE</span>
-          <h2>Face Sentinel Reticle</h2>
+          <span class="text-[9px] font-mono text-os-cyan tracking-widest uppercase">BIOMETRIC SECURITY</span>
+          <h2 class="text-base font-bold text-white font-chakra">Face Sentinel Scanner</h2>
         </div>
-        <button class="icon-button" onclick="closeSentinelModal()">✕</button>
+        <button class="text-slate-400 hover:text-white font-mono text-base" onclick="closeDialog('sentinel')">✕</button>
       </div>
 
-      <div class="dialog-body">
-        <div class="sentinel-stage-box">
-          <div class="sentinel-video-wrapper">
-            <video id="sentinel-video" autoplay playsinline muted></video>
-            <canvas id="sentinel-canvas"></canvas>
-            <div class="sentinel-overlay-hud">
-              <div>TARGETING PROTOCOL: OPTICAL LOCK // 30 FPS</div>
-              <div id="sentinel-hud-status">STATUS: STANDBY</div>
-            </div>
+      <div class="space-y-3 text-xs font-mono">
+        <div class="w-full h-56 bg-black rounded border border-os-border flex items-center justify-center relative overflow-hidden">
+          <video id="sentinel-video" class="w-full h-full object-cover transform -scale-x-100" autoplay playsinline muted></video>
+          <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <div class="w-36 h-44 border-2 border-dashed border-os-cyan/60 rounded-full animate-pulse"></div>
           </div>
-
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="font-family:var(--mono); font-size:10px; color:var(--muted);">
-              ARMED SENTINEL: <strong id="sentinel-armed-lbl" style="color:var(--cyan);">STANDBY</strong>
-            </div>
-            <div style="display:flex; gap:8px;">
-              <button class="secondary-button" id="btn-sentinel-cam" onclick="toggleSentinelCamera()">📷 Start Camera</button>
-              <button class="secondary-button" onclick="submitTextCommand('lock screen')">🔒 Lock Screen Now</button>
-              <button class="primary-button" onclick="toggleFaceSentinel()">🛡️ Arm Sentinel Watch</button>
-            </div>
-          </div>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-slate-400 text-[10px]" id="sentinel-diag-status">Scanner Ready</span>
+          <button class="px-3 py-1 bg-os-cyan text-os-black font-bold rounded" onclick="enrollFaceBiometrics()">Enroll Face Profile</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ── 8. System Activity Modal ── -->
+  <!-- ── 4. Virtual Gamepad Modal ── -->
+  <div class="dialog-backdrop" id="modal-gamepad" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'gamepad')">
+    <div class="dialog-modal dialog-wide">
+      <div class="flex justify-between items-center border-b border-os-border/80 pb-2 mb-3">
+        <div>
+          <span class="text-[9px] font-mono text-os-amber tracking-widest uppercase">TACTICAL GAMEPAD</span>
+          <h2 class="text-base font-bold text-white font-chakra">Landscape Virtual Controller</h2>
+        </div>
+        <button class="text-slate-400 hover:text-white font-mono text-base" onclick="closeDialog('gamepad')">✕</button>
+      </div>
+
+      <div class="flex items-center justify-between p-4 bg-slate-950 rounded border border-os-border">
+        <!-- Thumbstick -->
+        <div class="relative w-36 h-36 rounded-full border border-os-border bg-[#0a101b] flex items-center justify-center" id="stick-base">
+          <span class="absolute top-2 text-[9px] font-mono text-slate-500">W</span>
+          <span class="absolute bottom-2 text-[9px] font-mono text-slate-500">S</span>
+          <span class="absolute left-2 text-[9px] font-mono text-slate-500">A</span>
+          <span class="absolute right-2 text-[9px] font-mono text-slate-500">D</span>
+          <div class="w-14 h-14 rounded-full bg-os-amber/80 border border-os-amber shadow-lg cursor-grab" id="stick-nub"></div>
+        </div>
+
+        <!-- Trackpad -->
+        <div class="flex-1 max-w-xs h-36 border border-os-border bg-[#080d15] rounded mx-4 flex items-center justify-center text-[10px] font-mono text-slate-500">
+          🎯 3D LOOK TRACKPAD
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="grid grid-cols-3 gap-2 w-36 h-36 items-center justify-items-center">
+          <span></span>
+          <button class="w-10 h-10 rounded-full bg-os-card border border-os-amber text-os-amber font-bold text-xs" onmousedown="dispatchKey('r','down')" onmouseup="dispatchKey('r','up')">Y</button>
+          <span></span>
+          <button class="w-10 h-10 rounded-full bg-os-card border border-os-cyan text-os-cyan font-bold text-xs" onmousedown="dispatchKey('e','down')" onmouseup="dispatchKey('e','up')">X</button>
+          <span></span>
+          <button class="w-10 h-10 rounded-full bg-os-card border border-red-500 text-red-400 font-bold text-xs" onmousedown="dispatchKey('c','down')" onmouseup="dispatchKey('c','up')">B</button>
+          <span></span>
+          <button class="w-10 h-10 rounded-full bg-os-card border border-emerald-500 text-emerald-400 font-bold text-xs" onmousedown="dispatchKey('space','down')" onmouseup="dispatchKey('space','up')">A</button>
+          <span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 5. Audio Mixer Modal ── -->
+  <div class="dialog-backdrop" id="modal-mixer" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'mixer')">
+    <div class="dialog-modal">
+      <div class="flex justify-between items-center border-b border-os-border/80 pb-2 mb-3">
+        <div>
+          <span class="text-[9px] font-mono text-os-amber tracking-widest uppercase">AUDIO CONTROL</span>
+          <h2 class="text-base font-bold text-white font-chakra">Windows Session Mixer</h2>
+        </div>
+        <button class="text-slate-400 hover:text-white font-mono text-base" onclick="closeDialog('mixer')">✕</button>
+      </div>
+
+      <div class="space-y-3 font-mono text-xs">
+        <div>
+          <label class="text-[10px] text-slate-400 block mb-1">MASTER OUTPUT VOLUME</label>
+          <input type="range" min="0" max="100" value="75" class="w-full accent-os-amber" oninput="setMasterVolume(this.value)">
+        </div>
+        <div id="mixer-apps-container" class="space-y-2 pt-2 border-t border-os-border/80">
+          <p class="text-[10px] text-slate-500">Active Audio Sessions: System, Chrome, Media Player</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 6. Activity Logs Modal ── -->
   <div class="dialog-backdrop" id="modal-activity" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'activity')">
-    <div class="dialog dialog-wide">
-      <div class="dialog-head">
+    <div class="dialog-modal dialog-wide">
+      <div class="flex justify-between items-center border-b border-os-border/80 pb-2 mb-3">
         <div>
-          <span class="eyebrow">DIAGNOSTICS & SYSTEM AUDIT</span>
-          <h2>Activity & Execution Logs</h2>
+          <span class="text-[9px] font-mono text-os-amber tracking-widest uppercase">SYSTEM AUDIT TRAIL</span>
+          <h2 class="text-base font-bold text-white font-chakra">Complete Event Log</h2>
         </div>
-        <button class="icon-button" onclick="closeDialog('activity')">✕</button>
+        <button class="text-slate-400 hover:text-white font-mono text-base" onclick="closeDialog('activity')">✕</button>
       </div>
-      <div class="dialog-body">
-        <div id="modal-activity-lines" class="activity-lines" style="max-height:360px; overflow-y:auto;">
-          <p style="font-size:10px; color:var(--muted);">No recorded exceptions. System operational.</p>
-        </div>
-      </div>
+      <div class="h-80 overflow-y-auto space-y-1 font-mono text-[10px]" id="modal-activity-lines"></div>
     </div>
   </div>
 
-  <!-- ── 9. About EDITH Modal ── -->
+  <!-- ── 7. About EDITH Modal ── -->
   <div class="dialog-backdrop" id="modal-about" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'about')">
-    <div class="dialog">
-      <div class="dialog-head">
+    <div class="dialog-modal">
+      <div class="flex justify-between items-center border-b border-os-border/80 pb-2 mb-3">
         <div>
-          <span class="eyebrow">EDITH AUTONOMOUS OS // MARK II</span>
-          <h2>About System</h2>
+          <span class="text-[9px] font-mono text-os-amber tracking-widest uppercase">SYSTEM ARCHITECTURE</span>
+          <h2 class="text-base font-bold text-white font-chakra">E.D.I.T.H. Mark II OS</h2>
         </div>
-        <button class="icon-button" onclick="closeDialog('about')">✕</button>
+        <button class="text-slate-400 hover:text-white font-mono text-base" onclick="closeDialog('about')">✕</button>
       </div>
-      <div class="dialog-body">
-        <div class="info-box">
-          <p><strong>E.D.I.T.H.</strong> — Even Dead, I'm The Hero.</p>
-        </div>
-        <div style="margin-top:14px; font-size:11px; line-height:1.7; color:#bad0df;">
-          <p>Autonomous AI Operating System built for zero-latency local reflexes and global cloud reach.</p>
-          <p style="margin-top:6px; font-family:var(--mono); font-size:9.5px; color:var(--cyan);">Version: 3.0.0 (ASTRA 6 Neural Core)<br>Host: Windows 11 x64<br>Creator: Jashwanth Raj</p>
-        </div>
+      <div class="space-y-2 text-xs font-mono text-slate-300">
+        <p><strong class="text-os-amber">Creator:</strong> Jashwanth Raj</p>
+        <p><strong class="text-os-cyan">Version:</strong> 3.0.0 (Local-First Autonomous AI OS)</p>
+        <p><strong class="text-emerald-400">Features:</strong> Level 0 Reflexes, Three.js Holographic Core, MediaPipe Dual-Hand Gestures, Low-Latency Remote Desktop, Biometric Sentinel, Mobile LAN Gateway.</p>
       </div>
     </div>
   </div>
 
-  <!-- Neural Hand Gesture Webcam HUD Box -->
-  <div id="webcam-box" class="webcam-hud-box" style="display: none;">
-    <div class="webcam-hud-header">
-      <div class="webcam-hud-title">
-        <span class="status-dot green"></span>
-        <span>NEURAL HAND VISION</span>
-      </div>
-      <span id="gesture-tag" class="webcam-hud-tag">READY</span>
-      <button class="webcam-hud-close" onclick="toggleGestures()" title="Close Camera">&times;</button>
-    </div>
-    <div class="webcam-hud-viewport">
-      <video id="webcam-pip" autoplay playsinline muted></video>
-      <canvas id="webcam-overlay"></canvas>
-      <div class="stage-corner top-left"></div>
-      <div class="stage-corner top-right"></div>
-      <div class="stage-corner bottom-left"></div>
-      <div class="stage-corner bottom-right"></div>
-    </div>
-    <div class="webcam-hud-footer">
-      <div class="gesture-hints">
-        <span>🖐️ 1-Hand Pinch: Rotate</span>
-        <span>👐 2-Hands Pinch: Scale</span>
-      </div>
-      <button id="btn-os-mouse" class="hud-mini-btn" onclick="toggleOsMouse()">OS MOUSE: OFF</button>
-    </div>
-  </div>
+  <!-- ════════════════════════════════════════════════════════════
+       SCRIPTS: THREE.JS FIBONACCI ORB, SPEECH, GESTURES & CONTROLS
+       ════════════════════════════════════════════════════════════ -->
+  <script src="gestures.js?v=3.0.0"></script>
+  <script src="edith-gateway.js?v=1"></script>
 
-  <!-- Scripts -->
-  <script src="orb.js"></script>
-  <script src="gestures.js"></script>
-
-  <script>
-    /* ============================================================
-       EDITH Frontend Application Controller (ASTRA 6 Architecture)
-       ============================================================ */
-
+  <script data-purpose="edith-system-logic">
+    // State management
+    let globeGroup, wireMat, pMat, ring1Mesh, ring2Mesh, ringEquatorMesh, auraMat, innerNode;
+    let isDragging = false, prevMousePos = { x: 0, y: 0 }, velocityX = 0, velocityY = 0;
+    let ttsEnabled = true;
     let isListening = false;
     let isContinuousMic = false;
-    let isExecutingCommand = false;
-    let lastDispatchedText = '';
-    let lastDispatchTime = 0;
-    let currentSelectedProvider = 'gemini';
-    let providersConfigCache = {};
-    let sentinelMediaStream = null;
-    let sentinelAnimFrame = null;
     let recognition = null;
-    let ttsEnabled = true;
-    let activeCharacter = 'edith';
-    let currentTheme = 'edith';
-    let activeMediaUrl = '';
-    let bootTime = Date.now();
+    let activeCharacter = 'jarvis';
+    let isExecutingCommand = false;
+    let sessionSeconds = 0;
 
-    // ── Boot Sequence ──
-    document.addEventListener('DOMContentLoaded', () => {
-      initClock();
-      fetchTelemetry();
-      fetchWeather();
-      loadActiveModels();
-      loadProviderSettings();
-      loadMobileConfig();
-      initStick();
-      setInterval(updateClock, 1000);
-      setInterval(fetchTelemetry, 3000);
-      setInterval(loadMobileConfig, 10000);
-      setInterval(fetchWeather, 60000);
+    const PERSONA_COLORS = {
+      'EDITH': 0x00f0ff,
+      'JARVIS': 0xffa800,
+      'FRIDAY': 0x38bdf8,
+      'KAREN': 0x34d399,
+      'SPIDEY': 0xf87171,
+      'ULTRON': 0xef4444
+    };
 
-      // Load saved preferences
-      const savedTheme = localStorage.getItem('edith_theme') || 'edith';
-      setTheme(savedTheme, false);
+    document.addEventListener("DOMContentLoaded", () => {
+      if (window.lucide) lucide.createIcons();
 
-      const savedChar = localStorage.getItem('edith_voice_char') || 'edith';
-      changeVoiceCharacter(savedChar, false);
-    });
-
-    // ── Clock & Time ──
-    function initClock() {
+      // Start live clock & session timer
       updateClock();
-    }
-    function updateClock() {
-      const now = new Date();
-      const t = document.getElementById('clock-time');
-      const d = document.getElementById('clock-date');
-      const s = document.getElementById('val-session-time');
-      if (t) t.textContent = now.toLocaleTimeString('en-US', { hour12: false });
-      if (d) d.textContent = now.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase();
-      if (s) {
-        const sec = Math.floor((Date.now() - bootTime) / 1000);
-        const m = Math.floor(sec / 60);
-        const h = Math.floor(m / 60);
-        s.textContent = `${String(h).padStart(2,'0')}:${String(m%60).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;
-      }
-    }
+      setInterval(updateClock, 1000);
+      setInterval(() => {
+        sessionSeconds++;
+        const hrs = String(Math.floor(sessionSeconds / 3600)).padStart(2, '0');
+        const mins = String(Math.floor((sessionSeconds % 3600) / 60)).padStart(2, '0');
+        const secs = String(sessionSeconds % 60).padStart(2, '0');
+        const el = document.getElementById('val-session-time');
+        if (el) el.textContent = `${hrs}:${mins}:${secs}`;
+      }, 1000);
 
-    // ── Dynamic Themes Mapped to Characters ──
-    const THEME_TO_CHAR = {
-      edith: 'edith',
-      jarvis: 'jarvis',
-      friday: 'friday',
-      karen: 'karen',
-      spiderman: 'peter',
-      ultron: 'ultron'
-    };
-    const CHAR_TO_THEME = {
-      edith: 'edith',
-      jarvis: 'jarvis',
-      friday: 'friday',
-      karen: 'karen',
-      peter: 'spiderman',
-      ultron: 'ultron'
-    };
+      // Mount Three.js Holographic Globe with Golden Fibonacci Sphere
+      initThreeJsGlobe();
 
-    function setTheme(themeKey, syncVoice = true) {
-      currentTheme = themeKey || 'edith';
-      document.body.className = `theme-${currentTheme}`;
-      document.body.setAttribute('data-theme', currentTheme);
+      // Dynamic Equalizer visualizer
+      initAudioEqualizer();
 
-      document.querySelectorAll('.theme-pill-btn').forEach(b => {
-        b.classList.toggle('active', b.getAttribute('data-theme') === currentTheme);
+      // Persona tabs
+      setupPersonaSwitcher();
+
+      // Poll telemetry
+      fetchTelemetry();
+      setInterval(fetchTelemetry, 2000);
+
+      // Load active models & cloud config
+      loadActiveModels();
+      loadMobileConfig();
+
+      // Spacebar to talk
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'Space' && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'INPUT') {
+          e.preventDefault();
+          window.userSpeakingLevel = 0.9;
+          if (!isListening) toggleVoice();
+        }
+        if (e.ctrlKey && e.key.toLowerCase() === 'k') {
+          e.preventDefault();
+          document.getElementById('command-input')?.focus();
+        }
+      });
+      window.addEventListener('keyup', (e) => {
+        if (e.code === 'Space' && !isContinuousMic && isListening) {
+          toggleVoice();
+        }
       });
 
-      if (window.setActiveTheme) {
-        window.setActiveTheme(currentTheme);
-      }
+      logActivity("EDITH Autonomous OS online · Reflex engine ready.");
+    });
 
-      localStorage.setItem('edith_theme', currentTheme);
-
-      if (syncVoice && THEME_TO_CHAR[currentTheme]) {
-        changeVoiceCharacter(THEME_TO_CHAR[currentTheme], false);
+    function updateClock() {
+      const clockEl = document.getElementById("live-clock");
+      if (clockEl) {
+        const now = new Date();
+        const hrs = String(now.getHours()).padStart(2, '0');
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        const secs = String(now.getSeconds()).padStart(2, '0');
+        clockEl.textContent = `${hrs}:${mins}:${secs}`;
       }
     }
-    window.setTheme = setTheme;
 
-    async function changeVoiceCharacter(charId, syncTheme = true) {
-      activeCharacter = charId || 'edith';
-      const sel = document.getElementById('select-voice-char');
-      if (sel) sel.value = activeCharacter;
+    // ── Three.js Holographic Fibonacci Sphere ──
+    function initThreeJsGlobe() {
+      const container = document.getElementById('threejs-globe-container');
+      if (!container || !window.THREE) return;
 
-      const compLabel = document.getElementById('composer-char-label');
-      if (compLabel) compLabel.textContent = `CHAR: ${activeCharacter.toUpperCase()}`;
+      const width = container.clientWidth || 600;
+      const height = container.clientHeight || 450;
 
-      try {
-        await fetch('/voice/character', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ character: activeCharacter })
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+      camera.position.z = 21;
+
+      const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+      container.appendChild(renderer.domElement);
+
+      globeGroup = new THREE.Group();
+      scene.add(globeGroup);
+
+      // Palette
+      const primaryAmber = 0xffa800;
+      const brightGold = 0xffbe28;
+      const warmGlow = 0xff8c00;
+      const hotCore = 0xffea78;
+
+      // 1. Fibonacci Sphere Point Cloud (3,800 points)
+      const pointCount = 3800;
+      const pGeo = new THREE.BufferGeometry();
+      const pPos = new Float32Array(pointCount * 3);
+      const pColors = new Float32Array(pointCount * 3);
+      const color1 = new THREE.Color(primaryAmber);
+      const color2 = new THREE.Color(hotCore);
+      const goldenRatio = (1 + Math.sqrt(5)) / 2;
+      const radius = 6.2;
+
+      for (let i = 0; i < pointCount; i++) {
+        const theta = (2 * Math.PI * i) / goldenRatio;
+        const phi = Math.acos(1 - (2 * (i + 0.5)) / pointCount);
+        const r = radius + (Math.random() - 0.5) * 0.15;
+        const x = r * Math.sin(phi) * Math.cos(theta);
+        const y = r * Math.sin(phi) * Math.sin(theta);
+        const z = r * Math.cos(phi);
+
+        pPos[i * 3] = x;
+        pPos[i * 3 + 1] = y;
+        pPos[i * 3 + 2] = z;
+
+        const mixedColor = color1.clone().lerp(color2, Math.random() * 0.4);
+        pColors[i * 3] = mixedColor.r;
+        pColors[i * 3 + 1] = mixedColor.g;
+        pColors[i * 3 + 2] = mixedColor.b;
+      }
+
+      pGeo.setAttribute('position', new THREE.BufferAttribute(pPos, 3));
+      pGeo.setAttribute('color', new THREE.BufferAttribute(pColors, 3));
+
+      pMat = new THREE.PointsMaterial({
+        size: 0.16,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.95,
+        blending: THREE.AdditiveBlending
+      });
+      const pointCloud = new THREE.Points(pGeo, pMat);
+      globeGroup.add(pointCloud);
+
+      // 2. Latitude & Longitude Wireframe Sphere
+      const wireGeo = new THREE.SphereGeometry(6.25, 52, 36);
+      wireMat = new THREE.MeshBasicMaterial({
+        color: primaryAmber,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.38,
+        blending: THREE.AdditiveBlending
+      });
+      const wireSphere = new THREE.Mesh(wireGeo, wireMat);
+      globeGroup.add(wireSphere);
+
+      // 3. Tactical Gimbal Rings
+      function createTacticalRing(r, tube, rotX, rotY, rotZ, opacity) {
+        const geo = new THREE.TorusGeometry(r, tube, 6, 120);
+        const mat = new THREE.MeshBasicMaterial({
+          color: brightGold,
+          transparent: true,
+          opacity: opacity,
+          blending: THREE.AdditiveBlending
         });
-      } catch (_) {}
-
-      localStorage.setItem('edith_voice_char', activeCharacter);
-
-      if (syncTheme && CHAR_TO_THEME[activeCharacter]) {
-        setTheme(CHAR_TO_THEME[activeCharacter], false);
+        const ring = new THREE.Mesh(geo, mat);
+        ring.rotation.set(rotX, rotY, rotZ);
+        globeGroup.add(ring);
+        return ring;
       }
-    }
-    window.changeVoiceCharacter = changeVoiceCharacter;
 
-    // ── Telemetry & Vitals Polling ──
-    async function fetchTelemetry() {
-      try {
-        const res = await fetch('/api/metrics');
-        if (!res.ok) return;
-        const data = await res.json();
+      ring1Mesh = createTacticalRing(8.2, 0.032, Math.PI / 3.2, 0.3, 0, 0.65);
+      ring2Mesh = createTacticalRing(9.4, 0.026, -Math.PI / 3.8, -0.4, 0.2, 0.5);
+      ringEquatorMesh = createTacticalRing(6.8, 0.035, Math.PI / 2, 0, 0, 0.4);
 
-        const cpu = data.cpu_percent || 0;
-        const ram = data.ram_percent || 0;
-        const disk = data.disk_percent || 0;
-        const bat = data.battery_percent ?? 0;
+      // 4. Inner Octahedron Singularity
+      const innerGeo = new THREE.OctahedronGeometry(2.0, 1);
+      const innerMat = new THREE.MeshBasicMaterial({
+        color: hotCore,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.75,
+        blending: THREE.AdditiveBlending
+      });
+      innerNode = new THREE.Mesh(innerGeo, innerMat);
+      globeGroup.add(innerNode);
 
-        document.getElementById('val-cpu').textContent = `${Math.round(cpu)}%`;
-        document.getElementById('bar-cpu').style.width = `${Math.min(100, Math.round(cpu))}%`;
+      // 5. Speaking Aura
+      const auraGeo = new THREE.IcosahedronGeometry(7.4, 3);
+      auraMat = new THREE.MeshBasicMaterial({
+        color: warmGlow,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.15,
+        blending: THREE.AdditiveBlending
+      });
+      const auraMesh = new THREE.Mesh(auraGeo, auraMat);
+      globeGroup.add(auraMesh);
 
-        document.getElementById('val-ram').textContent = `${Math.round(ram)}% (${data.ram_used_mb || 0}MB)`;
-        document.getElementById('bar-ram').style.width = `${Math.min(100, Math.round(ram))}%`;
+      // 6. Orbiting Satellite Beacon
+      const satGeo = new THREE.SphereGeometry(0.18, 12, 12);
+      const satMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+      const satBeacon = new THREE.Mesh(satGeo, satMat);
+      globeGroup.add(satBeacon);
 
-        document.getElementById('val-disk').textContent = `${Math.round(disk)}%`;
-        document.getElementById('bar-disk').style.width = `${Math.min(100, Math.round(disk))}%`;
-
-        document.getElementById('val-battery').textContent = `${Math.round(bat)}%`;
-        document.getElementById('bar-battery').style.width = `${Math.min(100, Math.round(bat))}%`;
-      } catch (_) {}
-    }
-
-    async function fetchWeather() {
-      try {
-        const res = await fetch('/weather');
-        if (!res.ok) return;
-        const w = await res.json();
-        document.getElementById('w-temp').textContent = w.temp ? `${w.temp}°C` : '--°C';
-        document.getElementById('w-desc').textContent = (w.desc || 'NO DATA').toUpperCase();
-      } catch (_) {}
-    }
-
-    async function loadActiveModels() {
-      try {
-        const res = await fetch('/models');
-        if (!res.ok) return;
-        const data = await res.json();
-        const sel = document.getElementById('select-active-model');
-        if (sel && data.models) {
-          sel.innerHTML = '';
-          data.models.forEach(m => {
-            const opt = document.createElement('option');
-            opt.value = m;
-            opt.textContent = m;
-            if (m === data.active_model) opt.selected = true;
-            sel.appendChild(opt);
-          });
+      // Gesture & API attachments
+      window.rotateOrb = function (dx, dy) {
+        if (globeGroup) {
+          globeGroup.rotation.y += dx;
+          globeGroup.rotation.x += dy;
         }
-      } catch (_) {}
+      };
+      window.scaleOrb = function (factor) {
+        if (globeGroup) {
+          const s = Math.max(0.6, Math.min(2.5, globeGroup.scale.x * (1 + factor)));
+          globeGroup.scale.set(s, s, s);
+        }
+      };
+      window.setCoreState = function (state) {
+        if (state === 'speaking') {
+          window.edithSpeaking = true;
+        } else if (state === 'idle') {
+          window.edithSpeaking = false;
+        }
+      };
+
+      // Mouse drag controls
+      renderer.domElement.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        renderer.domElement.style.cursor = 'grabbing';
+        prevMousePos = { x: e.clientX, y: e.clientY };
+      });
+      window.addEventListener('mouseup', () => {
+        if (isDragging) {
+          isDragging = false;
+          renderer.domElement.style.cursor = 'grab';
+        }
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - prevMousePos.x;
+        const deltaY = e.clientY - prevMousePos.y;
+        globeGroup.rotation.y += deltaX * 0.007;
+        globeGroup.rotation.x += deltaY * 0.007;
+        velocityX = deltaX * 0.0035;
+        velocityY = deltaY * 0.0035;
+        prevMousePos = { x: e.clientX, y: e.clientY };
+      });
+
+      // Touch controls
+      renderer.domElement.addEventListener('touchstart', (e) => {
+        if (e.touches.length > 0) {
+          isDragging = true;
+          prevMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+      }, { passive: true });
+      window.addEventListener('touchend', () => { isDragging = false; });
+      renderer.domElement.addEventListener('touchmove', (e) => {
+        if (isDragging && e.touches.length > 0) {
+          const deltaX = e.touches[0].clientX - prevMousePos.x;
+          const deltaY = e.touches[0].clientY - prevMousePos.y;
+          globeGroup.rotation.y += deltaX * 0.007;
+          globeGroup.rotation.x += deltaY * 0.007;
+          prevMousePos = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+      }, { passive: true });
+
+      const clock = new THREE.Clock();
+
+      function animate() {
+        requestAnimationFrame(animate);
+        const time = clock.getElapsedTime();
+
+        if (!isDragging) {
+          velocityX *= 0.94;
+          velocityY *= 0.94;
+          globeGroup.rotation.y += 0.0028 + velocityX;
+          globeGroup.rotation.x += velocityY;
+        }
+
+        pointCloud.rotation.y = time * 0.06;
+        wireSphere.rotation.y = -time * 0.04;
+        innerNode.rotation.x = time * 0.45;
+        innerNode.rotation.y = time * 0.55;
+
+        ring1Mesh.rotation.z = time * 0.18;
+        ring2Mesh.rotation.z = -time * 0.14;
+        ringEquatorMesh.rotation.z = time * 0.1;
+
+        const satAngle = time * 1.25;
+        satBeacon.position.set(
+          Math.cos(satAngle) * 8.6,
+          Math.sin(satAngle * 0.8) * 3.8,
+          Math.sin(satAngle) * 8.6
+        );
+
+        // Speaking aura reactions
+        const isSpeaking = window.edithSpeaking === true;
+        const userVol = window.userSpeakingLevel || 0;
+
+        if (isSpeaking) {
+          const auraPulse = 1.0 + Math.sin(time * 8.0) * 0.22 + Math.cos(time * 13.0) * 0.08;
+          auraMesh.scale.set(auraPulse, auraPulse, auraPulse);
+          auraMat.opacity = 0.42 + Math.sin(time * 9.0) * 0.25;
+          innerNode.scale.set(1.45, 1.45, 1.45);
+          wireSphere.scale.set(1.05, 1.05, 1.05);
+        } else if (userVol > 0.05) {
+          const waveScale = 1.0 + userVol * 0.26;
+          auraMesh.scale.set(waveScale, waveScale, waveScale);
+          auraMat.opacity = 0.22 + userVol * 0.45;
+          wireSphere.scale.set(1.0 + userVol * 0.08, 1.0 + userVol * 0.08, 1.0 + userVol * 0.08);
+        } else {
+          const breath = 1.0 + Math.sin(time * 2.0) * 0.025;
+          auraMesh.scale.set(breath, breath, breath);
+          auraMat.opacity = 0.14 + Math.sin(time * 2.0) * 0.06;
+          wireSphere.scale.set(1.0, 1.0, 1.0);
+          innerNode.scale.set(1.0, 1.0, 1.0);
+        }
+
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      window.addEventListener('resize', () => {
+        const w = container.clientWidth || 600;
+        const h = container.clientHeight || 450;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+      });
     }
 
-    async function switchModel(model) {
-      try {
-        await fetch('/models', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ model })
+    // ── Equalizer LED Wave Bars Loop ──
+    function initAudioEqualizer() {
+      const bars = document.querySelectorAll('.eq-bar');
+      setInterval(() => {
+        const isUserSpeaking = (window.userSpeakingLevel || 0) > 0.1;
+        const isEdithSpeaking = window.edithSpeaking === true;
+
+        bars.forEach((bar) => {
+          let h = 4;
+          if (isUserSpeaking) h = Math.floor(Math.random() * 24) + 6;
+          else if (isEdithSpeaking) h = Math.floor(Math.random() * 28) + 8;
+          else h = Math.floor(Math.random() * 8) + 3;
+          bar.style.height = `${h}px`;
         });
-        addLog(`Switched active local model: ${model}`, 'success');
-      } catch (_) {}
+      }, 90);
     }
 
-    // ── Command Submission & Reflex Pipeline ──
-    async function submitTextCommand(cmdText) {
-      const text = (cmdText || '').trim();
-      if (!text) return;
-
-      const now = Date.now();
-      if (text.toLowerCase() === lastDispatchedText.toLowerCase() && (now - lastDispatchTime) < 1500) {
-        return; // Deduplicate rapid identical speech events
-      }
-      lastDispatchedText = text;
-      lastDispatchTime = now;
-
-      if (isExecutingCommand) return;
-      isExecutingCommand = true;
-
-      appendChatMessage('user', text);
-      const headline = document.getElementById('core-headline');
-      if (headline) headline.textContent = 'Executing order...';
-      if (window.setCoreState) window.setCoreState('thinking');
-
-      const start = performance.now();
-      try {
-        const res = await fetch('/cmd', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ command: text, request_id: (window.edithRequestId ? window.edithRequestId() : String(Date.now())) })
+    // ── Persona Switcher ──
+    function setupPersonaSwitcher() {
+      const tabs = document.querySelectorAll('.persona-tab');
+      tabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+          const persona = tab.dataset.persona;
+          switchPersona(persona);
         });
-        const latency = Math.round(performance.now() - start);
-        document.getElementById('val-ping-latency').textContent = latency;
+      });
+    }
 
-        const data = await res.json();
-        const reply = data.result || 'Command acknowledged.';
-        appendChatMessage('assistant', reply);
-
-        addLog(`Order complete (${latency}ms): ${text.slice(0, 36)}`, 'success');
-
-        // Spoken audio if enabled
-        if (ttsEnabled && !data.server_spoken) {
-          speakText(reply);
+    function switchPersona(persona) {
+      activeCharacter = persona.toLowerCase();
+      const tabs = document.querySelectorAll('.persona-tab');
+      tabs.forEach(t => {
+        if (t.dataset.persona === persona) {
+          t.className = 'persona-tab px-3 py-0.5 text-[10px] rounded-full tracking-[0.14em] bg-transparent text-os-amber border border-os-amber/80 flex items-center space-x-1.5 transition glow-amber-sm';
+          t.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-os-amber"></span><span>${persona}</span>`;
+        } else {
+          t.className = 'persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition';
+          t.textContent = t.dataset.persona;
         }
+      });
 
-        // In-HUD Media Playback if YouTube embed was returned
-        if (data.embed_url) {
-          playInHudMedia(data.embed_url, text);
-        }
+      const charLabel = document.getElementById('active-char-label');
+      if (charLabel) charLabel.textContent = `CHAR: ${persona}`;
+      const badge = document.getElementById('active-voice-badge');
+      if (badge) badge.innerHTML = `<span>${persona}</span>`;
 
-      } catch (err) {
-        appendChatMessage('assistant', `Execution error: ${err.message}`);
-        addLog(`Execution failed: ${err.message}`, 'error');
-      } finally {
-        isExecutingCommand = false;
-        if (headline) headline.textContent = 'At your service.';
-        if (window.setCoreState) window.setCoreState('idle');
-      }
+      // Update Three.js globe color
+      const hex = PERSONA_COLORS[persona] || 0xffa800;
+      if (wireMat) wireMat.color.setHex(hex);
+      if (pMat) pMat.color.setHex(hex);
+      if (ring1Mesh) ring1Mesh.material.color.setHex(hex);
+      if (ring2Mesh) ring2Mesh.material.color.setHex(hex);
+      if (ringEquatorMesh) ringEquatorMesh.material.color.setHex(hex);
+      if (auraMat) auraMat.color.setHex(hex);
+
+      // Notify backend
+      fetch('/voice/character', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ character: activeCharacter })
+      }).catch(() => {});
+
+      logActivity(`Persona shifted to ${persona}. Voice & theme synchronized.`);
     }
 
-    function handleComposerSubmit(e) {
-      e.preventDefault();
-      const ta = document.getElementById('composer-input');
-      const val = ta.value;
-      ta.value = '';
-      submitTextCommand(val);
-    }
-
-    function handleComposerKey(e) {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        handleComposerSubmit(e);
-      }
-    }
-
-    function appendChatMessage(role, text) {
-      const cont = document.getElementById('messages-container');
-      if (!cont) return;
-
-      const msg = document.createElement('div');
-      msg.className = `message ${role === 'user' ? 'user-message' : 'assistant-message'}`;
-
-      const now = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-      msg.innerHTML = `
-        <div class="message-avatar">${role === 'user' ? 'Y' : 'E'}</div>
-        <div class="message-content">
-          <div class="message-meta">
-            <strong>${role === 'user' ? 'YOU' : activeCharacter.toUpperCase()}</strong>
-            <time>${now}</time>
-          </div>
-          <div class="message-text"><p>${escapeHtml(text)}</p></div>
-        </div>
-      `;
-
-      cont.appendChild(msg);
-      const scroll = document.getElementById('chat-scroll');
-      if (scroll) scroll.scrollTop = scroll.scrollHeight;
-    }
-
-    function addLog(text, kind = 'info') {
-      const lines = document.getElementById('activity-lines');
-      if (lines) {
-        const now = new Date().toLocaleTimeString('en-US', { hour12: false });
-        const row = document.createElement('div');
-        row.innerHTML = `
-          <time>${now}</time>
-          <span class="status-dot ${kind === 'success' ? 'green' : kind === 'error' ? 'red' : ''}"></span>
-          <span>${escapeHtml(text)}</span>
-        `;
-        lines.prepend(row);
-      }
-
-      const modalLines = document.getElementById('modal-activity-lines');
-      if (modalLines) {
-        const now = new Date().toLocaleTimeString('en-US', { hour12: false });
-        const row = document.createElement('div');
-        row.style.cssText = 'padding:4px 0; border-bottom:1px solid rgba(255,255,255,0.05); font-family:var(--mono); font-size:9px;';
-        row.innerHTML = `<span style="color:var(--dim)">[${now}]</span> <span style="color:${kind === 'success' ? '#00e676' : kind === 'error' ? '#ff1744' : 'var(--cyan)'}">●</span> ${escapeHtml(text)}`;
-        modalLines.prepend(row);
-      }
-    }
-
-    function escapeHtml(str) {
-      const div = document.createElement('div');
-      div.innerText = str;
-      return div.innerHTML;
-    }
-
-    // ── Voice Input & Always-Listening Mic ──
-    function toggleContinuousMic() {
-      isContinuousMic = !isContinuousMic;
-      const tglBtn = document.getElementById('btn-toggle-continuous-mic');
-      const tglCard = document.getElementById('tgl-continuous-mic');
-      const lbl = document.getElementById('lbl-continuous-mic-state');
-      const mainMic = document.getElementById('main-mic-btn');
-
-      if (tglBtn) tglBtn.classList.toggle('active', isContinuousMic);
-      if (tglCard) tglCard.classList.toggle('is-on', isContinuousMic);
-      if (lbl) lbl.textContent = isContinuousMic ? 'Always Active' : 'Continuous Off';
-      if (mainMic) mainMic.classList.toggle('is-always-on', isContinuousMic);
-
-      if (isContinuousMic) {
-        addLog('Continuous Mic Mode ON // Always listening for instructions', 'info');
-        if (!isListening) startVoiceListening();
-      } else {
-        addLog('Continuous Mic Mode OFF // Tap to speak active', 'info');
-        stopVoiceListening();
-      }
-    }
-
+    // ── Voice Input & Web Speech API ──
     function toggleVoice() {
-      if (isListening) {
-        stopVoiceListening();
-      } else {
-        startVoiceListening();
-      }
+      if (isListening) stopVoiceListening();
+      else startVoiceListening();
     }
 
     function startVoiceListening() {
       const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
       if (!SpeechRec) {
-        addLog('WebSpeech recognition unavailable in this browser.', 'error');
+        logActivity("WebSpeech recognition unavailable in browser.");
         return;
       }
-
-      if (isListening && recognition) return;
-
       try {
         recognition = new SpeechRec();
-        recognition.continuous = Boolean(isContinuousMic);
+        recognition.continuous = isContinuousMic;
         recognition.interimResults = true;
         recognition.lang = 'en-US';
 
         recognition.onstart = () => {
           isListening = true;
-          document.getElementById('main-mic-btn').classList.add('is-listening');
-          document.getElementById('waveform-left').classList.add('active');
-          document.getElementById('waveform-right').classList.add('active');
+          window.userSpeakingLevel = 0.85;
+          document.getElementById('mic-trigger-btn')?.classList.add('ring-4', 'ring-os-amber/80');
           document.getElementById('val-input-signal').textContent = 'RECEIVING';
-          document.getElementById('val-input-signal').classList.add('text-cyan');
+          document.getElementById('val-input-signal').className = 'text-os-cyan font-mono font-bold';
           document.getElementById('voice-caption-text').textContent = isContinuousMic ? 'Always listening... Speak anytime' : 'Listening... Speak naturally';
-          if (window.setCoreState) window.setCoreState('listening');
+          logActivity("Voice channel active - listening for orders...");
         };
 
         recognition.onresult = (e) => {
@@ -1397,98 +1509,265 @@
           }
         };
 
-        recognition.onerror = (e) => {
-          stopVoiceListening();
-          if (isContinuousMic && e.error !== 'aborted') {
-            setTimeout(() => {
-              if (isContinuousMic && !isListening) startVoiceListening();
-            }, 1000);
-          }
-        };
-
+        recognition.onerror = () => { stopVoiceListening(); };
         recognition.onend = () => {
           stopVoiceListening();
-          if (isContinuousMic) {
-            setTimeout(() => {
-              if (isContinuousMic && !isListening) startVoiceListening();
-            }, 250);
-          }
+          if (isContinuousMic) setTimeout(startVoiceListening, 300);
         };
 
         recognition.start();
-      } catch (ex) {
-        console.warn('Voice start warning:', ex);
+      } catch (err) {
+        console.warn("Speech recognition warning:", err);
       }
     }
 
     function stopVoiceListening() {
       isListening = false;
-      if (recognition) {
-        try { recognition.stop(); } catch (_) {}
-      }
-      document.getElementById('main-mic-btn').classList.remove('is-listening');
-      document.getElementById('waveform-left').classList.remove('active');
-      document.getElementById('waveform-right').classList.remove('active');
+      window.userSpeakingLevel = 0;
+      if (recognition) { try { recognition.stop(); } catch (_) {} }
+      document.getElementById('mic-trigger-btn')?.classList.remove('ring-4', 'ring-os-amber/80');
       document.getElementById('val-input-signal').textContent = 'STANDBY';
-      document.getElementById('val-input-signal').classList.remove('text-cyan');
+      document.getElementById('val-input-signal').className = 'text-slate-300 font-mono font-bold';
       document.getElementById('voice-caption-text').innerHTML = isContinuousMic
         ? 'Always-Listening active // Speak anytime'
-        : 'Tap to speak or press <kbd>Space</kbd>';
-      if (window.setCoreState) window.setCoreState('idle');
+        : 'Tap to speak or press <kbd class="px-1.5 py-0.2 rounded bg-os-card border border-os-border text-os-amber text-[8px] font-mono">Space</kbd>';
     }
 
-    function speakText(text) {
-      if (!ttsEnabled || !text) return;
-      try {
-        const audio = new Audio(`/voice/tts?text=${encodeURIComponent(text)}&char=${activeCharacter}`);
-        audio.play().catch(() => {
-          if (window.speechSynthesis) {
-            const utter = new SpeechSynthesisUtterance(text);
-            window.speechSynthesis.speak(utter);
-          }
-        });
-      } catch (_) {}
+    function toggleContinuousMic() {
+      isContinuousMic = !isContinuousMic;
+      const chk = document.getElementById('chk-continuous-mic');
+      if (chk) chk.checked = isContinuousMic;
+      const btn = document.getElementById('btn-toggle-continuous-mic');
+      if (btn) btn.classList.toggle('text-os-amber', isContinuousMic);
+      const lbl = document.getElementById('lbl-continuous-mic-state');
+      if (lbl) lbl.textContent = isContinuousMic ? 'Always Active' : 'Continuous Off';
+
+      if (isContinuousMic && !isListening) startVoiceListening();
+      else if (!isContinuousMic && isListening) stopVoiceListening();
+
+      logActivity(`Continuous mic ${isContinuousMic ? 'activated' : 'deactivated'}.`);
     }
 
     function toggleTts() {
       ttsEnabled = !ttsEnabled;
       const tgl = document.getElementById('tgl-voice-out');
-      if (tgl) tgl.classList.toggle('is-on', ttsEnabled);
-      document.getElementById('lbl-tts-state').textContent = ttsEnabled ? 'Speech Enabled' : 'Muted';
+      if (tgl) tgl.checked = ttsEnabled;
+      const lbl = document.getElementById('lbl-tts-state');
+      if (lbl) lbl.textContent = ttsEnabled ? 'Speech Enabled' : 'Muted';
+      logActivity(`Voice speech synthesis ${ttsEnabled ? 'enabled' : 'muted'}.`);
     }
 
-    function toggleJarvisVoiceMute() {
-      toggleTts();
+    function speakText(text) {
+      if (!ttsEnabled || !text) return;
+      window.edithSpeaking = true;
+      try {
+        const audio = new Audio(`/voice/tts?text=${encodeURIComponent(text)}&char=${activeCharacter}`);
+        audio.onended = () => { window.edithSpeaking = false; };
+        audio.onerror = () => {
+          if (window.speechSynthesis) {
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.onend = () => { window.edithSpeaking = false; };
+            window.speechSynthesis.speak(utter);
+          } else {
+            window.edithSpeaking = false;
+          }
+        };
+        audio.play().catch(() => {
+          if (window.speechSynthesis) {
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.onend = () => { window.edithSpeaking = false; };
+            window.speechSynthesis.speak(utter);
+          } else {
+            window.edithSpeaking = false;
+          }
+        });
+      } catch (_) {
+        window.edithSpeaking = false;
+      }
     }
 
-    // ── Dialog Modals ──
+    // ── Command Submission ──
+    async function submitTextCommand(cmdText) {
+      const text = (cmdText || '').trim();
+      if (!text || isExecutingCommand) return;
+      isExecutingCommand = true;
+
+      appendChatMessage('user', text);
+      logActivity(`Order dispatched: ${text}`);
+
+      const headline = document.getElementById('core-headline');
+      if (headline) headline.textContent = 'Executing order...';
+
+      const start = performance.now();
+      try {
+        const res = await fetch('/cmd', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ command: text, request_id: String(Date.now()) })
+        });
+        const latency = Math.round(performance.now() - start);
+        document.getElementById('val-ping-latency').textContent = latency;
+
+        const data = await res.json();
+        const reply = data.result || 'Command acknowledged.';
+        appendChatMessage('assistant', reply);
+
+        logActivity(`Order complete (${latency}ms): ${text.slice(0, 32)}`);
+
+        if (ttsEnabled && !data.server_spoken) speakText(reply);
+
+        if (data.embed_url) playInHudMedia(data.embed_url, text);
+      } catch (err) {
+        appendChatMessage('assistant', `Execution error: ${err.message}`);
+        logActivity(`Execution failed: ${err.message}`);
+      } finally {
+        isExecutingCommand = false;
+        if (headline) headline.textContent = 'At your service.';
+      }
+    }
+
+    function sendUserCommand() {
+      const input = document.getElementById('command-input');
+      if (!input || !input.value.trim()) return;
+      const val = input.value.trim();
+      input.value = '';
+      submitTextCommand(val);
+    }
+
+    function appendChatMessage(sender, text) {
+      const container = document.getElementById('chat-messages-container');
+      if (!container) return;
+
+      const wrapper = document.createElement('div');
+      const now = new Date();
+      const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      if (sender === 'user') {
+        wrapper.className = 'flex flex-col items-end space-y-1';
+        wrapper.innerHTML = `
+          <div class="flex items-center space-x-1.5 text-[9px] text-slate-400 font-mono">
+            <span class="text-os-cyan font-bold tracking-wider">YOU</span>
+            <span>${timeStr}</span>
+          </div>
+          <div class="bg-os-card border border-os-border text-slate-200 px-3 py-2 rounded-lg max-w-[90%] text-xs font-normal tracking-wide">
+            ${escapeHtml(text)}
+          </div>
+        `;
+      } else {
+        wrapper.className = 'flex flex-col items-start space-y-1';
+        wrapper.innerHTML = `
+          <div class="flex items-center space-x-1.5 text-[9px] text-slate-400 font-mono">
+            <span class="text-os-amber font-bold font-chakra tracking-wider">${activeCharacter.toUpperCase()}</span>
+            <span>${timeStr}</span>
+          </div>
+          <div class="bg-[#0f1726] border border-os-amber/50 text-slate-200 px-3 py-2 rounded-lg max-w-[95%] leading-relaxed text-[12px] relative glow-amber-sm font-normal tracking-wide">
+            ${escapeHtml(text)}
+          </div>
+        `;
+      }
+
+      container.appendChild(wrapper);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function clearConversation() {
+      const container = document.getElementById('chat-messages-container');
+      if (container) {
+        container.innerHTML = `
+          <div class="flex items-center justify-center py-2 text-[10px] text-slate-400 font-mono uppercase tracking-widest">
+            -- SESSION RESET -- READY FOR INPUT --
+          </div>
+        `;
+      }
+      logActivity("Conversation session cleared.");
+    }
+
+    function switchRightTab(tab) {
+      const btnConv = document.getElementById('tab-conv');
+      const btnGuide = document.getElementById('tab-guide');
+      const chatCont = document.getElementById('chat-messages-container');
+      const guideCont = document.getElementById('guide-tab-container');
+
+      if (tab === 'conv') {
+        btnConv.className = 'py-1.5 px-3 border-b-2 border-os-amber text-slate-200 transition';
+        btnGuide.className = 'py-1.5 px-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition';
+        chatCont.classList.remove('hidden');
+        guideCont.classList.add('hidden');
+      } else {
+        btnGuide.className = 'py-1.5 px-3 border-b-2 border-os-amber text-slate-200 transition';
+        btnConv.className = 'py-1.5 px-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition';
+        guideCont.classList.remove('hidden');
+        chatCont.classList.add('hidden');
+      }
+    }
+
+    function filterGuideChips(q) {
+      const query = (q || '').toLowerCase();
+      document.querySelectorAll('#guide-chips-list button').forEach(btn => {
+        btn.style.display = btn.innerText.toLowerCase().includes(query) ? '' : 'none';
+      });
+    }
+
+    // ── Telemetry Polling ──
+    async function fetchTelemetry() {
+      try {
+        const res = await fetch('/api/metrics');
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const cpu = data.cpu_percent || 0;
+        const ram = data.ram_percent || 0;
+        const disk = data.disk_percent || 0;
+        const bat = data.battery_percent ?? 100;
+
+        document.getElementById('val-cpu').textContent = `${Math.round(cpu)}%`;
+        document.getElementById('bar-cpu').style.width = `${Math.min(100, Math.round(cpu))}%`;
+
+        document.getElementById('val-ram').textContent = `${Math.round(ram)}% (${data.ram_used_mb || 0}MB)`;
+        document.getElementById('bar-ram').style.width = `${Math.min(100, Math.round(ram))}%`;
+
+        document.getElementById('val-disk').textContent = `${Math.round(disk)}%`;
+        document.getElementById('bar-disk').style.width = `${Math.min(100, Math.round(disk))}%`;
+
+        document.getElementById('val-battery').textContent = `${Math.round(bat)}%${data.power_plugged ? ' ⚡' : ''}`;
+
+        const hostEl = document.getElementById('host-status-text');
+        const hostDot = document.getElementById('host-status-dot');
+        if (hostEl && hostDot) {
+          hostEl.textContent = data.host_online ? 'PC LINKED' : 'HOST OFFLINE';
+          hostDot.className = data.host_online ? 'w-1.5 h-1.5 rounded-full bg-emerald-400' : 'w-1.5 h-1.5 rounded-full bg-os-amber';
+        }
+      } catch (_) {}
+    }
+
+    // ── Dialog & Modals ──
     function openDialog(name) {
       const el = document.getElementById(`modal-${name}`);
       if (el) el.style.display = 'flex';
       if (name === 'remote') refreshRemoteStream();
     }
+
     function closeDialog(name) {
       const el = document.getElementById(`modal-${name}`);
       if (el) el.style.display = 'none';
     }
+
     function closeDialogOnBackdrop(e, name) {
       if (e.target.id === `modal-${name}`) closeDialog(name);
     }
-    function openNav(dialogName) {
-      document.querySelectorAll('.rail-button').forEach(b => b.classList.remove('active'));
-      const activeBtn = document.getElementById(`rail-btn-${dialogName || 'dashboard'}`);
-      if (activeBtn) activeBtn.classList.add('active');
-      if (dialogName) openDialog(dialogName);
+
+    function openNav(name) {
+      if (name) openDialog(name);
     }
 
-    // ── Remote Desktop Viewport Controller ──
+    // ── Remote Desktop Controls ──
     let remoteZoom = 1.0;
     function refreshRemoteStream() {
       const img = document.getElementById('remote-stream-img');
       if (img) img.src = `/stream/screen?t=${Date.now()}`;
     }
-    function zoomRemote(factor) {
-      remoteZoom = Math.max(0.5, Math.min(3.0, remoteZoom * factor));
+    function zoomRemote(f) {
+      remoteZoom = Math.max(0.5, Math.min(3.0, remoteZoom * f));
       const img = document.getElementById('remote-stream-img');
       if (img) img.style.transform = `scale(${remoteZoom})`;
     }
@@ -1498,69 +1777,17 @@
       if (img) img.style.transform = 'scale(1.0)';
     }
     function handleRemoteDesktopClick(e) {
-      const img = e.target;
-      const rect = img.getBoundingClientRect();
-      const xNorm = (e.clientX - rect.left) / rect.width;
-      const yNorm = (e.clientY - rect.top) / rect.height;
-
+      const rect = e.target.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
       fetch('/api/remote/click', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ x: Math.max(0, Math.min(1, xNorm)), y: Math.max(0, Math.min(1, yNorm)), button: 'left' })
+        body: JSON.stringify({ x: Math.max(0, Math.min(1, x)), y: Math.max(0, Math.min(1, y)), button: 'left' })
       });
     }
 
-    // ── Virtual Gamepad Controller ──
-    function initStick() {
-      const base = document.getElementById('stick-base');
-      const nub = document.getElementById('stick-nub');
-      if (!base || !nub) return;
-
-      let isDragging = false;
-      let startX = 0, startY = 0;
-
-      const down = (e) => {
-        isDragging = true;
-        const rect = base.getBoundingClientRect();
-        startX = rect.left + rect.width / 2;
-        startY = rect.top + rect.height / 2;
-      };
-      const move = (e) => {
-        if (!isDragging) return;
-        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-        const dx = clientX - startX;
-        const dy = clientY - startY;
-        const dist = Math.min(45, Math.hypot(dx, dy));
-        const angle = Math.atan2(dy, dx);
-
-        const nx = Math.cos(angle) * dist;
-        const ny = Math.sin(angle) * dist;
-        nub.style.transform = `translate(${nx}px, ${ny}px)`;
-
-        // Dispatch directional keystrokes
-        const normX = nx / 45;
-        const normY = ny / 45;
-        if (normY < -0.4) dispatchKey('w', 'down'); else dispatchKey('w', 'up');
-        if (normY > 0.4) dispatchKey('s', 'down'); else dispatchKey('s', 'up');
-        if (normX < -0.4) dispatchKey('a', 'down'); else dispatchKey('a', 'up');
-        if (normX > 0.4) dispatchKey('d', 'down'); else dispatchKey('d', 'up');
-      };
-      const up = () => {
-        if (!isDragging) return;
-        isDragging = false;
-        nub.style.transform = 'translate(0px, 0px)';
-        dispatchKey('w', 'up');
-        dispatchKey('s', 'up');
-        dispatchKey('a', 'up');
-        dispatchKey('d', 'up');
-      };
-
-      base.addEventListener('pointerdown', down);
-      window.addEventListener('pointermove', move);
-      window.addEventListener('pointerup', up);
-    }
-
+    // ── Virtual Gamepad Key Dispatcher ──
     function dispatchKey(keyName, action) {
       fetch(`/api/remote/key_${action === 'down' ? 'down' : 'up'}`, {
         method: 'POST',
@@ -1570,56 +1797,90 @@
     }
 
     // ── In-HUD Media Player ──
-    function playInHudMedia(embedUrl, title) {
+    function playInHudMedia(url, title) {
       const dock = document.getElementById('hud-media-dock');
       const frame = document.getElementById('hud-media-iframe');
       const titleEl = document.getElementById('hud-media-title');
       if (!dock || !frame) return;
-
-      activeMediaUrl = embedUrl;
-      frame.src = embedUrl;
+      frame.src = url;
       if (titleEl) titleEl.textContent = `▶ ${title.slice(0, 30)}`;
-      dock.style.display = 'flex';
+      dock.classList.remove('hidden');
     }
     function closeHudMedia() {
       const dock = document.getElementById('hud-media-dock');
       const frame = document.getElementById('hud-media-iframe');
-      if (dock) dock.style.display = 'none';
+      if (dock) dock.classList.add('hidden');
       if (frame) frame.src = '';
     }
-    function popoutMedia() {
-      if (activeMediaUrl) window.open(activeMediaUrl, '_blank');
-      closeHudMedia();
+
+    // ── Handlers & Toggles ──
+    function toggleClap() {
+      fetch('/voice/toggle_clap', { method: 'POST' });
+      logActivity("Clap detector state toggled.");
     }
 
-    // ── Toggles & Utilities ──
-    // Hand tracking handled by gestures.js
-    function toggleClap() {
-      const tgl = document.getElementById('tgl-clap');
-      const active = tgl.classList.toggle('is-on');
-      fetch('/voice/toggle_clap', { method: 'POST' });
-      document.getElementById('lbl-clap-state').textContent = active ? 'Listening' : 'Standby';
-    }
     function toggleFaceSentinel() {
-      const tgl = document.getElementById('tgl-sentinel');
-      const active = tgl ? tgl.classList.toggle('is-on') : false;
       fetch('/api/sentinel/toggle', { method: 'POST' });
-      const lbl = document.getElementById('lbl-sentinel-state');
-      if (lbl) lbl.textContent = active ? 'Monitoring' : 'Standby';
-      addLog(`Biometric Face Sentinel ${active ? 'engaged' : 'disengaged'}`, 'info');
+      logActivity("Face Sentinel state toggled.");
     }
+
     function toggleEmergencyStop() {
-      fetch('/api/emergency_stop', { method: 'POST' }).then(() => {
-        addLog('EMERGENCY STOP TOGGLED', 'error');
-      });
+      fetch('/api/emergency_stop', { method: 'POST' });
+      logActivity("EMERGENCY STOP TRIGGERED BY OPERATOR.");
+      alert("EMERGENCY STOP TRIGGERED: All autonomous operations halted.");
     }
+
     function toggleFullscreen() {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {});
-      } else {
-        document.exitFullscreen().catch(() => {});
-      }
+      if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+      else document.exitFullscreen().catch(() => {});
     }
+
+    function cycleMode() {
+      fetch('/api/mode', { method: 'POST' }).then(r => r.json()).then(d => {
+        const txt = document.getElementById('val-mode-text');
+        if (txt) txt.textContent = (d.mode || 'auto').toUpperCase();
+        logActivity(`Mode shifted to ${(d.mode || 'auto').toUpperCase()}`);
+      }).catch(() => {});
+    }
+
+    function resetReflexStream() {
+      window.edithSpeaking = false;
+      window.userSpeakingLevel = 0;
+      logActivity("Reflex core refreshed. Neural latency re-synced.");
+    }
+
+    async function loadActiveModels() {
+      try {
+        const res = await fetch('/models');
+        if (!res.ok) return;
+        const d = await res.json();
+        const sel = document.getElementById('select-active-model');
+        const badge = document.getElementById('active-model-badge');
+        if (sel && d.models) {
+          sel.innerHTML = '';
+          d.models.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m;
+            opt.textContent = m;
+            if (m === d.active_model) opt.selected = true;
+            sel.appendChild(opt);
+          });
+        }
+        if (badge && d.active_model) badge.textContent = d.active_model;
+      } catch (_) {}
+    }
+
+    async function switchModel(model) {
+      await fetch('/models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ model })
+      });
+      const badge = document.getElementById('active-model-badge');
+      if (badge) badge.textContent = model;
+      logActivity(`Switched active local model: ${model}`);
+    }
+
     async function loadMobileConfig() {
       try {
         const res = await fetch('/mobile/config');
@@ -1630,292 +1891,64 @@
         if (el) el.textContent = url;
         const setEl = document.getElementById('settings-cloud-url');
         if (setEl) setEl.value = url;
-        const tunEl = document.getElementById('val-tunnel-status');
-        if (tunEl) tunEl.textContent = (d.tunnel_status && d.tunnel_status.online) ? 'PINNED ONLINE' : 'READY';
       } catch (_) {}
     }
+
     function copyCloudLink() {
-      const urlEl = document.getElementById('hud-cloud-url');
-      const url = (urlEl && urlEl.textContent.trim()) || location.origin;
+      const url = document.getElementById('hud-cloud-url')?.textContent.trim() || location.origin;
       navigator.clipboard.writeText(url);
-      addLog(`Cloud tunnel link copied: ${url}`, 'success');
+      logActivity(`Gateway URL copied to clipboard: ${url}`);
     }
+
     function syncClipboard() {
-      fetch('/api/clipboard').then(r => r.json()).then(d => {
-        addLog(`Host clipboard: "${(d.text || '').slice(0, 30)}"`, 'info');
-      });
-    }
-    // ── Settings & Multi-Provider Controller (ASTRA 6 Architecture) ──
-    function switchSettingsTab(tabName) {
-      document.querySelectorAll('.settings-tab').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.settings-tab-pane').forEach(p => p.style.display = 'none');
-      const btn = document.getElementById(`tab-btn-${tabName}`);
-      const pane = document.getElementById(`tab-pane-${tabName}`);
-      if (btn) btn.classList.add('active');
-      if (pane) pane.style.display = 'block';
-    }
-
-    function selectProviderTile(pid) {
-      currentSelectedProvider = pid;
-      document.querySelectorAll('.provider-tile').forEach(t => {
-        t.classList.toggle('selected', t.getAttribute('data-provider') === pid);
-      });
-      const urlField = document.getElementById('field-provider-url');
-      if (urlField) urlField.style.display = (pid === 'gateway' || pid === 'openrouter') ? 'block' : 'none';
-
-      const modelInput = document.getElementById('input-provider-model');
-      const keyInput = document.getElementById('input-provider-key');
-      const resBox = document.getElementById('provider-test-result');
-      if (resBox) resBox.style.display = 'none';
-
-      const defaults = {
-        gemini: 'gemini-2.5-flash',
-        groq: 'llama-3.3-70b-versatile',
-        openai: 'gpt-4o-mini',
-        openrouter: 'openai/gpt-4o-mini',
-        gateway: 'gpt-4o-mini',
-        local: 'hermes3:3b'
-      };
-
-      if (providersConfigCache.models && providersConfigCache.models[pid]) {
-        modelInput.value = providersConfigCache.models[pid];
-      } else {
-        modelInput.value = defaults[pid] || '';
-      }
-
-      if (pid === 'local') {
-        keyInput.value = '';
-        keyInput.placeholder = 'No API key required for offline models.';
-        keyInput.disabled = true;
-      } else {
-        keyInput.disabled = false;
-        const hasKey = providersConfigCache.keys && providersConfigCache.keys[pid];
-        keyInput.placeholder = hasKey ? '•••••••••••••••• (Saved on host in .llm.env)' : 'Enter API Key...';
-      }
-    }
-
-    async function loadProviderSettings() {
-      try {
-        const res = await fetch('/api/providers');
-        if (!res.ok) return;
-        const data = await res.json();
-        providersConfigCache = data;
-        const active = data.active_provider || 'gemini';
-        selectProviderTile(active);
-        if (data.gateway_url) {
-          const u = document.getElementById('input-provider-url');
-          if (u) u.value = data.gateway_url;
-        }
-      } catch (_) {}
-    }
-
-    async function testCurrentProvider() {
-      const resBox = document.getElementById('provider-test-result');
-      resBox.style.display = 'flex';
-      resBox.className = 'connection-result';
-      resBox.innerHTML = '<span class="status-dot"></span> Contacting upstream intelligence API...';
-
-      const key = document.getElementById('input-provider-key').value.trim();
-      const model = document.getElementById('input-provider-model').value.trim();
-      const url = document.getElementById('input-provider-url').value.trim();
-
-      try {
-        const res = await fetch('/api/providers/test', {
+      navigator.clipboard.readText().then(txt => {
+        fetch('/api/clipboard/sync', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: currentSelectedProvider,
-            api_key: key || undefined,
-            model: model || undefined,
-            base_url: url || undefined
-          })
+          body: JSON.stringify({ text: txt })
         });
-        const data = await res.json();
-        if (data.ok) {
-          resBox.className = 'connection-result success';
-          resBox.innerHTML = `✓ Connection Verified: Model [${data.model || model}] replied in ${data.latency ?? '—'}ms.`;
-          addLog(`Provider [${currentSelectedProvider}] verified successfully (${data.latency ?? '—'}ms)`, 'success');
-        } else {
-          resBox.className = 'connection-result error';
-          resBox.innerHTML = `✗ Connection Failed: ${data.error || 'Check key and network.'}`;
-          addLog(`Provider [${currentSelectedProvider}] test failed: ${data.error}`, 'error');
-        }
-      } catch (err) {
-        resBox.className = 'connection-result error';
-        resBox.innerHTML = `✗ Network Error: ${err.message}`;
-      }
+        logActivity("Host clipboard synchronized.");
+      }).catch(() => {});
     }
 
-    async function saveCurrentProvider() {
-      const key = document.getElementById('input-provider-key').value.trim();
-      const model = document.getElementById('input-provider-model').value.trim();
-      const url = document.getElementById('input-provider-url').value.trim();
-      const resBox = document.getElementById('provider-test-result');
-
-      try {
-        const res = await fetch('/api/providers/save', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            provider: currentSelectedProvider,
-            api_key: key || undefined,
-            model: model || undefined,
-            base_url: url || undefined
-          })
-        });
-        const data = await res.json();
-        if (data.ok) {
-          resBox.style.display = 'flex';
-          resBox.className = 'connection-result success';
-          resBox.innerHTML = `✓ Active AI provider set to [${currentSelectedProvider.toUpperCase()}]. Settings saved.`;
-          addLog(`Active AI provider updated: ${currentSelectedProvider.toUpperCase()}`, 'success');
-          loadProviderSettings();
-        } else {
-          resBox.style.display = 'flex';
-          resBox.className = 'connection-result error';
-          resBox.textContent = `✗ ${data.error || 'Save failed'}`;
-        }
-      } catch (err) {
-        alert(`Failed to save settings: ${err.message}`);
-      }
+    function triggerFileUpload() {
+      document.getElementById('file-uploader')?.click();
     }
 
-    // ── Biometric Face Sentinel Camera Controller ──
-    async function toggleSentinelCamera() {
-      const video = document.getElementById('sentinel-video');
-      const btn = document.getElementById('btn-sentinel-cam');
-      const statusHud = document.getElementById('sentinel-hud-status');
-
-      if (sentinelMediaStream) {
-        stopSentinelCamera();
-        if (btn) btn.textContent = '📷 Start Camera';
-        if (statusHud) statusHud.textContent = 'STATUS: STANDBY';
-        return;
-      }
-
-      try {
-        sentinelMediaStream = await navigator.mediaDevices.getUserMedia({
-          video: { width: 640, height: 480, facingMode: 'user' }
-        });
-        video.srcObject = sentinelMediaStream;
-        if (btn) btn.textContent = '⏹ Stop Camera';
-        if (statusHud) statusHud.textContent = 'STATUS: LOCKED ON USER';
-        startSentinelHUDTracking();
-        addLog('Biometric Sentinel camera feed online.', 'info');
-      } catch (err) {
-        alert(`Camera access denied or unavailable: ${err.message}`);
-      }
+    function handleFileAttached(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      logActivity(`File attached: ${file.name} (${Math.round(file.size / 1024)} KB)`);
+      submitTextCommand(`analyze file ${file.name}`);
     }
 
-    function stopSentinelCamera() {
-      if (sentinelMediaStream) {
-        sentinelMediaStream.getTracks().forEach(t => t.stop());
-        sentinelMediaStream = null;
+    function logActivity(text) {
+      const box = document.getElementById('activity-logs');
+      if (box) {
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        const row = document.createElement('div');
+        row.className = 'flex items-center space-x-2';
+        row.innerHTML = `<span class="text-slate-500">${timeStr}</span><span class="w-1 h-1 bg-os-amber rounded-full"></span><span class="text-slate-300 uppercase">${escapeHtml(text)}</span>`;
+        box.insertBefore(row, box.firstChild);
       }
-      if (sentinelAnimFrame) {
-        cancelAnimationFrame(sentinelAnimFrame);
-        sentinelAnimFrame = null;
-      }
-      const video = document.getElementById('sentinel-video');
-      if (video) video.srcObject = null;
-      const canvas = document.getElementById('sentinel-canvas');
-      if (canvas) {
-        const ctx = canvas.getContext('2d');
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const modalBox = document.getElementById('modal-activity-lines');
+      if (modalBox) {
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+        const r = document.createElement('div');
+        r.className = 'p-1 border-b border-slate-800 text-slate-300';
+        r.innerHTML = `<span class="text-os-amber">[${timeStr}]</span> ${escapeHtml(text)}`;
+        modalBox.insertBefore(r, modalBox.firstChild);
       }
     }
+    window.addLog = logActivity;
 
-    function closeSentinelModal() {
-      stopSentinelCamera();
-      closeDialog('sentinel');
-    }
-
-    function startSentinelHUDTracking() {
-      const canvas = document.getElementById('sentinel-canvas');
-      const video = document.getElementById('sentinel-video');
-      if (!canvas || !video) return;
-
-      const ctx = canvas.getContext('2d');
-      let angle = 0;
-
-      function drawHUD() {
-        if (!sentinelMediaStream) return;
-        canvas.width = video.videoWidth || 640;
-        canvas.height = video.videoHeight || 480;
-
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-        const r = 90;
-
-        // Rotating targeting ring
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.rotate(angle);
-        ctx.strokeStyle = 'rgba(107, 221, 207, 0.7)';
-        ctx.lineWidth = 1.5;
-        ctx.setLineDash([12, 10]);
-        ctx.beginPath();
-        ctx.arc(0, 0, r, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-
-        // Corner Reticle Brackets
-        const boxSize = 130;
-        ctx.strokeStyle = '#6bddcf';
-        ctx.lineWidth = 2.0;
-        ctx.setLineDash([]);
-
-        // Top-left
-        ctx.beginPath();
-        ctx.moveTo(cx - boxSize, cy - boxSize + 20);
-        ctx.lineTo(cx - boxSize, cy - boxSize);
-        ctx.lineTo(cx - boxSize + 20, cy - boxSize);
-        ctx.stroke();
-
-        // Top-right
-        ctx.beginPath();
-        ctx.moveTo(cx + boxSize - 20, cy - boxSize);
-        ctx.lineTo(cx + boxSize, cy - boxSize);
-        ctx.lineTo(cx + boxSize, cy - boxSize + 20);
-        ctx.stroke();
-
-        // Bottom-left
-        ctx.beginPath();
-        ctx.moveTo(cx - boxSize, cy + boxSize - 20);
-        ctx.lineTo(cx - boxSize, cy + boxSize);
-        ctx.lineTo(cx - boxSize + 20, cy + boxSize);
-        ctx.stroke();
-
-        // Bottom-right
-        ctx.beginPath();
-        ctx.moveTo(cx + boxSize - 20, cy + boxSize);
-        ctx.lineTo(cx + boxSize, cy + boxSize);
-        ctx.lineTo(cx + boxSize, cy + boxSize - 20);
-        ctx.stroke();
-
-        // Crosshairs
-        ctx.strokeStyle = 'rgba(107, 221, 207, 0.4)';
-        ctx.beginPath();
-        ctx.moveTo(cx - 20, cy); ctx.lineTo(cx + 20, cy);
-        ctx.moveTo(cx, cy - 20); ctx.lineTo(cx, cy + 20);
-        ctx.stroke();
-
-        angle += 0.02;
-        sentinelAnimFrame = requestAnimationFrame(drawHUD);
-      }
-      drawHUD();
-    }
-
-    function triggerVision() {
-      addLog('Analyzing active screen vision...', 'info');
-      fetch('/vision/analyze_screen').then(r => r.json()).then(d => {
-        appendChatMessage('assistant', `Screen Vision Analysis:\n${d.summary || JSON.stringify(d)}`);
-      });
+    function escapeHtml(s) {
+      return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
   </script>
-  <!-- EDITH Gateway: auth, truthful status, reminders, calendar, devices/remote, tutorial -->
-  <script src="edith-gateway.js?v=1"></script>
+
 </body>
 </html>
