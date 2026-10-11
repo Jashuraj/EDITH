@@ -39,6 +39,7 @@ from edith.voice.whisper_engine import WHISPER_ENGINE
 logger = logging.getLogger("edith.phone.gateway")
 
 MOBILE_DIR = Path(__file__).resolve().parent.parent / "ui" / "public" / "mobile"
+VNC_DIR = Path(__file__).resolve().parent.parent / "ui" / "public" / "vnc"
 
 
 def get_local_ip() -> str:
@@ -684,6 +685,42 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
 
         elif parsed.path == "/tunnel":
             self._send_json(TUNNEL_MANAGER.get_status())
+
+        elif parsed.path in ("/vnc", "/vnc/", "/vnc/index.html"):
+            vnc_index = VNC_DIR / "index.html"
+            if vnc_index.exists():
+                data = vnc_index.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return
+            self.send_error(404, "VNC interface not found")
+            return
+
+        elif parsed.path.startswith("/vnc/"):
+            rel_sub = parsed.path[5:]
+            target = (VNC_DIR / rel_sub).resolve()
+            if target.exists() and target.is_file() and VNC_DIR in target.parents:
+                content_type = "text/plain"
+                if target.suffix == ".html":
+                    content_type = "text/html; charset=utf-8"
+                elif target.suffix == ".js":
+                    content_type = "application/javascript"
+                elif target.suffix == ".css":
+                    content_type = "text/css"
+                elif target.suffix in (".png", ".jpg", ".jpeg"):
+                    content_type = "image/png"
+                data = target.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", content_type)
+                self.send_header("Content-Length", str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return
+            self.send_error(404, "VNC file not found")
+            return
 
         elif parsed.path in ("/", "/index.html", "/mobile", "/mobile/"):
             self.path = "/index.html"

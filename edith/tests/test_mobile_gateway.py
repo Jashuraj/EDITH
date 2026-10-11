@@ -139,6 +139,14 @@ class TestMobileAndTunnelSubsystems(unittest.TestCase):
             content = res.read().decode("utf-8")
             self.assertIn("E.D.I.T.H. Mobile", content)
 
+    def test_phone_vnc_endpoint(self):
+        req = urllib.request.Request("http://127.0.0.1:8895/vnc")
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            content = res.read().decode("utf-8")
+            self.assertIn("EDITH VNC", content)
+            self.assertIn("vnc-canvas", content)
+
     def test_phone_gateway_mode_endpoint(self):
         req = urllib.request.Request("http://127.0.0.1:8895/api/mode")
         with urllib.request.urlopen(req, timeout=3.0) as res:

@@ -116,12 +116,41 @@
       display: none;
     }
     #vnc-canvas {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
+      position: absolute;
+      max-width: 100%;
+      max-height: 100%;
       image-rendering: -webkit-optimize-contrast;
       cursor: crosshair;
       display: block;
+      transform-origin: center center;
+      transition: transform 0.05s ease-out;
+    }
+    .gamepad-middle {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 12px;
+      pointer-events: auto;
+      z-index: 90;
+    }
+    .select-start-btn {
+      background: rgba(0, 229, 255, 0.15);
+      border: 1px solid var(--cyan);
+      color: var(--cyan);
+      font-family: 'Orbitron', sans-serif;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 14px;
+      cursor: pointer;
+      touch-action: none;
+      letter-spacing: 0.5px;
+    }
+    .select-start-btn:active {
+      background: var(--cyan);
+      color: #000;
     }
     /* Touch Ripple */
     .vnc-ripple {
@@ -319,6 +348,10 @@
       <div class="vnc-tools">
         <button class="vnc-btn" id="btn-fps" title="Toggle Target FPS">⚡ 90 FPS</button>
         <button class="vnc-btn" id="btn-res" title="Toggle Resolution">📺 720p</button>
+        <button class="vnc-btn" id="btn-zoom-in" title="Zoom In">🔍 +</button>
+        <button class="vnc-btn" id="btn-zoom-out" title="Zoom Out">🔍 -</button>
+        <button class="vnc-btn" id="btn-zoom-fit" title="Reset Zoom">⛶ Fit</button>
+        <button class="vnc-btn" id="btn-unlock" title="Unlock PC" style="color: var(--green); border-color: rgba(0,230,118,0.4);">🔓 Unlock</button>
         <button class="vnc-btn" id="btn-gamepad" title="Toggle Gamepad">🎮 Game</button>
         <button class="vnc-btn" id="btn-type-modal" title="Type to Laptop">⌨️ Type</button>
         <button class="vnc-btn" id="btn-fullscreen" title="Fullscreen">⛶ Full</button>
@@ -349,6 +382,12 @@
           <div class="stick-nub" id="stick-nub"></div>
         </div>
 
+        <!-- Middle Select / Start -->
+        <div class="gamepad-middle">
+          <button class="select-start-btn" data-btn="SELECT">SELECT</button>
+          <button class="select-start-btn" data-btn="START">START</button>
+        </div>
+
         <!-- Right Controls -->
         <div class="gamepad-actions">
           <div class="gamepad-shoulders">
@@ -376,6 +415,7 @@
       <button class="hk-btn" data-action="scroll_up">Scroll ▲</button>
       <button class="hk-btn" data-action="scroll_down">Scroll ▼</button>
       <button class="hk-btn" data-action="switch_window">Alt+Tab</button>
+      <button class="hk-btn" data-action="unlock" style="color: var(--green); border-color: rgba(0,230,118,0.4);">🔓 Unlock</button>
       <button class="hk-btn" data-key="esc">Esc</button>
       <button class="hk-btn" data-key="enter">Enter</button>
       <button class="hk-btn" data-key="win">Win</button>
@@ -390,22 +430,39 @@
     let gamepadActive = false;
     let renderedFrames = 0;
     let lastFpsTime = performance.now();
+    let streamActive = true;
+    let isFetchingFrame = false;
+    let currentBlobUrl = null;
+
+    // Zoom & Pan State
+    let remoteZoom = 1.0;
+    let remotePanX = 0;
+    let remotePanY = 0;
 
     // Elements
     const canvas = document.getElementById("vnc-canvas");
     const ctx = canvas.getContext("2d", { alpha: false, desynchronized: true });
-    const streamImg = document.getElementById("vnc-stream-img");
     const viewport = document.getElementById("vnc-viewport");
     const fpsMetric = document.getElementById("fps-metric");
     const resMetric = document.getElementById("res-metric");
     const btnFps = document.getElementById("btn-fps");
     const btnRes = document.getElementById("btn-res");
+    const btnZoomIn = document.getElementById("btn-zoom-in");
+    const btnZoomOut = document.getElementById("btn-zoom-out");
+    const btnZoomFit = document.getElementById("btn-zoom-fit");
+    const btnUnlock = document.getElementById("btn-unlock");
     const btnGamepad = document.getElementById("btn-gamepad");
     const btnFullscreen = document.getElementById("btn-fullscreen");
     const gamepadOverlay = document.getElementById("gamepad-overlay");
     const rippleContainer = document.getElementById("vnc-ripple-container");
     const typeModal = document.getElementById("type-modal");
     const typeTextInput = document.getElementById("type-text-input");
+
+    function updateZoomTransform() {
+      if (canvas) {
+        canvas.style.transform = `translate(${remotePanX}px, ${remotePanY}px) scale(${remoteZoom})`;
+      }
+    }
 
     // Input Sender
     async function sendInput(action, params = {}) {
@@ -436,73 +493,122 @@
       }
     }
 
-    // 90+ FPS Streaming Engine
-    let reconnectTimeout = null;
-    function startMjpegStream() {
-      if (reconnectTimeout) clearTimeout(reconnectTimeout);
-      const scale = resolution === "1080p" ? 1920 : (resolution === "720p" ? 1280 : 960);
-      const quality = resolution === "1080p" ? 50 : 45;
-      const streamUrl = `${origin}/stream/screen?fps=${targetFps}&scale=${scale}&quality=${quality}&t=${Date.now()}`;
-      streamImg.src = streamUrl;
-    }
-
-    streamImg.onerror = () => {
-      fpsMetric.textContent = "SYNC...";
-      fpsMetric.style.color = "var(--red)";
-      reconnectTimeout = setTimeout(startMjpegStream, 800);
-    };
-
-    // Render loop at monitor refresh rate
-    function renderLoop() {
-      if (streamImg && streamImg.naturalWidth > 0) {
-        if (canvas.width !== streamImg.naturalWidth || canvas.height !== streamImg.naturalHeight) {
-          canvas.width = streamImg.naturalWidth;
-          canvas.height = streamImg.naturalHeight;
-        }
-        ctx.drawImage(streamImg, 0, 0);
-        renderedFrames++;
-      }
-
+    // Zero-Buffer 90 FPS Streaming Engine (Pulls next frame only after current renders)
+    function updateFpsMeter() {
       const now = performance.now();
       if (now - lastFpsTime >= 1000) {
-        const measuredFps = Math.max(targetFps, Math.round((renderedFrames * 1000) / (now - lastFpsTime)));
+        const measuredFps = Math.round((renderedFrames * 1000) / (now - lastFpsTime));
         renderedFrames = 0;
         lastFpsTime = now;
         fpsMetric.textContent = `${measuredFps} FPS`;
-        fpsMetric.style.color = measuredFps >= 75 ? "var(--green)" : "var(--cyan)";
+        fpsMetric.style.color = measuredFps >= 45 ? "var(--green)" : "var(--cyan)";
       }
-
-      requestAnimationFrame(renderLoop);
     }
 
-    // Normalized Coordinate Calculation
+    async function fetchStreamLoop() {
+      if (!streamActive) return;
+      if (isFetchingFrame) {
+        requestAnimationFrame(fetchStreamLoop);
+        return;
+      }
+      isFetchingFrame = true;
+
+      const scale = resolution === "1080p" ? 1920 : (resolution === "720p" ? 1280 : 960);
+      const quality = resolution === "1080p" ? 55 : (resolution === "720p" ? 48 : 42);
+      const streamUrl = `${origin}/api/screen/capture?scale=${scale}&quality=${quality}&t=${Date.now()}`;
+
+      try {
+        const resp = await fetch(streamUrl, {
+          cache: "no-store",
+          headers: { "Bypass-Tunnel-Reminder": "true" },
+        });
+
+        if (!resp.ok) {
+          throw new Error(`HTTP ${resp.status}`);
+        }
+
+        const blob = await resp.blob();
+        if (!streamActive) {
+          isFetchingFrame = false;
+          return;
+        }
+
+        // Fast off-thread GPU decode via createImageBitmap
+        if (window.createImageBitmap) {
+          try {
+            const bitmap = await createImageBitmap(blob);
+            if (!streamActive) {
+              bitmap.close();
+              isFetchingFrame = false;
+              return;
+            }
+            if (canvas.width !== bitmap.width || canvas.height !== bitmap.height) {
+              canvas.width = bitmap.width;
+              canvas.height = bitmap.height;
+            }
+            ctx.drawImage(bitmap, 0, 0);
+            bitmap.close();
+
+            renderedFrames++;
+            updateFpsMeter();
+
+            isFetchingFrame = false;
+            if (streamActive) {
+              requestAnimationFrame(fetchStreamLoop);
+            }
+            return;
+          } catch (bmErr) {
+            console.warn("Bitmap decode error, falling back to Blob URL:", bmErr);
+          }
+        }
+
+        // Fallback Image element swap path
+        const newBlobUrl = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => {
+          if (!streamActive) {
+            URL.revokeObjectURL(newBlobUrl);
+            isFetchingFrame = false;
+            return;
+          }
+          if (canvas.width !== img.naturalWidth || canvas.height !== img.naturalHeight) {
+            canvas.width = img.naturalWidth;
+            canvas.height = img.naturalHeight;
+          }
+          ctx.drawImage(img, 0, 0);
+          if (currentBlobUrl) URL.revokeObjectURL(currentBlobUrl);
+          currentBlobUrl = newBlobUrl;
+
+          renderedFrames++;
+          updateFpsMeter();
+
+          isFetchingFrame = false;
+          if (streamActive) {
+            requestAnimationFrame(fetchStreamLoop);
+          }
+        };
+        img.onerror = () => {
+          URL.revokeObjectURL(newBlobUrl);
+          isFetchingFrame = false;
+          if (streamActive) setTimeout(fetchStreamLoop, 50);
+        };
+      } catch (err) {
+        isFetchingFrame = false;
+        fpsMetric.textContent = "SYNC...";
+        fpsMetric.style.color = "var(--red)";
+        if (streamActive) {
+          setTimeout(fetchStreamLoop, 300);
+        }
+      }
+    }
+
+    // Exact Normalized Coordinate Calculation (handles zoom and pan compensation)
     function getNormalizedCoords(clientX, clientY) {
       const rect = canvas.getBoundingClientRect();
       if (!rect || rect.width <= 1 || rect.height <= 1) return { x: 0.5, y: 0.5 };
 
-      const naturalW = canvas.width || 1920;
-      const naturalH = canvas.height || 1080;
-      const naturalAspect = naturalW / naturalH;
-      const elemAspect = rect.width / rect.height;
-
-      let renderW, renderH, offsetX, offsetY;
-      if (elemAspect > naturalAspect) {
-        renderH = rect.height;
-        renderW = rect.height * naturalAspect;
-        offsetX = (rect.width - renderW) / 2;
-        offsetY = 0;
-      } else {
-        renderW = rect.width;
-        renderH = rect.width / naturalAspect;
-        offsetX = 0;
-        offsetY = (rect.height - renderH) / 2;
-      }
-
-      const touchX = clientX - rect.left - offsetX;
-      const touchY = clientY - rect.top - offsetY;
-
-      const normX = Math.max(0.0, Math.min(1.0, touchX / renderW));
-      const normY = Math.max(0.0, Math.min(1.0, touchY / renderH));
+      const normX = Math.max(0.0, Math.min(1.0, (clientX - rect.left) / rect.width));
+      const normY = Math.max(0.0, Math.min(1.0, (clientY - rect.top) / rect.height));
       return { x: normX, y: normY };
     }
 
@@ -515,15 +621,25 @@
       setTimeout(() => r.remove(), 320);
     }
 
-    // Touch & Mouse Events
+    // Touch, Pinch-to-Zoom & Mouse Events
     let touchStartTime = 0;
     let touchStartX = 0;
     let touchStartY = 0;
     let longPressTimer = null;
+    let isPinching = false;
+    let pinchStartDist = 0;
+    let pinchStartZoom = 1.0;
+    let pinchStartMidX = 0;
+    let pinchStartMidY = 0;
+    let pinchStartPanX = 0;
+    let pinchStartPanY = 0;
+    let twoFingerStartY = 0;
 
     viewport.addEventListener("touchstart", (e) => {
       if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal")) return;
+
       if (e.touches.length === 1) {
+        isPinching = false;
         const t = e.touches[0];
         touchStartTime = Date.now();
         touchStartX = t.clientX;
@@ -531,29 +647,77 @@
         const coords = getNormalizedCoords(t.clientX, t.clientY);
         createRipple(t.clientX, t.clientY);
 
+        clearTimeout(longPressTimer);
         longPressTimer = setTimeout(() => {
           sendInput("right_click", coords);
           navigator.vibrate && navigator.vibrate(40);
-        }, 360);
+        }, 400);
+      } else if (e.touches.length === 2) {
+        clearTimeout(longPressTimer);
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        pinchStartDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        pinchStartZoom = remoteZoom;
+        pinchStartMidX = (t1.clientX + t2.clientX) / 2;
+        pinchStartMidY = (t1.clientY + t2.clientY) / 2;
+        pinchStartPanX = remotePanX;
+        pinchStartPanY = remotePanY;
+        isPinching = true;
+        twoFingerStartY = pinchStartMidY;
       }
-    }, { passive: true });
+    }, { passive: false });
 
     viewport.addEventListener("touchmove", (e) => {
-      if (e.touches.length === 1) {
+      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal")) return;
+
+      if (e.touches.length === 1 && !isPinching) {
         const t = e.touches[0];
         const dist = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY);
         if (dist > 12) clearTimeout(longPressTimer);
         const coords = getNormalizedCoords(t.clientX, t.clientY);
         queueMouseMove(coords);
+      } else if (e.touches.length === 2 && isPinching) {
+        clearTimeout(longPressTimer);
+        e.preventDefault();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const currentDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+        const currentMidX = (t1.clientX + t2.clientX) / 2;
+        const currentMidY = (t1.clientY + t2.clientY) / 2;
+
+        if (Math.abs(currentDist - pinchStartDist) > 12) {
+          const scaleChange = currentDist / Math.max(1, pinchStartDist);
+          remoteZoom = Math.max(1.0, Math.min(4.0, pinchStartZoom * scaleChange));
+          remotePanX = pinchStartPanX + (currentMidX - pinchStartMidX);
+          remotePanY = pinchStartPanY + (currentMidY - pinchStartMidY);
+          updateZoomTransform();
+        } else if (remoteZoom === 1.0) {
+          const delta = currentMidY - twoFingerStartY;
+          if (Math.abs(delta) > 15) {
+            sendInput("scroll", { delta: delta > 0 ? 2 : -2 });
+            twoFingerStartY = currentMidY;
+          }
+        } else {
+          remotePanX = pinchStartPanX + (currentMidX - pinchStartMidX);
+          remotePanY = pinchStartPanY + (currentMidY - pinchStartMidY);
+          updateZoomTransform();
+        }
       }
-    }, { passive: true });
+    }, { passive: false });
 
     viewport.addEventListener("touchend", (e) => {
       clearTimeout(longPressTimer);
+      if (e.touches.length < 2) isPinching = false;
+      if (e.target.closest("#gamepad-overlay") || e.target.closest(".vnc-hotkeys-bar") || e.target.closest(".type-modal")) return;
+
       const dt = Date.now() - touchStartTime;
-      if (dt < 300) {
-        const coords = getNormalizedCoords(touchStartX, touchStartY);
-        sendInput("click", coords);
+      if (dt < 300 && e.changedTouches.length === 1) {
+        const t = e.changedTouches[0];
+        const dist = Math.hypot(t.clientX - touchStartX, t.clientY - touchStartY);
+        if (dist < 15) {
+          const coords = getNormalizedCoords(t.clientX, t.clientY);
+          sendInput("click", coords);
+        }
       }
     }, { passive: true });
 
@@ -590,8 +754,14 @@
 
     viewport.addEventListener("wheel", (e) => {
       e.preventDefault();
-      const delta = e.deltaY < 0 ? 1 : -1;
-      sendInput("scroll", { delta: delta * 2 });
+      if (e.ctrlKey) {
+        const factor = e.deltaY < 0 ? 1.15 : 0.85;
+        remoteZoom = Math.max(1.0, Math.min(4.0, remoteZoom * factor));
+        updateZoomTransform();
+      } else {
+        const delta = e.deltaY < 0 ? 1 : -1;
+        sendInput("scroll", { delta: delta * 2 });
+      }
     }, { passive: false });
 
     viewport.addEventListener("contextmenu", (e) => {
@@ -618,7 +788,6 @@
       else if (targetFps === 120) targetFps = 60;
       else targetFps = 90;
       btnFps.textContent = `⚡ ${targetFps} FPS`;
-      startMjpegStream();
     });
 
     // Resolution Toggle
@@ -626,8 +795,36 @@
       resolution = resolution === "720p" ? "1080p" : (resolution === "1080p" ? "540p" : "720p");
       btnRes.textContent = `📺 ${resolution}`;
       resMetric.textContent = `${resolution.toUpperCase()} HD`;
-      startMjpegStream();
     });
+
+    // Zoom Controls
+    if (btnZoomIn) {
+      btnZoomIn.addEventListener("click", () => {
+        remoteZoom = Math.min(4.0, remoteZoom + 0.25);
+        updateZoomTransform();
+      });
+    }
+    if (btnZoomOut) {
+      btnZoomOut.addEventListener("click", () => {
+        remoteZoom = Math.max(1.0, remoteZoom - 0.25);
+        updateZoomTransform();
+      });
+    }
+    if (btnZoomFit) {
+      btnZoomFit.addEventListener("click", () => {
+        remoteZoom = 1.0;
+        remotePanX = 0;
+        remotePanY = 0;
+        updateZoomTransform();
+      });
+    }
+
+    // Workstation Unlock
+    if (btnUnlock) {
+      btnUnlock.addEventListener("click", () => {
+        sendInput("unlock");
+      });
+    }
 
     // Gamepad Toggle
     btnGamepad.addEventListener("click", () => {
@@ -675,8 +872,8 @@
       });
     });
 
-    // Gamepad Action Diamond and Shoulders
-    document.querySelectorAll(".action-btn, .shoulder-btn").forEach(btn => {
+    // Gamepad Action Diamond, Shoulders, and Middle (SELECT / START)
+    document.querySelectorAll(".action-btn, .shoulder-btn, .select-start-btn").forEach(btn => {
       const buttonName = btn.dataset.btn;
       const press = (e) => {
         e.preventDefault();
@@ -695,10 +892,41 @@
       btn.addEventListener("mouseleave", release);
     });
 
-    // Virtual Joystick Logic
+    // Virtual Joystick Logic with Direction Quantization and Dispatch Throttling
     const stickBase = document.getElementById("stick-base");
     const stickNub = document.getElementById("stick-nub");
     let stickActive = false;
+    let joystickInFlight = false;
+    let lastStickDispatch = 0;
+    let currentDirection = "";
+
+    function getDirection(normX, normY, deadzone = 0.22) {
+      const mag = Math.hypot(normX, normY);
+      if (mag < deadzone) return "neutral";
+      let d = "";
+      if (normY < -deadzone) d += "U";
+      else if (normY > deadzone) d += "D";
+      if (normX < -deadzone) d += "L";
+      else if (normX > deadzone) d += "R";
+      return d || "neutral";
+    }
+
+    async function dispatchJoystick(normX, normY) {
+      const dir = getDirection(normX, normY);
+      const now = performance.now();
+      if (dir === currentDirection && now - lastStickDispatch < 90) return;
+      if (joystickInFlight && now - lastStickDispatch < 35) return;
+
+      joystickInFlight = true;
+      lastStickDispatch = now;
+      currentDirection = dir;
+
+      try {
+        await sendInput("joystick_move", { x: normX, y: normY });
+      } finally {
+        joystickInFlight = false;
+      }
+    }
 
     stickBase.addEventListener("touchstart", (e) => {
       stickActive = true;
@@ -724,11 +952,12 @@
       stickNub.style.transform = `translate(${dx}px, ${dy}px)`;
       const normX = dx / maxR;
       const normY = dy / maxR;
-      sendInput("joystick_move", { x: normX, y: normY });
+      dispatchJoystick(normX, normY);
     }, { passive: true });
 
     const endStick = () => {
       stickActive = false;
+      currentDirection = "neutral";
       stickNub.style.transform = "translate(0, 0)";
       sendInput("joystick_release");
     };
@@ -764,9 +993,8 @@
     camPad.addEventListener("touchend", () => { camTracking = false; });
     camPad.addEventListener("touchcancel", () => { camTracking = false; });
 
-    // Initialize Stream and Render Loop
-    startMjpegStream();
-    renderLoop();
+    // Initialize Zero-Buffer Fetch Stream Loop
+    requestAnimationFrame(fetchStreamLoop);
   </script>
 </body>
 </html>
