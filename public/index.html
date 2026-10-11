@@ -138,6 +138,83 @@
       border-bottom: 1.5px solid #00f0ff; border-right: 1.5px solid #00f0ff; pointer-events: none;
     }
 
+    /* Spider-Man HUD Overrides from Stitch Design System */
+    .glow-red-sm { box-shadow: 0 0 10px rgba(255, 23, 68, 0.45), inset 0 0 8px rgba(255, 23, 68, 0.12); }
+    .glow-red-lg { box-shadow: 0 0 25px rgba(255, 23, 68, 0.6), 0 0 8px rgba(255, 42, 85, 0.4); }
+    .glow-gold-sm { box-shadow: 0 0 10px rgba(255, 190, 40, 0.45), inset 0 0 6px rgba(255, 190, 40, 0.15); }
+    .text-glow-red { text-shadow: 0 0 12px rgba(255, 23, 68, 0.8), 0 0 22px rgba(255, 42, 85, 0.4); }
+    .spidey-scanlines {
+      background: linear-gradient(rgba(10, 14, 22, 0) 50%, rgba(2, 4, 8, 0.45) 50%),
+                  linear-gradient(90deg, rgba(255, 23, 68, 0.02), rgba(0, 240, 255, 0.02), rgba(255, 190, 40, 0.015));
+      background-size: 100% 3px, 8px 100%;
+      pointer-events: none;
+    }
+    .spidey-web-grid {
+      background-image: 
+        radial-gradient(circle at 50% 50%, rgba(0, 240, 255, 0.08) 1px, transparent 1px),
+        linear-gradient(to right, rgba(24, 36, 56, 0.35) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(24, 36, 56, 0.35) 1px, transparent 1px);
+      background-size: 28px 28px, 28px 28px, 28px 28px;
+    }
+    body.theme-spiderman {
+      --os-amber: #ff1744;
+      --os-amber-glow: #ff2a55;
+      --os-gold: #ffbe28;
+      --os-cyan: #00f0ff;
+      --os-border: #18263c;
+      --os-border-glow: #28426b;
+      --os-panel: #0a101b;
+      --os-card: #0c121c;
+      --os-black: #060a10;
+    }
+    body.theme-spiderman .stark-card,
+    .spidey-card {
+      position: relative;
+      background: linear-gradient(135deg, rgba(12, 18, 28, 0.95) 0%, rgba(7, 12, 20, 0.98) 100%) !important;
+      border: 1px solid rgba(24, 38, 60, 0.9) !important;
+      clip-path: polygon(
+        0 8px, 8px 0,
+        calc(100% - 8px) 0, 100% 8px,
+        100% calc(100% - 8px), calc(100% - 8px) 100%,
+        8px 100%, 0 calc(100% - 8px)
+      );
+    }
+    body.theme-spiderman .stark-card::before,
+    .spidey-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; width: 6px; height: 6px;
+      border-top: 2px solid #ff1744 !important;
+      border-left: 2px solid #ff1744 !important;
+      pointer-events: none;
+    }
+    body.theme-spiderman .stark-card::after,
+    .spidey-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; right: 0; width: 6px; height: 6px;
+      border-bottom: 2px solid #00f0ff !important;
+      border-right: 2px solid #00f0ff !important;
+      pointer-events: none;
+    }
+    body.theme-spiderman .reticle-bracket-tl,
+    body.theme-spiderman .reticle-bracket-tr {
+      border-color: #ff1744 !important;
+    }
+    body.theme-spiderman .reticle-bracket-bl,
+    body.theme-spiderman .reticle-bracket-br {
+      border-color: #00f0ff !important;
+    }
+    body.theme-spiderman .glow-amber-sm {
+      box-shadow: 0 0 10px rgba(255, 23, 68, 0.45), inset 0 0 8px rgba(255, 23, 68, 0.12) !important;
+    }
+    body.theme-spiderman .glow-amber-lg {
+      box-shadow: 0 0 25px rgba(255, 23, 68, 0.6), 0 0 8px rgba(255, 42, 85, 0.4) !important;
+    }
+    body.theme-spiderman .text-glow-amber {
+      text-shadow: 0 0 12px rgba(255, 23, 68, 0.8), 0 0 22px rgba(255, 42, 85, 0.4) !important;
+    }
+
     /* Equalizer LED Segment wave bars */
     .eq-bar {
       transition: height 0.08s ease;
@@ -206,20 +283,34 @@
     
     <!-- Left: E.D.I.T.H. Mark II Stark Tactical Branding -->
     <div class="flex items-center space-x-3">
-      <div class="w-9 h-9 flex items-center justify-center text-os-amber relative">
-        <svg class="w-7 h-7 text-os-amber" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+      <div class="w-9 h-9 flex items-center justify-center relative" id="brand-logo-icon">
+        <svg id="brand-icon-default" class="w-7 h-7 text-os-amber" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
           <polygon points="12 2 22 7.5 22 16.5 12 22 2 16.5 2 7.5 12 2"></polygon>
           <polygon points="12 6 18 9.5 18 14.5 12 18 6 14.5 6 9.5 12 6" stroke-dasharray="1 2"></polygon>
           <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
+        </svg>
+        <svg id="brand-icon-spidey" class="w-8 h-8 hidden text-spider-red filter drop-shadow-[0_0_6px_rgba(255,23,68,0.8)]" viewBox="0 0 100 100" fill="none">
+          <polygon points="50,15 55,23 50,26 45,23" fill="#ff1744"/>
+          <path d="M 50,28 L 59,37 L 57,56 L 50,78 L 43,56 L 41,37 Z" fill="#ff1744" stroke="#ff1744" stroke-width="0.8"/>
+          <polyline points="47,32 32,18 24,24 35,35" stroke="#ff1744" stroke-width="3" stroke-linecap="round"/>
+          <polyline points="53,32 68,18 76,24 65,35" stroke="#ff1744" stroke-width="3" stroke-linecap="round"/>
+          <polyline points="45,38 22,34 16,42 27,48" stroke="#ff1744" stroke-width="2.8" stroke-linecap="round"/>
+          <polyline points="55,38 78,34 84,42 73,48" stroke="#ff1744" stroke-width="2.8" stroke-linecap="round"/>
+          <polyline points="46,47 20,54 18,66 28,64" stroke="#ff1744" stroke-width="2.6" stroke-linecap="round"/>
+          <polyline points="54,47 80,54 82,66 72,64" stroke="#ff1744" stroke-width="2.6" stroke-linecap="round"/>
+          <polyline points="47,56 28,68 30,85 38,76" stroke="#ff1744" stroke-width="2.5" stroke-linecap="round"/>
+          <polyline points="53,56 72,68 70,85 62,76" stroke="#ff1744" stroke-width="2.5" stroke-linecap="round"/>
+          <polygon points="50,42 53,48 50,54 47,48" fill="#00f0ff"/>
         </svg>
       </div>
       <div>
         <div class="flex items-center space-x-2">
           <span class="font-michroma tracking-[0.25em] text-white font-bold text-xs">E.D.I.T.H.</span>
-          <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-os-amber text-os-black uppercase tracking-[0.14em] font-chakra">MARK II</span>
+          <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-os-amber text-os-black uppercase tracking-[0.14em] font-chakra" id="brand-badge-mark">MARK II</span>
+          <span class="hidden text-[9px] font-bold px-1.5 py-0.2 rounded bg-[#ff1744] text-white uppercase tracking-[0.14em] font-chakra border border-[#ff1744] glow-red-sm" id="brand-badge-spidey">P.E.T.E.R. PROTOCOL</span>
           <span class="text-xs text-os-border-glow font-mono px-1">//</span>
         </div>
-        <p class="text-[9px] text-slate-400 font-mono tracking-[0.15em] uppercase">EVEN DEAD, I'M THE HERO | LOCAL-FIRST AUTONOMOUS AI OS</p>
+        <p class="text-[9px] text-slate-400 font-mono tracking-[0.15em] uppercase" id="brand-subtitle">EVEN DEAD, I'M THE HERO | LOCAL-FIRST AUTONOMOUS AI OS</p>
       </div>
     </div>
 
@@ -1068,6 +1159,7 @@
   <script data-purpose="edith-system-logic">
     // State management
     let globeGroup, wireMat, pMat, ring1Mesh, ring2Mesh, ringEquatorMesh, auraMat, innerNode;
+    let pointCloudMesh, wireSphereMesh, spiderLogo3D, coreCrystalMesh;
     let isDragging = false, prevMousePos = { x: 0, y: 0 }, velocityX = 0, velocityY = 0;
     let ttsEnabled = true;
     let isListening = false;
@@ -1082,7 +1174,7 @@
       'JARVIS': 0xffa800,
       'FRIDAY': 0x38bdf8,
       'KAREN': 0x34d399,
-      'SPIDEY': 0xf87171,
+      'SPIDEY': 0xff1744,
       'ULTRON': 0xef4444
     };
 
@@ -1215,6 +1307,7 @@
         blending: THREE.AdditiveBlending
       });
       const pointCloud = new THREE.Points(pGeo, pMat);
+      pointCloudMesh = pointCloud;
       globeGroup.add(pointCloud);
 
       // 2. Latitude & Longitude Wireframe Sphere
@@ -1227,6 +1320,7 @@
         blending: THREE.AdditiveBlending
       });
       const wireSphere = new THREE.Mesh(wireGeo, wireMat);
+      wireSphereMesh = wireSphere;
       globeGroup.add(wireSphere);
 
       // 3. Tactical Gimbal Rings
@@ -1277,6 +1371,150 @@
       const satMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
       const satBeacon = new THREE.Mesh(satGeo, satMat);
       globeGroup.add(satBeacon);
+
+      // 7. Procedural 3D Spider-Man Emblem (Stitch Mark II Design System)
+      spiderLogo3D = new THREE.Group();
+      spiderLogo3D.scale.set(1.15, 1.15, 1.15);
+      spiderLogo3D.visible = false;
+      globeGroup.add(spiderLogo3D);
+
+      const emblemMatWhite = new THREE.MeshPhongMaterial({
+        color: 0xffffff,
+        emissive: 0x1a202c,
+        specular: 0x00f0ff,
+        shininess: 80,
+        flatShading: false,
+        side: THREE.DoubleSide
+      });
+
+      const emblemMatRed = new THREE.MeshPhongMaterial({
+        color: 0xff1744,
+        emissive: 0x4a000e,
+        shininess: 90,
+        flatShading: false,
+        side: THREE.DoubleSide
+      });
+
+      function createExtrudedPart(pts, depth, bevel) {
+        const shape = new THREE.Shape();
+        if (!pts || pts.length < 3) return null;
+        shape.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) {
+          shape.lineTo(pts[i][0], pts[i][1]);
+        }
+        shape.closePath();
+
+        const extrudeSettings = {
+          steps: 1,
+          depth: depth || 0.45,
+          bevelEnabled: true,
+          bevelThickness: bevel || 0.15,
+          bevelSize: bevel || 0.12,
+          bevelSegments: 3
+        };
+
+        const geo = new THREE.ExtrudeGeometry(shape, extrudeSettings);
+        geo.center();
+        return geo;
+      }
+
+      // Abdomen
+      const abdomenPts = [[0, 2.8], [1.4, 1.2], [1.2, -1.8], [0, -4.6], [-1.2, -1.8], [-1.4, 1.2]];
+      const abdomenGeo = createExtrudedPart(abdomenPts, 0.55, 0.2);
+      if (abdomenGeo) {
+        const abdomenMesh = new THREE.Mesh(abdomenGeo, emblemMatWhite);
+        abdomenMesh.position.y = -0.5;
+        spiderLogo3D.add(abdomenMesh);
+      }
+
+      // Nanotech spine inlay
+      const spinePts = [[0, 2.0], [0.6, 0.8], [0.5, -1.2], [0, -3.8], [-0.5, -1.2], [-0.6, 0.8]];
+      const spineGeo = createExtrudedPart(spinePts, 0.65, 0.1);
+      if (spineGeo) {
+        const spineMesh = new THREE.Mesh(spineGeo, emblemMatRed);
+        spineMesh.position.set(0, -0.5, 0.05);
+        spiderLogo3D.add(spineMesh);
+      }
+
+      // Head & pincers
+      const headPts = [[0, 2.2], [0.9, 1.2], [0.5, 0.0], [0, -0.6], [-0.5, 0.0], [-0.9, 1.2]];
+      const headGeo = createExtrudedPart(headPts, 0.45, 0.16);
+      if (headGeo) {
+        const headMesh = new THREE.Mesh(headGeo, emblemMatWhite);
+        headMesh.position.y = 3.1;
+        spiderLogo3D.add(headMesh);
+      }
+
+      // Core Arc Reactor Crystal
+      const coreCrystalGeo = new THREE.OctahedronGeometry(0.55, 0);
+      const coreCrystalMat = new THREE.MeshBasicMaterial({
+        color: 0x00f0ff,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.95,
+        blending: THREE.AdditiveBlending
+      });
+      coreCrystalMesh = new THREE.Mesh(coreCrystalGeo, coreCrystalMat);
+      coreCrystalMesh.position.set(0, 0.5, 0.4);
+      spiderLogo3D.add(coreCrystalMesh);
+
+      // 8 Articulated 3D Legs
+      const legDefinitions = [
+        {
+          pts: [
+            [0.6, 2.0], [2.2, 3.8], [3.8, 5.8], [4.2, 5.4], [2.6, 3.2],
+            [1.8, 1.4], [2.4, -1.5], [3.2, -4.8], [2.8, -4.9], [1.6, -1.8], [1.1, 1.2]
+          ],
+          depth: 0.35, bevel: 0.12
+        },
+        {
+          pts: [
+            [0.8, 1.6], [2.8, 3.0], [4.4, 3.8], [4.6, 3.4], [3.0, 2.4],
+            [2.5, 0.5], [2.9, -2.8], [2.5, -2.8], [1.9, 0.2], [1.2, 1.1]
+          ],
+          depth: 0.32, bevel: 0.1
+        },
+        {
+          pts: [
+            [0.9, 0.6], [3.2, 1.6], [5.2, 1.4], [5.4, 0.9], [3.4, 0.7],
+            [2.8, -1.2], [3.4, -3.9], [3.0, -3.9], [2.2, -1.4], [1.2, 0.1]
+          ],
+          depth: 0.3, bevel: 0.1
+        },
+        {
+          pts: [
+            [0.8, -0.6], [2.6, -0.2], [4.4, -0.8], [4.2, -1.3], [2.8, -1.1],
+            [2.2, -2.6], [2.2, -5.6], [1.8, -5.6], [1.6, -2.8], [0.9, -1.4]
+          ],
+          depth: 0.3, bevel: 0.1
+        }
+      ];
+
+      legDefinitions.forEach((def) => {
+        const geoR = createExtrudedPart(def.pts, def.depth, def.bevel);
+        if (geoR) {
+          const meshR = new THREE.Mesh(geoR, emblemMatWhite);
+          spiderLogo3D.add(meshR);
+
+          const ptsL = def.pts.map(p => [-p[0], p[1]]);
+          const geoL = createExtrudedPart(ptsL, def.depth, def.bevel);
+          const meshL = new THREE.Mesh(geoL, emblemMatWhite);
+          spiderLogo3D.add(meshL);
+        }
+      });
+
+      // Lighting Rig
+      const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.5);
+      dirLight1.position.set(6, 12, 10);
+      scene.add(dirLight1);
+
+      const dirLight2 = new THREE.DirectionalLight(0x00f0ff, 1.2);
+      dirLight2.position.set(-8, -6, 6);
+      scene.add(dirLight2);
+
+      const redPointLight = new THREE.PointLight(0xff1744, 2.5, 35);
+      redPointLight.position.set(0, 0, 4);
+      scene.add(redPointLight);
 
       // Gesture & API attachments
       window.rotateOrb = function (dx, dy) {
@@ -1358,6 +1596,17 @@
         innerNode.rotation.x = time * 0.45;
         innerNode.rotation.y = time * 0.55;
 
+        // 3D Spider Gyroscopic Motion
+        if (spiderLogo3D && spiderLogo3D.visible) {
+          spiderLogo3D.rotation.y = time * 0.65;
+          spiderLogo3D.rotation.z = Math.sin(time * 1.8) * 0.08;
+          spiderLogo3D.position.y = Math.sin(time * 2.2) * 0.3;
+          if (coreCrystalMesh) {
+            coreCrystalMesh.rotation.x = time * 2.2;
+            coreCrystalMesh.rotation.y = time * 2.6;
+          }
+        }
+
         ring1Mesh.rotation.z = time * 0.18;
         ring2Mesh.rotation.z = -time * 0.14;
         ringEquatorMesh.rotation.z = time * 0.1;
@@ -1379,17 +1628,27 @@
           auraMat.opacity = 0.42 + Math.sin(time * 9.0) * 0.25;
           innerNode.scale.set(1.45, 1.45, 1.45);
           wireSphere.scale.set(1.05, 1.05, 1.05);
+          if (spiderLogo3D && spiderLogo3D.visible) {
+            spiderLogo3D.scale.set(1.35, 1.35, 1.35);
+          }
         } else if (userVol > 0.05) {
           const waveScale = 1.0 + userVol * 0.26;
           auraMesh.scale.set(waveScale, waveScale, waveScale);
           auraMat.opacity = 0.22 + userVol * 0.45;
           wireSphere.scale.set(1.0 + userVol * 0.08, 1.0 + userVol * 0.08, 1.0 + userVol * 0.08);
+          if (spiderLogo3D && spiderLogo3D.visible) {
+            const spScale = 1.15 + userVol * 0.18;
+            spiderLogo3D.scale.set(spScale, spScale, spScale);
+          }
         } else {
           const breath = 1.0 + Math.sin(time * 2.0) * 0.025;
           auraMesh.scale.set(breath, breath, breath);
           auraMat.opacity = 0.14 + Math.sin(time * 2.0) * 0.06;
           wireSphere.scale.set(1.0, 1.0, 1.0);
           innerNode.scale.set(1.0, 1.0, 1.0);
+          if (spiderLogo3D && spiderLogo3D.visible) {
+            spiderLogo3D.scale.set(1.15, 1.15, 1.15);
+          }
         }
 
         renderer.render(scene, camera);
@@ -1435,11 +1694,18 @@
 
     function switchPersona(persona) {
       activeCharacter = persona.toLowerCase();
+      const isSpidey = persona.toUpperCase() === 'SPIDEY' || persona.toLowerCase() === 'spiderman';
+
       const tabs = document.querySelectorAll('.persona-tab');
       tabs.forEach(t => {
         if (t.dataset.persona === persona) {
-          t.className = 'persona-tab px-3 py-0.5 text-[10px] rounded-full tracking-[0.14em] bg-transparent text-os-amber border border-os-amber/80 flex items-center space-x-1.5 transition glow-amber-sm';
-          t.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-os-amber"></span><span>${persona}</span>`;
+          if (isSpidey) {
+            t.className = 'persona-tab px-3 py-0.5 text-[10px] rounded-full tracking-[0.14em] bg-[#ff1744] text-white border border-[#ff1744] flex items-center space-x-1.5 transition glow-red-sm';
+            t.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-pulse"></span><span class="font-bold">${persona}</span>`;
+          } else {
+            t.className = 'persona-tab px-3 py-0.5 text-[10px] rounded-full tracking-[0.14em] bg-transparent text-os-amber border border-os-amber/80 flex items-center space-x-1.5 transition glow-amber-sm';
+            t.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-os-amber"></span><span>${persona}</span>`;
+          }
         } else {
           t.className = 'persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition';
           t.textContent = t.dataset.persona;
@@ -1451,14 +1717,46 @@
       const badge = document.getElementById('active-voice-badge');
       if (badge) badge.innerHTML = `<span>${persona}</span>`;
 
-      // Update Three.js globe color
-      const hex = PERSONA_COLORS[persona] || 0xffa800;
-      if (wireMat) wireMat.color.setHex(hex);
-      if (pMat) pMat.color.setHex(hex);
-      if (ring1Mesh) ring1Mesh.material.color.setHex(hex);
-      if (ring2Mesh) ring2Mesh.material.color.setHex(hex);
-      if (ringEquatorMesh) ringEquatorMesh.material.color.setHex(hex);
-      if (auraMat) auraMat.color.setHex(hex);
+      // Toggle Spider-Man 3D Emblem vs Fibonacci Point Cloud
+      if (spiderLogo3D) spiderLogo3D.visible = isSpidey;
+      if (pointCloudMesh) pointCloudMesh.visible = !isSpidey;
+      if (wireSphereMesh) wireSphereMesh.visible = !isSpidey;
+      if (innerNode) innerNode.visible = !isSpidey;
+
+      // Header Branding Toggle
+      const brandDefault = document.getElementById('brand-icon-default');
+      const brandSpidey = document.getElementById('brand-icon-spidey');
+      const badgeSpidey = document.getElementById('brand-badge-spidey');
+      const subtitleEl = document.getElementById('brand-subtitle');
+
+      if (isSpidey) {
+        document.body.classList.add('theme-spiderman');
+        document.body.setAttribute('data-theme', 'spiderman');
+        if (brandDefault) brandDefault.classList.add('hidden');
+        if (brandSpidey) brandSpidey.classList.remove('hidden');
+        if (badgeSpidey) badgeSpidey.classList.remove('hidden');
+        if (subtitleEl) subtitleEl.textContent = "EVEN DEAD, I'M THE HERO // PETER PARKER TACTICAL HUD";
+
+        if (ring1Mesh) ring1Mesh.material.color.setHex(0xff1744);
+        if (ring2Mesh) ring2Mesh.material.color.setHex(0x00f0ff);
+        if (ringEquatorMesh) ringEquatorMesh.material.color.setHex(0xffbe28);
+        if (auraMat) auraMat.color.setHex(0xff1744);
+      } else {
+        document.body.classList.remove('theme-spiderman');
+        document.body.setAttribute('data-theme', activeCharacter);
+        if (brandDefault) brandDefault.classList.remove('hidden');
+        if (brandSpidey) brandSpidey.classList.add('hidden');
+        if (badgeSpidey) badgeSpidey.classList.add('hidden');
+        if (subtitleEl) subtitleEl.textContent = "EVEN DEAD, I'M THE HERO | LOCAL-FIRST AUTONOMOUS AI OS";
+
+        const hex = PERSONA_COLORS[persona] || 0xffa800;
+        if (wireMat) wireMat.color.setHex(hex);
+        if (pMat) pMat.color.setHex(hex);
+        if (ring1Mesh) ring1Mesh.material.color.setHex(hex);
+        if (ring2Mesh) ring2Mesh.material.color.setHex(hex);
+        if (ringEquatorMesh) ringEquatorMesh.material.color.setHex(hex);
+        if (auraMat) auraMat.color.setHex(hex);
+      }
 
       // Notify backend
       fetch('/voice/character', {

@@ -237,7 +237,7 @@
     friday: { primary: "16, 185, 129", accent: "139, 92, 246" },
     karen: { primary: "244, 63, 94", accent: "251, 113, 133" },
     ultron: { primary: "255, 23, 68", accent: "183, 28, 28" },
-    spiderman: { primary: "59, 130, 246", accent: "225, 29, 72" },
+    spiderman: { primary: "255, 23, 68", accent: "0, 240, 255" },
     focus: { primary: "255, 61, 0", accent: "255, 23, 68" },
   };
 

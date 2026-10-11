@@ -78,19 +78,19 @@ body[data-theme="karen"] {
 
 body.theme-spiderman,
 body[data-theme="spiderman"] {
-  --bg: #070914;
-  --panel: #0d1222;
-  --line: #1e284a;
-  --line-soft: #141b34;
-  --text: #e0e7ff;
-  --muted: #8c9ac9;
-  --dim: #505f8f;
-  --cyan: #e11d48;
+  --bg: #060a10;
+  --panel: #0a101b;
+  --line: #18263c;
+  --line-soft: #121c2d;
+  --text: #e2e8f0;
+  --muted: #798ba3;
+  --dim: #475569;
+  --cyan: #00f0ff;
   --cyan-bright: #38bdf8;
-  --accent: #e11d48;
-  --orb-core: #e11d48;
-  --orb-rim: #2563eb;
-  --accent-glow: rgba(225, 29, 72, 0.25);
+  --accent: #ff1744;
+  --orb-core: #ff1744;
+  --orb-rim: #00f0ff;
+  --accent-glow: rgba(255, 23, 68, 0.35);
 }
 
 body.theme-ultron,

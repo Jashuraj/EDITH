@@ -152,24 +152,65 @@ body.theme-focus {
 /* SPIDER-MAN - Comic Scarlet / Cobalt Web-Blue Theme */
 body.theme-spiderman,
 body.theme-peter {
-  --hud: #e11d48;
-  --hud-soft: rgba(225, 29, 72, 0.45);
-  --hud-faint: rgba(225, 29, 72, 0.14);
-  --accent: #3b82f6;
-  --bracket-color: rgba(191, 219, 254, 0.95);
-  --bg-deep: #050713;
-  --bg-dark: #0a0e20;
-  --bg-card: rgba(20, 12, 35, 0.48);
-  --bg-card-hover: rgba(28, 18, 48, 0.58);
-  --cyan-glow: #3b82f6;
-  --cyan-dim: rgba(59, 130, 246, 0.3);
-  --cyan-border: rgba(59, 130, 246, 0.4);
-  --red-glow: #e11d48;
-  --red-dim: rgba(225, 29, 72, 0.3);
-  --red-border: rgba(225, 29, 72, 0.45);
+  --hud: #ff1744;
+  --hud-soft: rgba(255, 23, 68, 0.45);
+  --hud-faint: rgba(255, 23, 68, 0.14);
+  --accent: #00f0ff;
+  --bracket-color: #00f0ff;
+  --bg-deep: #060a10;
+  --bg-dark: #0a101b;
+  --bg-card: rgba(12, 18, 28, 0.88);
+  --bg-card-hover: rgba(18, 26, 40, 0.95);
+  --cyan-glow: #00f0ff;
+  --cyan-dim: rgba(0, 240, 255, 0.3);
+  --cyan-border: rgba(0, 240, 255, 0.4);
+  --red-glow: #ff1744;
+  --red-dim: rgba(255, 23, 68, 0.3);
+  --red-border: rgba(255, 23, 68, 0.45);
   --text-main: #f8fafc;
   --text-muted: #8593ab;
-  --text-cyan: #60a5fa;
+  --text-cyan: #00f0ff;
+}
+
+/* Chamfered Iron Spider Tactical Cards in Mobile HUD */
+body.theme-spiderman .card,
+body.theme-spiderman .hud-card,
+body.theme-spiderman .vitals-card,
+body.theme-spiderman .quick-action-card,
+body.theme-spiderman .spidey-card {
+  position: relative;
+  background: linear-gradient(135deg, rgba(12, 18, 28, 0.95) 0%, rgba(7, 12, 20, 0.98) 100%) !important;
+  border: 1px solid rgba(24, 38, 60, 0.9) !important;
+  clip-path: polygon(
+    0 8px, 8px 0,
+    calc(100% - 8px) 0, 100% 8px,
+    100% calc(100% - 8px), calc(100% - 8px) 100%,
+    8px 100%, 0 calc(100% - 8px)
+  );
+}
+body.theme-spiderman .card::before,
+body.theme-spiderman .hud-card::before,
+body.theme-spiderman .vitals-card::before,
+body.theme-spiderman .quick-action-card::before,
+body.theme-spiderman .spidey-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; width: 6px; height: 6px;
+  border-top: 2px solid #ff1744 !important;
+  border-left: 2px solid #ff1744 !important;
+  pointer-events: none;
+}
+body.theme-spiderman .card::after,
+body.theme-spiderman .hud-card::after,
+body.theme-spiderman .vitals-card::after,
+body.theme-spiderman .quick-action-card::after,
+body.theme-spiderman .spidey-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; right: 0; width: 6px; height: 6px;
+  border-bottom: 2px solid #00f0ff !important;
+  border-right: 2px solid #00f0ff !important;
+  pointer-events: none;
 }
 
 * {
