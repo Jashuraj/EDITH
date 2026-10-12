@@ -289,9 +289,18 @@
           <polygon points="12 6 18 9.5 18 14.5 12 18 6 14.5 6 9.5 12 6" stroke-dasharray="1 2"></polygon>
           <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
         </svg>
-        <svg id="brand-icon-spidey" class="w-8 h-8 hidden text-spider-red filter drop-shadow-[0_0_6px_rgba(255,23,68,0.8)]" viewBox="0 0 100 100" fill="none">
+        <svg id="brand-icon-spidey" class="w-8 h-8 hidden text-spider-red filter drop-shadow-[0_0_6px_rgba(255,23,68,0.85)]" viewBox="0 0 100 100" fill="none">
+          <defs>
+            <linearGradient id="spiderHeadGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ff1744" />
+              <stop offset="100%" stop-color="#b7001d" />
+            </linearGradient>
+          </defs>
           <polygon points="50,15 55,23 50,26 45,23" fill="#ff1744"/>
-          <path d="M 50,28 L 59,37 L 57,56 L 50,78 L 43,56 L 41,37 Z" fill="#ff1744" stroke="#ff1744" stroke-width="0.8"/>
+          <polygon points="50,18 53,22 47,22" fill="#ffffff" opacity="0.9"/>
+          <path d="M 50,28 L 59,37 L 57,56 L 50,78 L 43,56 L 41,37 Z" fill="url(#spiderHeadGrad)" stroke="#ff1744" stroke-width="0.8"/>
+          <path d="M 50,34 L 55,39 L 53,52 L 50,68 L 47,52 L 45,39 Z" fill="#080c12"/>
+          <polygon points="50,42 53,48 50,54 47,48" fill="#00f0ff" opacity="0.95"/>
           <polyline points="47,32 32,18 24,24 35,35" stroke="#ff1744" stroke-width="3" stroke-linecap="round"/>
           <polyline points="53,32 68,18 76,24 65,35" stroke="#ff1744" stroke-width="3" stroke-linecap="round"/>
           <polyline points="45,38 22,34 16,42 27,48" stroke="#ff1744" stroke-width="2.8" stroke-linecap="round"/>
@@ -300,7 +309,11 @@
           <polyline points="54,47 80,54 82,66 72,64" stroke="#ff1744" stroke-width="2.6" stroke-linecap="round"/>
           <polyline points="47,56 28,68 30,85 38,76" stroke="#ff1744" stroke-width="2.5" stroke-linecap="round"/>
           <polyline points="53,56 72,68 70,85 62,76" stroke="#ff1744" stroke-width="2.5" stroke-linecap="round"/>
-          <polygon points="50,42 53,48 50,54 47,48" fill="#00f0ff"/>
+          <circle cx="50" cy="50" r="42" fill="none" stroke="#00f0ff" stroke-width="0.7" stroke-dasharray="2, 6" opacity="0.6"/>
+          <line x1="8" y1="50" x2="16" y2="50" stroke="#00f0ff" stroke-width="1" opacity="0.7"/>
+          <line x1="84" y1="50" x2="92" y2="50" stroke="#00f0ff" stroke-width="1" opacity="0.7"/>
+          <line x1="50" y1="8" x2="50" y2="14" stroke="#00f0ff" stroke-width="1" opacity="0.7"/>
+          <line x1="50" y1="86" x2="50" y2="92" stroke="#00f0ff" stroke-width="1" opacity="0.7"/>
         </svg>
       </div>
       <div>
@@ -322,8 +335,9 @@
       </button>
       <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="FRIDAY">FRIDAY</button>
       <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="KAREN">KAREN</button>
-      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="SPIDEY">SPIDEY</button>
+      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="PETER">PETER</button>
       <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-red-400 transition" data-persona="ULTRON">ULTRON</button>
+      <a href="/peter" target="_blank" class="hidden sm:inline-flex items-center space-x-1 px-2 py-0.5 text-[9px] rounded font-mono border border-[#ff1744]/40 text-[#ff1744] hover:bg-[#ff1744] hover:text-white transition" title="Open Stitch Insomniac Velocity Cockpit in a new window"><span>COCKPIT</span><span class="text-[8px]">↗</span></a>
     </nav>
 
     <!-- Right: Telemetry, Clock, E-Stop -->
@@ -348,7 +362,7 @@
 
       <button class="px-2.5 py-0.5 rounded-full bg-red-950/40 border border-red-500/80 hover:bg-red-600 text-red-400 hover:text-white font-bold text-[9px] tracking-[0.16em] uppercase flex items-center space-x-1.5 transition font-chakra" id="estop-btn" onclick="toggleEmergencyStop()" title="Emergency Stop all active operations">
         <svg class="w-3 h-3 text-red-400" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><line x1="12" y1="8" x2="12" y2="12"></line></svg>
-        <span>E-STOP</span>
+        <span id="estop-label">E-STOP</span>
       </button>
 
       <div class="flex items-center space-x-2 border-l border-os-border/90 pl-3 text-slate-400">
@@ -369,8 +383,21 @@
     <!-- LEFT HUD SLOCK DOCK -->
     <aside class="w-12 bg-[#090f19] border border-os-border/90 rounded-lg flex flex-col items-center py-3 justify-between shrink-0 shadow-lg relative">
       <div class="flex flex-col space-y-3 items-center">
-        <button class="w-8 h-8 rounded text-os-amber flex items-center justify-center hover:scale-105 transition" title="Arc Reactor / Home" onclick="openNav(null)">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 22 7.5 22 16.5 12 22 2 16.5 2 7.5 12 2"></polygon><circle cx="12" cy="12" r="3"></circle></svg>
+        <button class="w-8 h-8 rounded text-os-amber flex items-center justify-center hover:scale-105 transition" id="dock-top-btn" title="Arc Reactor / Home" onclick="openNav(null)">
+          <svg id="dock-icon-arc" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 22 7.5 22 16.5 12 22 2 16.5 2 7.5 12 2"></polygon><circle cx="12" cy="12" r="3"></circle></svg>
+          <svg id="dock-icon-spider" class="w-6 h-6 hidden text-[#ff1744] filter drop-shadow-[0_0_5px_rgba(255,23,68,0.85)]" viewBox="0 0 100 100" fill="none">
+            <polygon points="50,15 55,23 50,26 45,23" fill="#ff1744"/>
+            <path d="M 50,28 L 59,37 L 57,56 L 50,78 L 43,56 L 41,37 Z" fill="#ff1744" stroke="#ff1744" stroke-width="0.8"/>
+            <polygon points="50,42 53,48 50,54 47,48" fill="#00f0ff"/>
+            <polyline points="47,32 32,18 24,24 35,35" stroke="#ff1744" stroke-width="3.2" stroke-linecap="round"/>
+            <polyline points="53,32 68,18 76,24 65,35" stroke="#ff1744" stroke-width="3.2" stroke-linecap="round"/>
+            <polyline points="45,38 22,34 16,42 27,48" stroke="#ff1744" stroke-width="3" stroke-linecap="round"/>
+            <polyline points="55,38 78,34 84,42 73,48" stroke="#ff1744" stroke-width="3" stroke-linecap="round"/>
+            <polyline points="46,47 20,54 18,66 28,64" stroke="#ff1744" stroke-width="2.8" stroke-linecap="round"/>
+            <polyline points="54,47 80,54 82,66 72,64" stroke="#ff1744" stroke-width="2.8" stroke-linecap="round"/>
+            <polyline points="47,56 28,68 30,85 38,76" stroke="#ff1744" stroke-width="2.6" stroke-linecap="round"/>
+            <polyline points="53,56 72,68 70,85 62,76" stroke="#ff1744" stroke-width="2.6" stroke-linecap="round"/>
+          </svg>
         </button>
         <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Intelligence & APIs" onclick="openDialog('settings')">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
@@ -407,18 +434,18 @@
     <section aria-label="System Metrics and Control Panels" class="w-80 2xl:w-96 flex flex-col gap-2 overflow-y-auto pr-1 shrink-0">
       
       <!-- Command Center Card -->
-      <div class="p-2.5 stark-card rounded-lg relative overflow-hidden">
+      <div class="p-2.5 stark-card rounded-lg relative overflow-hidden" id="card-cmd-center">
         <div class="flex items-center justify-between mb-1">
           <div class="flex items-center space-x-1.5">
-            <span class="text-os-amber text-xs font-bold font-michroma tracking-[0.16em]">+ Command center</span>
-            <span class="text-[8px] uppercase px-1 py-0.2 rounded border border-os-amber/50 text-os-amber font-mono">LIVE HYBRID AI</span>
+            <span class="text-os-amber text-xs font-bold font-michroma tracking-[0.16em]" id="lbl-cmd-center-title">+ Command center</span>
+            <span class="text-[8px] uppercase px-1 py-0.2 rounded border border-os-amber/50 text-os-amber font-mono" id="lbl-cmd-center-badge">LIVE HYBRID AI</span>
           </div>
           <div class="flex items-center space-x-1 text-slate-500 text-[9px] font-mono">
             <svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
             <span class="hidden xl:inline">PRIVATE SECURE CORE</span>
           </div>
         </div>
-        <p class="text-[10px] text-slate-400 font-mono tracking-normal leading-tight">Direct reflex execution. Autonomous task planning. Full laptop &amp; mobile control.</p>
+        <p class="text-[10px] text-slate-400 font-mono tracking-normal leading-tight" id="lbl-cmd-center-sub">Direct reflex execution. Autonomous task planning. Full laptop &amp; mobile control.</p>
       </div>
 
       <!-- System Status Card -->
@@ -437,7 +464,7 @@
           </div>
           <div>
             <div class="text-[11px] font-medium text-slate-200 font-oxanium" id="lbl-system-state">All systems operational</div>
-            <div class="text-[9px] text-slate-400 font-mono">Reflex engine &lt;15ms · Ready for input</div>
+            <div class="text-[9px] text-slate-400 font-mono" id="lbl-system-sub">Reflex engine &lt;15ms · Ready for input</div>
           </div>
         </div>
 
@@ -463,6 +490,46 @@
             <span class="uppercase tracking-wider text-[9px]">Cloud Tunnel</span>
             <span class="text-os-amber text-[9px] font-mono font-medium" id="val-tunnel-status">HOST ONLINE</span>
           </div>
+        </div>
+      </div>
+
+      <!-- Suit & Web Fluid Status Panel (Peter Mode) -->
+      <div class="p-2.5 stark-card spidey-card rounded-lg text-xs space-y-2 relative" id="card-spider-suit" style="display:none;">
+        <div class="flex items-center justify-between border-b border-os-border/80 pb-1.5">
+          <div class="flex items-center space-x-2">
+            <svg class="w-3.5 h-3.5 text-[#ff1744]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 19 8 19 16 12 22 5 16 5 8"></polygon></svg>
+            <span class="text-[9px] font-bold tracking-[0.16em] uppercase text-white font-mono">SUIT &amp; WEB FLUID TELEMETRY</span>
+          </div>
+          <span class="text-[8px] font-mono px-1 py-0.2 rounded bg-[#ff1744]/20 text-[#ff1744] border border-[#ff1744]/40 font-bold animate-pulse">ARMED</span>
+        </div>
+        <div class="grid grid-cols-2 gap-2 text-[10px] font-mono pt-0.5">
+          <div class="p-1.5 rounded bg-[#0c1422] border border-[#18263c]">
+            <div class="flex justify-between items-center text-slate-400 text-[8.5px] uppercase mb-0.5">
+              <span>Cartridge A</span>
+              <span class="text-[#00f0ff] font-bold" id="val-cart-a">94%</span>
+            </div>
+            <div class="w-full bg-slate-900 h-1 rounded overflow-hidden">
+              <div class="bg-[#00f0ff] h-full" style="width: 94%;"></div>
+            </div>
+            <div class="text-[7.5px] text-slate-500 mt-1 uppercase">High-Tensile Net</div>
+          </div>
+          <div class="p-1.5 rounded bg-[#0c1422] border border-[#18263c]">
+            <div class="flex justify-between items-center text-slate-400 text-[8.5px] uppercase mb-0.5">
+              <span>Cartridge B</span>
+              <span class="text-[#ff1744] font-bold" id="val-cart-b">88%</span>
+            </div>
+            <div class="w-full bg-slate-900 h-1 rounded overflow-hidden">
+              <div class="bg-[#ff1744] h-full" style="width: 88%;"></div>
+            </div>
+            <div class="text-[7.5px] text-slate-500 mt-1 uppercase">Taser Web Pulse</div>
+          </div>
+        </div>
+        <div class="flex items-center justify-between text-[9px] font-mono text-slate-400 pt-1 border-t border-os-border/40">
+          <span class="flex items-center space-x-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+            <span>Mesh Integrity: <strong class="text-white">100%</strong></span>
+          </span>
+          <span class="text-[#ffbe28] font-bold">SECTOR-09 NOMINAL</span>
         </div>
       </div>
 
@@ -515,13 +582,13 @@
       </div>
 
       <!-- Quick Protocols Card -->
-      <div class="p-2.5 stark-card rounded-lg text-xs space-y-1.5 relative">
+      <div class="p-2.5 stark-card rounded-lg text-xs space-y-1.5 relative" id="card-quick-protocols">
         <div class="flex items-center space-x-2 border-b border-os-border/80 pb-1">
           <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-          <span class="text-[9px] font-bold tracking-[0.16em] uppercase text-slate-300 font-mono">QUICK PROTOCOLS</span>
+          <span class="text-[9px] font-bold tracking-[0.16em] uppercase text-slate-300 font-mono" id="lbl-protocols-title">QUICK PROTOCOLS</span>
         </div>
 
-        <div class="space-y-1">
+        <div class="space-y-1" id="protocols-default">
           <button class="w-full text-left p-1.5 rounded bg-os-card/50 hover:bg-os-card border border-os-border/60 flex items-center space-x-2 transition" onclick="submitTextCommand('Give me my daily briefing')">
             <div class="p-1 rounded bg-os-amber/10 text-os-amber">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41m14.14-14.14l-1.41 1.41"></path></svg>
@@ -572,6 +639,58 @@
             </div>
           </button>
         </div>
+
+        <div class="space-y-1 hidden" id="protocols-spider">
+          <button class="w-full text-left p-1.5 rounded bg-[#101726] hover:bg-[#141e32] border border-[#ff1744]/40 flex items-center space-x-2 transition" onclick="submitTextCommand('queens patrol route')">
+            <div class="p-1 rounded bg-[#ff1744]/20 text-[#ff1744]">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon></svg>
+            </div>
+            <div>
+              <div class="text-[10px] font-medium text-white font-chakra">Queens Patrol Route</div>
+              <div class="text-[8px] text-slate-400 font-mono uppercase">Midtown High to Astoria Bridge</div>
+            </div>
+          </button>
+
+          <button class="w-full text-left p-1.5 rounded bg-[#101726] hover:bg-[#141e32] border border-[#ff1744]/40 flex items-center space-x-2 transition" onclick="submitTextCommand('spider drone recon')">
+            <div class="p-1 rounded bg-[#00f0ff]/20 text-[#00f0ff]">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3m0 14v3M2 12h3m14 0h3"></path></svg>
+            </div>
+            <div>
+              <div class="text-[10px] font-medium text-white font-chakra">Spider Drone Recon</div>
+              <div class="text-[8px] text-slate-400 font-mono uppercase">Deploy chest reconnaissance drone</div>
+            </div>
+          </button>
+
+          <button class="w-full text-left p-1.5 rounded bg-[#101726] hover:bg-[#141e32] border border-[#ff1744]/40 flex items-center space-x-2 transition" onclick="submitTextCommand('web fluid check')">
+            <div class="p-1 rounded bg-[#ffbe28]/20 text-[#ffbe28]">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+            </div>
+            <div>
+              <div class="text-[10px] font-medium text-white font-chakra">Web Fluid Reload</div>
+              <div class="text-[8px] text-slate-400 font-mono uppercase">Pressure calibrate cartridges A &amp; B</div>
+            </div>
+          </button>
+
+          <button class="w-full text-left p-1.5 rounded bg-[#101726] hover:bg-[#141e32] border border-[#ff1744]/40 flex items-center space-x-2 transition" onclick="submitTextCommand('spider-sense threat scan')">
+            <div class="p-1 rounded bg-[#00f0ff]/20 text-[#00f0ff]">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><line x1="12" y1="2" x2="12" y2="6"></line></svg>
+            </div>
+            <div>
+              <div class="text-[10px] font-medium text-white font-chakra">Spider-Sense Threat Scan</div>
+              <div class="text-[8px] text-slate-400 font-mono uppercase">Perimeter danger assessment</div>
+            </div>
+          </button>
+
+          <button class="w-full text-left p-1.5 rounded bg-[#101726] hover:bg-[#141e32] border border-[#ff1744]/40 flex items-center space-x-2 transition" onclick="toggleEmergencyStop()">
+            <div class="p-1 rounded bg-red-950/60 text-[#ff1744]">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><line x1="12" y1="8" x2="12" y2="12"></line></svg>
+            </div>
+            <div>
+              <div class="text-[10px] font-medium text-white font-chakra">Instant Kill Lockout</div>
+              <div class="text-[8px] text-slate-400 font-mono uppercase">Safety protocols disengage</div>
+            </div>
+          </button>
+        </div>
       </div>
 
       <!-- Mobile Link Card -->
@@ -606,7 +725,7 @@
       <!-- HUD Telemetry Corner Tags -->
       <div class="absolute top-16 left-5 z-20 text-[8px] text-slate-400 font-mono space-y-0.5 border-l border-os-border/80 pl-2 pointer-events-none uppercase">
         <div class="text-slate-500 tracking-[0.14em]">NEURAL INTERFACE</div>
-        <div class="text-slate-300 font-mono">EDITH // 01</div>
+        <div class="text-slate-300 font-mono" id="val-neural-tag">EDITH // 01</div>
       </div>
       <div class="absolute top-16 right-5 z-20 text-[8px] text-slate-400 font-mono text-right space-y-0.5 border-r border-os-border/80 pr-2 pointer-events-none uppercase">
         <div class="text-slate-500 tracking-[0.14em]">INTERACTIVE CORE</div>
@@ -626,10 +745,11 @@
         <div class="absolute inset-0 w-full h-full z-10 cursor-grab" id="threejs-globe-container"></div>
         
         <!-- Reticle Crosshairs -->
-        <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-15">
-          <div class="w-72 h-72 2xl:w-84 2xl:h-84 rounded-full border border-os-amber/20 border-dashed pointer-events-none"></div>
-          <div class="w-full h-px bg-gradient-to-r from-transparent via-os-amber/30 to-transparent absolute pointer-events-none"></div>
-          <div class="h-full w-px bg-gradient-to-b from-transparent via-os-amber/30 to-transparent absolute pointer-events-none"></div>
+        <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-15" id="hud-reticle-overlay">
+          <div class="w-72 h-72 2xl:w-84 2xl:h-84 rounded-full border border-os-amber/20 border-dashed pointer-events-none transition-all duration-300" id="reticle-circle-inner"></div>
+          <div class="w-96 h-96 2xl:w-[26rem] 2xl:h-[26rem] rounded-full border border-web-cyan/20 pointer-events-none hidden transition-all duration-300" id="reticle-circle-outer"></div>
+          <div class="w-full h-px bg-gradient-to-r from-transparent via-os-amber/30 to-transparent absolute pointer-events-none transition-all duration-300" id="reticle-line-h"></div>
+          <div class="h-full w-px bg-gradient-to-b from-transparent via-os-amber/30 to-transparent absolute pointer-events-none transition-all duration-300" id="reticle-line-v"></div>
         </div>
 
         <!-- PiP Webcam Box for Hand Gesture Tracking -->
@@ -844,15 +964,28 @@
         <!-- Starters -->
         <div class="pt-2 space-y-1.5" id="chat-suggestions">
           <div class="text-[8px] font-mono uppercase text-slate-500 tracking-wider">A FEW PLACES TO START</div>
-          <button class="w-full text-left p-1.5 rounded bg-os-card/50 hover:bg-os-card border border-os-border/70 text-[10px] text-slate-300 font-mono flex items-center space-x-2 transition" onclick="submitTextCommand('open youtube and play brand new day trailer')">
-            <span class="text-slate-400">▶</span><span>Play Brand New Day Trailer</span>
-          </button>
-          <button class="w-full text-left p-1.5 rounded bg-os-card/50 hover:bg-os-card border border-os-border/70 text-[10px] text-slate-300 font-mono flex items-center space-x-2 transition" onclick="submitTextCommand('look at my screen')">
-            <span class="text-slate-400">👁</span><span>Analyze Active Desktop Screen</span>
-          </button>
-          <button class="w-full text-left p-1.5 rounded bg-os-card/50 hover:bg-os-card border border-os-border/70 text-[10px] text-slate-300 font-mono flex items-center space-x-2 transition" onclick="submitTextCommand('Give me my daily briefing')">
-            <span class="text-slate-400">☀️</span><span>Daily Briefing &amp; Vitals</span>
-          </button>
+          <div id="starters-default" class="space-y-1.5">
+            <button class="w-full text-left p-1.5 rounded bg-os-card/50 hover:bg-os-card border border-os-border/70 text-[10px] text-slate-300 font-mono flex items-center space-x-2 transition" onclick="submitTextCommand('open youtube and play brand new day trailer')">
+              <span class="text-slate-400">▶</span><span>Play Brand New Day Trailer</span>
+            </button>
+            <button class="w-full text-left p-1.5 rounded bg-os-card/50 hover:bg-os-card border border-os-border/70 text-[10px] text-slate-300 font-mono flex items-center space-x-2 transition" onclick="submitTextCommand('look at my screen')">
+              <span class="text-slate-400">👁</span><span>Analyze Active Desktop Screen</span>
+            </button>
+            <button class="w-full text-left p-1.5 rounded bg-os-card/50 hover:bg-os-card border border-os-border/70 text-[10px] text-slate-300 font-mono flex items-center space-x-2 transition" onclick="submitTextCommand('Give me my daily briefing')">
+              <span class="text-slate-400">☀️</span><span>Daily Briefing &amp; Vitals</span>
+            </button>
+          </div>
+          <div id="starters-spider" class="space-y-1.5 hidden">
+            <button class="w-full text-left p-1.5 rounded bg-[#101726]/80 hover:bg-[#141e32] border border-[#ff1744]/40 text-[10px] text-slate-200 font-mono flex items-center space-x-2 transition" onclick="submitTextCommand('deploy web net on target')">
+              <span class="text-[#00f0ff]">🕸</span><span>Deploy Web Net on Target</span>
+            </button>
+            <button class="w-full text-left p-1.5 rounded bg-[#101726]/80 hover:bg-[#141e32] border border-[#ff1744]/40 text-[10px] text-slate-200 font-mono flex items-center space-x-2 transition" onclick="submitTextCommand('scan queens sector-09')">
+              <span class="text-[#ff1744]">🎯</span><span>Scan Queens Sector-09</span>
+            </button>
+            <button class="w-full text-left p-1.5 rounded bg-[#101726]/80 hover:bg-[#141e32] border border-[#ff1744]/40 text-[10px] text-slate-200 font-mono flex items-center space-x-2 transition" onclick="submitTextCommand('suit diagnostics and web fluid check')">
+              <span class="text-[#ffbe28]">⚡</span><span>Suit Diagnostics &amp; Web Fluid Check</span>
+            </button>
+          </div>
         </div>
 
         <!-- In-HUD Media Player Embed Dock -->
@@ -1174,6 +1307,7 @@
       'JARVIS': 0xffa800,
       'FRIDAY': 0x38bdf8,
       'KAREN': 0x34d399,
+      'PETER': 0xff1744,
       'SPIDEY': 0xff1744,
       'ULTRON': 0xef4444
     };
@@ -1670,13 +1804,20 @@
       setInterval(() => {
         const isUserSpeaking = (window.userSpeakingLevel || 0) > 0.1;
         const isEdithSpeaking = window.edithSpeaking === true;
+        const isPeter = activeCharacter === 'peter' || activeCharacter === 'spidey';
 
-        bars.forEach((bar) => {
+        bars.forEach((bar, idx) => {
           let h = 4;
           if (isUserSpeaking) h = Math.floor(Math.random() * 24) + 6;
           else if (isEdithSpeaking) h = Math.floor(Math.random() * 28) + 8;
           else h = Math.floor(Math.random() * 8) + 3;
           bar.style.height = `${h}px`;
+
+          if (isPeter) {
+            bar.style.backgroundColor = (idx % 2 === 0) ? '#00f0ff' : '#ff1744';
+          } else {
+            bar.style.backgroundColor = '';
+          }
         });
       }, 90);
     }
@@ -1690,21 +1831,52 @@
           switchPersona(persona);
         });
       });
+
+      // Listen for cross-frame persona switches from embedded Peter cockpit
+      window.addEventListener('message', (e) => {
+        if (e.data && e.data.type === 'switchPersona') {
+          switchPersona(e.data.persona);
+        }
+      });
+
+      // Handle URL param ?persona=PETER
+      const urlParams = new URLSearchParams(window.location.search);
+      const initialPersona = urlParams.get('persona');
+      if (initialPersona) {
+        switchPersona(initialPersona);
+      }
     }
 
     function switchPersona(persona) {
-      activeCharacter = persona.toLowerCase();
-      const isSpidey = persona.toUpperCase() === 'SPIDEY' || persona.toLowerCase() === 'spiderman';
+      const isPeter = persona.toUpperCase() === 'PETER' || persona.toUpperCase() === 'SPIDEY' || persona.toLowerCase() === 'spiderman';
+      activeCharacter = isPeter ? 'peter' : persona.toLowerCase();
+
+      // Toggle embedded Stitch Peter cockpit HUD
+      const peterOverlay = document.getElementById('peter-cockpit-overlay');
+      const peterFrame = document.getElementById('peter-cockpit-frame');
+      if (isPeter) {
+        if (peterOverlay) {
+          peterOverlay.classList.remove('hidden');
+          if (peterFrame && (!peterFrame.src || peterFrame.src === 'about:blank' || !peterFrame.src.includes('peter.html'))) {
+            peterFrame.src = '/peter.html';
+          }
+        }
+      } else {
+        if (peterOverlay) {
+          peterOverlay.classList.add('hidden');
+        }
+      }
 
       const tabs = document.querySelectorAll('.persona-tab');
       tabs.forEach(t => {
-        if (t.dataset.persona === persona) {
-          if (isSpidey) {
+        const isMatch = (isPeter && (t.dataset.persona === 'PETER' || t.dataset.persona === 'SPIDEY')) || (t.dataset.persona === persona);
+        if (isMatch) {
+          if (isPeter) {
             t.className = 'persona-tab px-3 py-0.5 text-[10px] rounded-full tracking-[0.14em] bg-[#ff1744] text-white border border-[#ff1744] flex items-center space-x-1.5 transition glow-red-sm';
-            t.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-pulse"></span><span class="font-bold">${persona}</span>`;
+            t.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-pulse"></span><span class="font-bold">PETER</span>`;
           } else {
             t.className = 'persona-tab px-3 py-0.5 text-[10px] rounded-full tracking-[0.14em] bg-transparent text-os-amber border border-os-amber/80 flex items-center space-x-1.5 transition glow-amber-sm';
-            t.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-os-amber"></span><span>${persona}</span>`;
+            t.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-os-amber"></span><span>${t.dataset.persona}</span>`;
           }
         } else {
           t.className = 'persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition';
@@ -1713,29 +1885,97 @@
       });
 
       const charLabel = document.getElementById('active-char-label');
-      if (charLabel) charLabel.textContent = `CHAR: ${persona}`;
+      if (charLabel) charLabel.textContent = `CHAR: ${isPeter ? 'PETER' : persona}`;
       const badge = document.getElementById('active-voice-badge');
-      if (badge) badge.innerHTML = `<span>${persona}</span>`;
+      if (badge) badge.innerHTML = `<span>${isPeter ? 'PETER' : persona}</span>`;
 
       // Toggle Spider-Man 3D Emblem vs Fibonacci Point Cloud
-      if (spiderLogo3D) spiderLogo3D.visible = isSpidey;
-      if (pointCloudMesh) pointCloudMesh.visible = !isSpidey;
-      if (wireSphereMesh) wireSphereMesh.visible = !isSpidey;
-      if (innerNode) innerNode.visible = !isSpidey;
+      if (spiderLogo3D) spiderLogo3D.visible = isPeter;
+      if (pointCloudMesh) pointCloudMesh.visible = !isPeter;
+      if (wireSphereMesh) wireSphereMesh.visible = !isPeter;
+      if (innerNode) innerNode.visible = !isPeter;
 
-      // Header Branding Toggle
+      // Header Branding & Elements Toggle
       const brandDefault = document.getElementById('brand-icon-default');
       const brandSpidey = document.getElementById('brand-icon-spidey');
       const badgeSpidey = document.getElementById('brand-badge-spidey');
       const subtitleEl = document.getElementById('brand-subtitle');
+      const headline = document.getElementById('core-headline');
+      const subcaption = document.getElementById('core-subcaption');
+      const hudLightStrip = document.getElementById('hud-light-strip');
+      const reticleOuter = document.getElementById('reticle-circle-outer');
+      const reticleInner = document.getElementById('reticle-circle-inner');
+      const reticleLineH = document.getElementById('reticle-line-h');
+      const reticleLineV = document.getElementById('reticle-line-v');
+      const neuralTag = document.getElementById('val-neural-tag');
+      const lblCoreReady = document.getElementById('lbl-core-ready');
 
-      if (isSpidey) {
+      // Additional Stitch Peter Theme Elements
+      const cardSpiderSuit = document.getElementById('card-spider-suit');
+      const protocolsSpider = document.getElementById('protocols-spider');
+      const protocolsDefault = document.getElementById('protocols-default');
+      const lblProtocolsTitle = document.getElementById('lbl-protocols-title');
+      const startersSpider = document.getElementById('starters-spider');
+      const startersDefault = document.getElementById('starters-default');
+      const lblCmdCenterTitle = document.getElementById('lbl-cmd-center-title');
+      const lblCmdCenterBadge = document.getElementById('lbl-cmd-center-badge');
+      const lblCmdCenterSub = document.getElementById('lbl-cmd-center-sub');
+      const lblSystemState = document.getElementById('lbl-system-state');
+      const lblSystemSub = document.getElementById('lbl-system-sub');
+      const dockIconSpider = document.getElementById('dock-icon-spider');
+      const dockIconArc = document.getElementById('dock-icon-arc');
+      const estopLabel = document.getElementById('estop-label');
+      const commandInput = document.getElementById('command-input');
+      const latencyPath = document.getElementById('latency-svg-path');
+
+      if (isPeter) {
         document.body.classList.add('theme-spiderman');
         document.body.setAttribute('data-theme', 'spiderman');
         if (brandDefault) brandDefault.classList.add('hidden');
         if (brandSpidey) brandSpidey.classList.remove('hidden');
         if (badgeSpidey) badgeSpidey.classList.remove('hidden');
         if (subtitleEl) subtitleEl.textContent = "EVEN DEAD, I'M THE HERO // PETER PARKER TACTICAL HUD";
+        if (headline) {
+          headline.textContent = "At your service, Peter.";
+          headline.classList.add("text-glow-red");
+        }
+        if (subcaption) {
+          subcaption.textContent = '"Queens is quiet tonight, Peter." Direct reflex execution ready.';
+        }
+        if (hudLightStrip) {
+          hudLightStrip.className = "fixed top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#ff1744] via-[#00f0ff] to-transparent z-50 opacity-95";
+        }
+        if (reticleOuter) reticleOuter.classList.remove('hidden');
+        if (reticleInner) {
+          reticleInner.classList.remove('border-os-amber/20');
+          reticleInner.classList.add('border-spider-red/35');
+        }
+        if (reticleLineH) {
+          reticleLineH.className = "w-full h-px bg-gradient-to-r from-transparent via-[#ff1744]/35 to-transparent absolute pointer-events-none";
+        }
+        if (reticleLineV) {
+          reticleLineV.className = "h-full w-px bg-gradient-to-b from-transparent via-[#00f0ff]/35 to-transparent absolute pointer-events-none";
+        }
+        if (neuralTag) neuralTag.textContent = "PETER // SECTOR-09";
+        if (lblCoreReady) lblCoreReady.textContent = "P.E.T.E.R. PROTOCOL READY // QUEENS SECTOR 09";
+
+        // Suit & Protocols toggles
+        if (cardSpiderSuit) cardSpiderSuit.style.display = 'block';
+        if (protocolsSpider) protocolsSpider.classList.remove('hidden');
+        if (protocolsDefault) protocolsDefault.classList.add('hidden');
+        if (lblProtocolsTitle) lblProtocolsTitle.textContent = 'SUIT PROTOCOLS // QUEENS';
+        if (startersSpider) startersSpider.classList.remove('hidden');
+        if (startersDefault) startersDefault.classList.add('hidden');
+        if (lblCmdCenterTitle) lblCmdCenterTitle.textContent = '+ SPIDER NANOTECH CORE';
+        if (lblCmdCenterBadge) lblCmdCenterBadge.textContent = 'PETER PROTOCOL';
+        if (lblCmdCenterSub) lblCmdCenterSub.textContent = 'Queens perimeter surveillance. Enhanced web optics. Reflex execution ready.';
+        if (lblSystemState) lblSystemState.textContent = 'P.E.T.E.R. PROTOCOL ONLINE // QUEENS SECTOR 09';
+        if (lblSystemSub) lblSystemSub.textContent = 'Reflex engine <15ms · Web fluid nominal';
+        if (dockIconSpider) dockIconSpider.classList.remove('hidden');
+        if (dockIconArc) dockIconArc.classList.add('hidden');
+        if (estopLabel) estopLabel.textContent = '[⚡ INSTANT KILL / E-STOP]';
+        if (commandInput) commandInput.placeholder = "Ask EDITH or give suit order... (e.g. 'deploy web net', 'scan queens sector 09')";
+        if (latencyPath) latencyPath.setAttribute('stroke', '#ff1744');
 
         if (ring1Mesh) ring1Mesh.material.color.setHex(0xff1744);
         if (ring2Mesh) ring2Mesh.material.color.setHex(0x00f0ff);
@@ -1748,6 +1988,47 @@
         if (brandSpidey) brandSpidey.classList.add('hidden');
         if (badgeSpidey) badgeSpidey.classList.add('hidden');
         if (subtitleEl) subtitleEl.textContent = "EVEN DEAD, I'M THE HERO | LOCAL-FIRST AUTONOMOUS AI OS";
+        if (headline) {
+          headline.textContent = "At your service.";
+          headline.classList.remove("text-glow-red");
+        }
+        if (subcaption) {
+          subcaption.textContent = "Your commands. My attention. Let's make things happen.";
+        }
+        if (hudLightStrip) {
+          hudLightStrip.className = "fixed top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-os-amber to-transparent z-50 opacity-80";
+        }
+        if (reticleOuter) reticleOuter.classList.add('hidden');
+        if (reticleInner) {
+          reticleInner.classList.remove('border-spider-red/35');
+          reticleInner.classList.add('border-os-amber/20');
+        }
+        if (reticleLineH) {
+          reticleLineH.className = "w-full h-px bg-gradient-to-r from-transparent via-os-amber/30 to-transparent absolute pointer-events-none";
+        }
+        if (reticleLineV) {
+          reticleLineV.className = "h-full w-px bg-gradient-to-b from-transparent via-os-amber/30 to-transparent absolute pointer-events-none";
+        }
+        if (neuralTag) neuralTag.textContent = "EDITH // 01";
+        if (lblCoreReady) lblCoreReady.textContent = "AWAITING YOUR COMMAND";
+
+        // Suit & Protocols toggles
+        if (cardSpiderSuit) cardSpiderSuit.style.display = 'none';
+        if (protocolsSpider) protocolsSpider.classList.add('hidden');
+        if (protocolsDefault) protocolsDefault.classList.remove('hidden');
+        if (lblProtocolsTitle) lblProtocolsTitle.textContent = 'QUICK PROTOCOLS';
+        if (startersSpider) startersSpider.classList.add('hidden');
+        if (startersDefault) startersDefault.classList.remove('hidden');
+        if (lblCmdCenterTitle) lblCmdCenterTitle.textContent = '+ Command center';
+        if (lblCmdCenterBadge) lblCmdCenterBadge.textContent = 'LIVE HYBRID AI';
+        if (lblCmdCenterSub) lblCmdCenterSub.textContent = 'Direct reflex execution. Autonomous task planning. Full laptop & mobile control.';
+        if (lblSystemState) lblSystemState.textContent = 'All systems operational';
+        if (lblSystemSub) lblSystemSub.textContent = 'Reflex engine <15ms · Ready for input';
+        if (dockIconSpider) dockIconSpider.classList.add('hidden');
+        if (dockIconArc) dockIconArc.classList.remove('hidden');
+        if (estopLabel) estopLabel.textContent = 'E-STOP';
+        if (commandInput) commandInput.placeholder = "Ask EDITH or give order... (e.g. 'open youtube and play trailer', 'lock pc')";
+        if (latencyPath) latencyPath.setAttribute('stroke', '#ffa800');
 
         const hex = PERSONA_COLORS[persona] || 0xffa800;
         if (wireMat) wireMat.color.setHex(hex);
@@ -1762,10 +2043,10 @@
       fetch('/voice/character', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ character: activeCharacter })
+        body: JSON.stringify({ character: isPeter ? 'peter' : activeCharacter })
       }).catch(() => {});
 
-      logActivity(`Persona shifted to ${persona}. Voice & theme synchronized.`);
+      logActivity(`Persona shifted to ${isPeter ? 'PETER' : persona}. Peter Protocol HUD synchronized.`);
     }
 
     // ── Voice Input & Web Speech API ──
@@ -2247,6 +2528,11 @@
       return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     }
   </script>
+
+  <!-- Embedded Stitch Peter Mode HUD (Screen 73ae9f005775484099fefc6ea5d1d9df) -->
+  <div id="peter-cockpit-overlay" class="fixed inset-0 z-[100] bg-[#04070d] hidden flex flex-col">
+    <iframe id="peter-cockpit-frame" src="about:blank" class="w-full h-full border-0"></iframe>
+  </div>
 
 </body>
 </html>

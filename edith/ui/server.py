@@ -39,7 +39,13 @@ from edith.voice.whisper_engine import WHISPER_ENGINE
 
 logger = logging.getLogger("edith.ui.server")
 
-UI_DIR = Path(__file__).resolve().parent / "public"
+def _resolve_ui_dir() -> Path:
+    for candidate in (Path.cwd() / "edith" / "ui" / "public", Path(__file__).resolve().parent / "public"):
+        if candidate.exists() and (candidate / "index.html").exists():
+            return candidate
+    return Path(__file__).resolve().parent / "public"
+
+UI_DIR = _resolve_ui_dir()
 STATE_DIR = Path(__file__).resolve().parent / "state"
 
 
@@ -391,6 +397,18 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(content)
                 return
 
+        # PETER Mode Insomniac Velocity Cockpit (Stitch Screen 73ae9f005775484099fefc6ea5d1d9df)
+        elif parsed.path in ("/peter", "/peter/"):
+            peter_file = UI_DIR / "peter.html"
+            if peter_file.exists():
+                content = peter_file.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(content)))
+                self.end_headers()
+                self.wfile.write(content)
+                return
+
         # GameStream Telemetry & Discovery (Sunshine / Wolf / Moonlight)
         elif parsed.path == "/api/gamestream/status":
             self._send_json(GAMESTREAM_ENGINE.get_status())
@@ -504,7 +522,7 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
         except Exception:
             data = {}
 
-        if parsed.path == "/cmd":
+        if parsed.path in ("/cmd", "/command"):
             command = data.get("command", "").strip()
             if not command:
                 self._send_json({"matched": False, "result": "Empty command provided", "state": "READY"})
@@ -948,6 +966,24 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             action = data.get("action", "play_pause")
             res = AUDIO_MIXER.media_control(action)
             self._send_json(res)
+
+        elif parsed.path == "/api/puter/save_token":
+            token = (data.get("token") or "").strip()
+            if not token:
+                self._send_json({"success": False, "error": "No token provided"}, status=400)
+                return
+            os.environ["PUTER_AUTH_TOKEN"] = token
+            env_path = Path(__file__).resolve().parent.parent.parent / ".env.local"
+            try:
+                lines = []
+                if env_path.exists():
+                    lines = [l for l in env_path.read_text(encoding="utf-8").splitlines() if not l.startswith("PUTER_AUTH_TOKEN=")]
+                lines.append(f'PUTER_AUTH_TOKEN="{token}"')
+                env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                logger.info("Successfully persisted PUTER_AUTH_TOKEN to .env.local")
+            except Exception as e:
+                logger.error("Failed saving PUTER_AUTH_TOKEN: %s", e)
+            self._send_json({"success": True, "message": "Puter auth token registered successfully."})
 
         else:
             self.send_error(404, "Endpoint not found")

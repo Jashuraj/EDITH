@@ -1,0 +1,1093 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>EDITH Mark II // Insomniac Velocity Cockpit HUD</title>
+<!-- Tailwind CSS CDN with forms and container queries plugins -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Google Fonts -->
+<link href="https://fonts.preconnect.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400;1,600&amp;family=JetBrains+Mono:wght@300;400;500;600;700;800&amp;family=Michroma&amp;family=Orbitron:wght@500;600;700;800;900&amp;family=Oxanium:wght@400;500;600;700;800&amp;family=Space+Grotesk:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind Theme Configuration -->
+<script>
+  tailwind.config = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        colors: {
+          'neon-crimson': '#ff1744',
+          'crimson-dark': '#9b0020',
+          'spider-cyan': '#00f0ff',
+          'spider-cyan-glow': 'rgba(0, 240, 255, 0.45)',
+          'iron-gold': '#ffbe28',
+          'hud-bg': '#04070d',
+          'hud-panel': '#080d16',
+          'hud-card': '#0d1422',
+          'hud-border': '#152438',
+          'hud-border-glow': '#1e385c',
+        },
+        fontFamily: {
+          orbitron: ['Orbitron', 'sans-serif'],
+          chakra: ['"Chakra Petch"', 'sans-serif'],
+          mono: ['"JetBrains Mono"', 'monospace'],
+          oxanium: ['Oxanium', 'sans-serif'],
+          michroma: ['Michroma', 'sans-serif'],
+        }
+      }
+    }
+  }
+</script>
+<style>
+  /* Tactical Scanlines & Mesh Carbon Canvas */
+  .velocity-scanlines {
+    background: linear-gradient(rgba(4, 7, 13, 0) 50%, rgba(2, 4, 8, 0.6) 50%),
+                linear-gradient(90deg, rgba(255, 23, 68, 0.03), rgba(0, 240, 255, 0.03), transparent);
+    background-size: 100% 3px, 6px 100%;
+    pointer-events: none;
+  }
+  .velocity-radial-grid {
+    background-image: 
+      radial-gradient(circle at 50% 50%, rgba(0, 240, 255, 0.09) 1px, transparent 1px),
+      linear-gradient(to right, rgba(20, 36, 58, 0.28) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(20, 36, 58, 0.28) 1px, transparent 1px);
+    background-size: 26px 26px;
+  }
+
+  /* Custom Chamfered Glass Panels (Insomniac HUD Angle) */
+  .chamfer-panel {
+    clip-path: polygon(
+      0 10px, 10px 0,
+      calc(100% - 10px) 0, 100% 10px,
+      100% calc(100% - 10px), calc(100% - 10px) 100%,
+      10px 100%, 0 calc(100% - 10px)
+    );
+    border: 1px solid rgba(26, 47, 74, 0.75);
+    background: linear-gradient(135deg, rgba(10, 16, 26, 0.94) 0%, rgba(6, 10, 18, 0.98) 100%);
+  }
+  .chamfer-panel-red {
+    border-color: rgba(255, 23, 68, 0.4);
+    box-shadow: 0 0 18px rgba(255, 23, 68, 0.15), inset 0 0 12px rgba(255, 23, 68, 0.06);
+  }
+  .chamfer-panel-cyan {
+    border-color: rgba(0, 240, 255, 0.35);
+    box-shadow: 0 0 18px rgba(0, 240, 255, 0.12), inset 0 0 10px rgba(0, 240, 255, 0.05);
+  }
+
+  /* Glow Utilities */
+  .glow-red {
+    box-shadow: 0 0 14px rgba(255, 23, 68, 0.5), inset 0 0 6px rgba(255, 23, 68, 0.2);
+  }
+  .glow-cyan {
+    box-shadow: 0 0 14px rgba(0, 240, 255, 0.45), inset 0 0 6px rgba(0, 240, 255, 0.18);
+  }
+  .text-glow-red {
+    text-shadow: 0 0 10px rgba(255, 23, 68, 0.8), 0 0 20px rgba(255, 23, 68, 0.4);
+  }
+  .text-glow-cyan {
+    text-shadow: 0 0 10px rgba(0, 240, 255, 0.85);
+  }
+
+  /* Rotating Reticles Animation */
+  @keyframes spinClockwise {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  @keyframes spinCounter {
+    from { transform: rotate(360deg); }
+    to { transform: rotate(0deg); }
+  }
+  @keyframes pulseBreathing {
+    0%, 100% { transform: scale(1); opacity: 0.95; }
+    50% { transform: scale(1.035); opacity: 0.75; }
+  }
+
+  .reticle-spin-cw {
+    animation: spinClockwise 26s linear infinite;
+  }
+  .reticle-spin-ccw {
+    animation: spinCounter 19s linear infinite;
+  }
+  .spider-pulse {
+    animation: pulseBreathing 4s ease-in-out infinite;
+  }
+
+  /* Equalizer transition */
+  .eq-bar {
+    transition: height 0.09s ease;
+  }
+
+  /* Scrollbar Customization */
+  ::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #04070d;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1b2e47;
+    border-radius: 2px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #ff1744;
+  }
+</style>
+</head>
+<body class="bg-[#04070d] text-slate-200 font-chakra antialiased overflow-hidden select-none h-screen w-screen flex flex-col justify-between relative tracking-wide">
+<!-- Fixed HUD Scanline & Grid Backgrounds -->
+<div class="fixed inset-0 velocity-scanlines opacity-50 z-50 pointer-events-none"></div>
+<div class="fixed inset-0 velocity-radial-grid opacity-30 pointer-events-none"></div>
+<div class="fixed top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#ff1744] via-[#00f0ff] to-transparent z-50 opacity-90 shadow-[0_0_12px_#ff1744]"></div>
+<!-- ========================================================================= -->
+<!-- TOP NAVIGATION: HIGH-SPEED TACTICAL HUD HEADER -->
+<!-- ========================================================================= -->
+<header class="h-14 border-b border-hud-border/80 bg-[#060a12]/95 backdrop-blur-md px-3.5 flex items-center justify-between z-40 shrink-0 relative">
+<!-- Left Header: Insomniac Spider Title & Mode Indicator -->
+<div class="flex items-center space-x-3.5">
+<div class="w-10 h-10 rounded border border-neon-crimson/80 bg-[#120409] p-1 flex items-center justify-center glow-red relative overflow-hidden group">
+<!-- White Spider Inset Emblem https://lh3.googleusercontent.com/aida-public/AB6AXuCkvCGczd1vpThVjE6HAXZi9VY7qW3OxO_MCSAT4EVDiFvMuLhqhtc_mDWRKdMKGxhknkpnUSVIe9pLe2IANsYGX4_9OXG6h4HjoRF2LQfY2QduxUpBQ7AvVY5Ke37HCXnDmu6IWufQAHsEgx3--glvOqWtDYIuPu-k_yucWFklrQraIloejhFGh2YyGaNG3RHStXdnt5e7wCg6A0JwRjhq6Ei0rpEY7Gkopiqs5lpAjKygkvBeDd_HwNIElDZgAv6Tyg -->
+<img alt="Spider Insomnia Emblem" class="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(255,23,68,0.9)]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCkvCGczd1vpThVjE6HAXZi9VY7qW3OxO_MCSAT4EVDiFvMuLhqhtc_mDWRKdMKGxhknkpnUSVIe9pLe2IANsYGX4_9OXG6h4HjoRF2LQfY2QduxUpBQ7AvVY5Ke37HCXnDmu6IWufQAHsEgx3--glvOqWtDYIuPu-k_yucWFklrQraIloejhFGh2YyGaNG3RHStXdnt5e7wCg6A0JwRjhq6Ei0rpEY7Gkopiqs5lpAjKygkvBeDd_HwNIElDZgAv6Tyg">
+</div>
+<div>
+<div class="flex items-center space-x-2">
+<span class="font-orbitron font-black tracking-[0.22em] text-white text-xs">
+          SPIDER-MAN <span class="text-neon-crimson">//</span> <span class="text-spider-cyan font-bold">ARTIFACT VELOCITY HUD MK-II</span>
+</span>
+<span class="text-xs text-slate-500 font-mono">//</span>
+<span class="text-[9px] font-mono tracking-widest text-iron-gold uppercase px-1.5 py-0.2 rounded border border-iron-gold/40 bg-iron-gold/10">P.E.T.E.R. v4.2</span>
+</div>
+<p class="text-[8.5px] text-slate-400 font-mono tracking-[0.14em] uppercase flex items-center space-x-2">
+<span class="">SECTOR: <strong class="text-white">QUEENS / MIDTOWN AIR CORRIDOR</strong></span>
+<span class="text-slate-600">|</span>
+<span class="">SYS: <strong class="text-spider-cyan">AUTONOMOUS COMBAT REFLEX ACTIVE</strong></span>
+</p>
+</div>
+</div>
+<!-- Center Header: Velocity Sprint Status Pill & AI Persona Selector -->
+<div class="flex items-center space-x-3">
+<!-- Active Suit Mode Pill -->
+<div class="hidden xl:flex items-center space-x-2 px-3 py-1 rounded-full bg-gradient-to-r from-red-950/80 via-black to-cyan-950/80 border border-neon-crimson/70 shadow-[0_0_12px_rgba(255,23,68,0.3)]">
+<span class="w-2 h-2 rounded-full bg-neon-crimson animate-ping"></span>
+<span class="text-[10px] font-orbitron font-extrabold tracking-[0.18em] text-white uppercase">VELOCITY SPRINT / COMBAT READY</span>
+<span class="text-[9px] font-mono text-spider-cyan font-bold tracking-wider">[L3+R3]</span>
+</div>
+<!-- AI Persona Tabs -->
+<nav aria-label="AI Personas" class="flex items-center bg-[#070d17] p-1 rounded-md border border-hud-border space-x-1 font-chakra font-bold text-[10px] tracking-[0.12em]">
+<button class="persona-tab px-2.5 py-0.5 rounded text-slate-400 hover:text-white transition" data-persona="EDITH">EDITH</button>
+<button class="persona-tab px-2.5 py-0.5 rounded text-slate-400 hover:text-white transition flex items-center space-x-1" data-persona="JARVIS">
+<span class="w-1.5 h-1.5 rounded-full bg-iron-gold"></span>
+<span class="">JARVIS</span>
+</button>
+<button class="persona-tab px-3 py-0.5 rounded-full bg-neon-crimson text-white border border-neon-crimson glow-red flex items-center space-x-1.5 transition" data-persona="KAREN">
+<span class="w-1.5 h-1.5 rounded-full bg-spider-cyan animate-pulse"></span>
+<span class="font-extrabold tracking-wider">KAREN (SUIT LADY)</span>
+</button>
+<button class="persona-tab px-2.5 py-0.5 rounded text-slate-400 hover:text-white transition" data-persona="SPIDEY">SPIDEY</button>
+<button class="persona-tab px-2.5 py-0.5 rounded text-slate-400 hover:text-red-400 transition" data-persona="ULTRON">ULTRON</button>
+</nav>
+</div>
+<!-- Right Header: Telemetry Metrics & Emergency Dampener -->
+<div class="flex items-center space-x-3 text-xs">
+<!-- Airspeed & Altitude -->
+<div class="hidden lg:flex flex-col items-end pr-2 font-mono">
+<div class="flex items-center space-x-1.5 text-[11px] text-spider-cyan font-bold">
+<span class="text-slate-400 text-[9px] uppercase tracking-wider">SWING VELOCITY:</span>
+<span class="text-white font-orbitron">185</span> <span class="text-[9px] text-spider-cyan">KM/H</span>
+</div>
+<div class="text-[8.5px] text-slate-400 uppercase tracking-widest flex items-center space-x-1">
+<span class="">ALTITUDE:</span>
+<span class="text-iron-gold font-bold">142M</span>
+<span class="text-slate-500">·</span>
+<span class="text-emerald-400">DEFCON 2 PATROL</span>
+</div>
+</div>
+<!-- Live Military Clock -->
+<div class="text-right border-l border-hud-border pl-3 hidden sm:block font-mono">
+<div class="text-xs font-bold tracking-[0.18em] text-white" id="live-clock">19:06:20</div>
+<div class="text-[8px] text-slate-400 uppercase tracking-wider">OCT 11 · NYC HUD</div>
+</div>
+<!-- Emergency Suit Dampener Button (E-STOP) -->
+<button class="px-2.5 py-1 rounded bg-red-950/70 border border-neon-crimson hover:bg-neon-crimson text-white font-bold text-[9px] tracking-[0.16em] uppercase flex items-center space-x-1.5 transition glow-red font-orbitron" id="estop-btn" title="Emergency Suit Dampener Protocol">
+<svg class="w-3.5 h-3.5 text-neon-crimson group-hover:text-white" fill="none" stroke="currentColor" stroke-width="2.4" viewBox="0 0 24 24">
+<circle cx="12" cy="12" r="8"></circle>
+<line x1="12" x2="12" y1="8" y2="12"></line>
+</svg>
+<span class="">[⏻ DAMPENER]</span>
+</button>
+</div>
+</header>
+<!-- ========================================================================= -->
+<!-- MAIN TACTICAL COCKPIT SHELL (3 OPERATIONAL COLUMNS) -->
+<!-- ========================================================================= -->
+<main class="flex-1 flex overflow-hidden p-2 gap-2 relative z-30">
+<!-- FAR-LEFT DOCK TOOLBAR -->
+<aside class="w-11 bg-[#070b13] border border-hud-border rounded-lg flex flex-col items-center py-2.5 justify-between shrink-0 shadow-xl relative">
+<div class="flex flex-col space-y-3 items-center">
+<!-- Velocity Logo Miniature -->
+<button class="w-8 h-8 rounded border border-neon-crimson/70 bg-[#14060c] p-0.5 flex items-center justify-center hover:scale-105 transition glow-red" title="Insomniac Nanotech Core">
+<img alt="Spider Crest" class="w-full h-full object-contain filter drop-shadow-[0_0_4px_#ff1744]" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCkvCGczd1vpThVjE6HAXZi9VY7qW3OxO_MCSAT4EVDiFvMuLhqhtc_mDWRKdMKGxhknkpnUSVIe9pLe2IANsYGX4_9OXG6h4HjoRF2LQfY2QduxUpBQ7AvVY5Ke37HCXnDmu6IWufQAHsEgx3--glvOqWtDYIuPu-k_yucWFklrQraIloejhFGh2YyGaNG3RHStXdnt5e7wCg6A0JwRjhq6Ei0rpEY7Gkopiqs5lpAjKygkvBeDd_HwNIElDZgAv6Tyg">
+</button>
+<!-- Tactical Matrix Icons -->
+<button class="w-8 h-8 rounded text-spider-cyan hover:bg-[#101b2c] flex items-center justify-center transition" title="Velocity Ballistics">
+<span class="material-symbols-outlined text-[19px]">speed</span>
+</button>
+<button class="w-8 h-8 rounded text-slate-400 hover:text-white hover:bg-[#101b2c] flex items-center justify-center transition" title="Web Canister Reserve">
+<span class="material-symbols-outlined text-[19px]">invert_colors</span>
+</button>
+<button class="w-8 h-8 rounded text-slate-400 hover:text-white hover:bg-[#101b2c] flex items-center justify-center transition" title="Spider-Sense Radar">
+<span class="material-symbols-outlined text-[19px]">radar</span>
+</button>
+<button class="w-8 h-8 rounded text-slate-400 hover:text-white hover:bg-[#101b2c] flex items-center justify-center transition" title="Drone Mesh">
+<span class="material-symbols-outlined text-[19px]">flight_takeoff</span>
+</button>
+<button class="w-8 h-8 rounded text-slate-400 hover:text-white hover:bg-[#101b2c] flex items-center justify-center transition" title="Queens Sector GPS">
+<span class="material-symbols-outlined text-[19px]">map</span>
+</button>
+</div>
+<div class="flex flex-col space-y-2 items-center">
+<button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Suit Calibration">
+<span class="material-symbols-outlined text-[18px]">tune</span>
+</button>
+<div class="w-7 h-7 rounded border border-neon-crimson/80 bg-[#160810] text-neon-crimson font-orbitron font-extrabold flex items-center justify-center text-xs glow-red">
+        SP</div>
+</div>
+</aside>
+<!-- ========================================================================= -->
+<!-- COLUMN 1: LEFT OPERATIONAL DECK (CANISTERS, SENSE RADAR, BALLISTICS) -->
+<!-- ========================================================================= -->
+<section aria-label="Left Operational Deck" class="w-80 2xl:w-[22rem] flex flex-col gap-2 overflow-y-auto pr-0.5 shrink-0">
+<!-- WEB FLUID CANISTERS & PRESSURIZED PSI GAUGES -->
+<div class="p-2.5 chamfer-panel chamfer-panel-cyan rounded relative overflow-hidden">
+<div class="flex items-center justify-between border-b border-hud-border/80 pb-1.5 mb-2">
+<div class="flex items-center space-x-1.5">
+<span class="material-symbols-outlined text-spider-cyan text-base">water_drop</span>
+<span class="text-[10px] font-orbitron font-bold tracking-[0.16em] uppercase text-white">WEB FLUID CANISTERS</span>
+</div>
+<span class="text-[9px] font-mono px-1.5 py-0.2 rounded bg-cyan-950/80 text-spider-cyan border border-spider-cyan/40 font-bold">96% PSI</span>
+</div>
+<!-- Dual Vertical & Circular Pressurized Gauges -->
+<div class="grid grid-cols-2 gap-2 mb-2 font-mono">
+<!-- Canister A (Primary) -->
+<div class="p-2 rounded bg-[#090f19] border border-hud-border flex flex-col items-center">
+<div class="text-[8px] uppercase tracking-wider text-slate-400 mb-1 flex justify-between w-full">
+<span class="">CANISTER_A</span>
+<span class="text-spider-cyan font-bold">98%</span>
+</div>
+<!-- Vertical Gauge Bar -->
+<div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden mb-1.5">
+<div class="bg-gradient-to-r from-cyan-600 to-spider-cyan h-full" style="width: 98%"></div>
+</div>
+<!-- Pressure metric -->
+<div class="text-[8px] text-slate-400 flex justify-between w-full">
+<span class="">FLOW: 1.2 mL/shot</span>
+<span class="text-emerald-400">4,200 kPa</span>
+</div>
+</div>
+<!-- Canister B (Reserve) -->
+<div class="p-2 rounded bg-[#090f19] border border-hud-border flex flex-col items-center">
+<div class="text-[8px] uppercase tracking-wider text-slate-400 mb-1 flex justify-between w-full">
+<span class="">CANISTER_B</span>
+<span class="text-iron-gold font-bold">94%</span>
+</div>
+<!-- Vertical Gauge Bar -->
+<div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden mb-1.5">
+<div class="bg-gradient-to-r from-amber-600 to-iron-gold h-full" style="width: 94%"></div>
+</div>
+<div class="text-[8px] text-slate-400 flex justify-between w-full">
+<span class="">SYNTH: Rapid gel</span>
+<span class="text-emerald-400">4,120 kPa</span>
+</div>
+</div>
+</div>
+<!-- Quick Web Fluid Reload Bar -->
+<div class="flex items-center justify-between text-[8px] font-mono text-slate-400 bg-black/40 px-2 py-1 rounded">
+<span class="">AUTO-SYNTHESIZER CORE:</span>
+<span class="text-spider-cyan font-bold">ACTIVE REGROWTH (+3%/min)</span>
+</div>
+</div>
+<!-- SPIDER-SENSE ALERT MATRIX (5-STAGE LED DANGER RADAR) -->
+<div class="p-2.5 chamfer-panel chamfer-panel-red rounded relative overflow-hidden">
+<div class="flex items-center justify-between border-b border-hud-border/80 pb-1.5 mb-2">
+<div class="flex items-center space-x-1.5">
+<span class="material-symbols-outlined text-neon-crimson text-base animate-pulse">crisis_alert</span>
+<span class="text-[10px] font-orbitron font-bold tracking-[0.16em] uppercase text-white">SPIDER-SENSE ALERT MATRIX</span>
+</div>
+<span class="text-[9px] font-mono text-neon-crimson font-extrabold animate-pulse">● STAGE 2</span>
+</div>
+<!-- 5-Stage LED Danger Level Radar Bar -->
+<div class="space-y-1 mb-2">
+<div class="flex justify-between items-center text-[8px] font-mono uppercase text-slate-400">
+<span class="">THREAT THRESHOLD:</span>
+<span class="text-amber-400 font-bold">CAUTION // ROOFTOP SNIPERS</span>
+</div>
+<div class="grid grid-cols-5 gap-1 h-2">
+<!-- Stage 1: Clear/Low (Green/Cyan) -->
+<div class="bg-emerald-500 rounded-sm shadow-[0_0_6px_rgba(16,185,129,0.7)]"></div>
+<!-- Stage 2: Caution (Orange/Gold Active) -->
+<div class="bg-iron-gold rounded-sm shadow-[0_0_6px_rgba(255,190,40,0.8)] animate-pulse"></div>
+<!-- Stage 3: Elevated -->
+<div class="bg-slate-800 rounded-sm"></div>
+<!-- Stage 4: High Danger -->
+<div class="bg-slate-800 rounded-sm"></div>
+<!-- Stage 5: Lethal Evade -->
+<div class="bg-slate-800 rounded-sm"></div>
+</div>
+</div>
+<!-- Threat Vector Details -->
+<div class="p-1.5 rounded bg-red-950/20 border border-neon-crimson/30 text-[8.5px] font-mono space-y-1 text-slate-300">
+<div class="flex items-center justify-between">
+<span class="text-slate-400 uppercase">Vector Azimuth:</span>
+<span class="text-white font-bold">048° North-East / 85m</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-slate-400 uppercase">Incoming Line:</span>
+<span class="text-neon-crimson font-bold">Thermal Scope Lock (Fisk Syndicate)</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-slate-400 uppercase">Evasion Window:</span>
+<span class="text-spider-cyan font-bold">0.42 sec (Point-Launch Recommended)</span>
+</div>
+</div>
+</div>
+<!-- SUIT BALLISTICS & AERODYNAMICS -->
+<div class="p-2.5 chamfer-panel rounded relative text-xs space-y-2">
+<div class="flex items-center justify-between border-b border-hud-border/80 pb-1">
+<div class="flex items-center space-x-1.5">
+<span class="material-symbols-outlined text-iron-gold text-base">navigation</span>
+<span class="text-[10px] font-orbitron font-bold tracking-[0.16em] uppercase text-white">BALLISTICS &amp; AERO</span>
+</div>
+<span class="text-[8px] font-mono text-emerald-400 uppercase">STABLE TRAJECTORY</span>
+</div>
+<!-- Realtime Aero Metrics Grid -->
+<div class="grid grid-cols-2 gap-1.5 font-mono text-[9px]">
+<div class="p-1.5 rounded bg-hud-card border border-hud-border">
+<div class="text-slate-400 uppercase text-[7.5px]">Wind Shear</div>
+<div class="text-white font-bold flex justify-between items-baseline">
+<span class="">18.4 kts</span>
+<span class="text-emerald-400 text-[8px]">-COMPENSATED</span>
+</div>
+</div>
+<div class="p-1.5 rounded bg-hud-card border border-hud-border">
+<div class="text-slate-400 uppercase text-[7.5px]">Thermal Core</div>
+<div class="text-white font-bold flex justify-between items-baseline">
+<span class="">37.2°C</span>
+<span class="text-iron-gold text-[8px]">NOMINAL</span>
+</div>
+</div>
+<div class="p-1.5 rounded bg-hud-card border border-hud-border">
+<div class="text-slate-400 uppercase text-[7.5px]">Suit Power Node</div>
+<div class="text-white font-bold flex justify-between items-baseline">
+<span class="">98.4 kW</span>
+<span class="text-spider-cyan text-[8px]">99% CHARGE</span>
+</div>
+</div>
+<div class="p-1.5 rounded bg-hud-card border border-hud-border">
+<div class="text-slate-400 uppercase text-[7.5px]">Reflex Delay</div>
+<div class="text-white font-bold flex justify-between items-baseline">
+<span class="">11 ms</span>
+<span class="text-spider-cyan text-[8px]">SUB-SYNAPSE</span>
+</div>
+</div>
+</div>
+<!-- Live Trajectory Solver Mini Graph -->
+<div class="h-8 w-full bg-[#050a12] border border-hud-border/70 rounded overflow-hidden relative p-0.5">
+<svg class="w-full h-full" preserveAspectRatio="none" viewBox="0 0 200 40">
+<path d="M0,32 Q35,5 75,20 T140,8 T180,26 T200,12" fill="none" opacity="0.9" stroke="#00f0ff" stroke-linecap="round" stroke-width="1.6"></path>
+<path d="M0,28 Q45,35 85,15 T130,28 T170,12 T200,24" fill="none" opacity="0.6" stroke="#ff1744" stroke-linecap="round" stroke-width="1.2"></path>
+</svg>
+</div>
+</div>
+<!-- RAPID COMBAT PROTOCOLS (INSOMNIAC GADGETS) -->
+<div class="p-2.5 chamfer-panel rounded relative text-xs space-y-1.5 flex-1">
+<div class="flex items-center space-x-1.5 border-b border-hud-border/80 pb-1">
+<span class="material-symbols-outlined text-neon-crimson text-base">bolt</span>
+<span class="text-[10px] font-orbitron font-bold tracking-[0.16em] uppercase text-white">RAPID COMBAT PROTOCOLS</span>
+</div>
+<div class="space-y-1 font-mono">
+<button class="w-full text-left p-1.5 rounded bg-hud-card/80 hover:bg-[#131d31] border border-hud-border flex items-center justify-between transition group" onclick="triggerProtocol('Web Bomb Scatter')">
+<div class="flex items-center space-x-2">
+<span class="p-1 rounded bg-neon-crimson/20 text-neon-crimson material-symbols-outlined text-sm">emergency_home</span>
+<div>
+<div class="text-[9.5px] font-bold text-white font-chakra">Web Bomb Scatter</div>
+<div class="text-[7.5px] text-slate-400">Radial suppression [5m burst]</div>
+</div>
+</div>
+<span class="text-[8px] px-1.5 py-0.5 rounded bg-red-950 border border-neon-crimson/40 text-neon-crimson font-bold">READY (4)</span>
+</button>
+<button class="w-full text-left p-1.5 rounded bg-hud-card/80 hover:bg-[#131d31] border border-hud-border flex items-center justify-between transition group" onclick="triggerProtocol('Electric Web Dart')">
+<div class="flex items-center space-x-2">
+<span class="p-1 rounded bg-spider-cyan/20 text-spider-cyan material-symbols-outlined text-sm">electric_bolt</span>
+<div>
+<div class="text-[9.5px] font-bold text-white font-chakra">Electric Web Dart</div>
+<div class="text-[7.5px] text-slate-400">Arc stun across 4 targets</div>
+</div>
+</div>
+<span class="text-[8px] px-1.5 py-0.5 rounded bg-cyan-950 border border-spider-cyan/40 text-spider-cyan font-bold">ARMED (6)</span>
+</button>
+<button class="w-full text-left p-1.5 rounded bg-hud-card/80 hover:bg-[#131d31] border border-hud-border flex items-center justify-between transition group" onclick="triggerProtocol('Spider Drone Recon')">
+<div class="flex items-center space-x-2">
+<span class="p-1 rounded bg-iron-gold/20 text-iron-gold material-symbols-outlined text-sm">flight</span>
+<div>
+<div class="text-[9.5px] font-bold text-white font-chakra">Spider Drone Recon</div>
+<div class="text-[7.5px] text-slate-400">Deploy 8 mini air scouts</div>
+</div>
+</div>
+<span class="text-[8px] px-1.5 py-0.5 rounded bg-amber-950 border border-iron-gold/40 text-iron-gold font-bold">ONLINE</span>
+</button>
+<button class="w-full text-left p-1.5 rounded bg-hud-card/80 hover:bg-[#131d31] border border-hud-border flex items-center justify-between transition group" onclick="triggerProtocol('Active Camo Cloak')">
+<div class="flex items-center space-x-2">
+<span class="p-1 rounded bg-slate-700/40 text-slate-300 material-symbols-outlined text-sm">visibility_off</span>
+<div>
+<div class="text-[9.5px] font-bold text-white font-chakra">Active Camo Cloak</div>
+<div class="text-[7.5px] text-slate-400">Miles refractive nano-mesh</div>
+</div>
+</div>
+<span class="text-[8px] px-1.5 py-0.5 rounded bg-slate-800 text-slate-300 font-bold">CHARGING (84%)</span>
+</button>
+<button class="w-full text-left p-1.5 rounded bg-hud-card/80 hover:bg-[#131d31] border border-hud-border flex items-center justify-between transition group" onclick="triggerProtocol('Ricochet Web')">
+<div class="flex items-center space-x-2">
+<span class="p-1 rounded bg-spider-cyan/20 text-spider-cyan material-symbols-outlined text-sm">alt_route</span>
+<div>
+<div class="text-[9.5px] font-bold text-white font-chakra">Ricochet Web</div>
+<div class="text-[7.5px] text-slate-400">Alley bounce anchor</div>
+</div>
+</div>
+<span class="text-[8px] px-1.5 py-0.5 rounded bg-cyan-950 border border-spider-cyan/40 text-spider-cyan font-bold">READY (3)</span>
+</button>
+</div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- COLUMN 2: CENTER STAGE COCKPIT VIEW (RETICLE, EMBLEM, AUDIO EQUALIZER) -->
+<!-- ========================================================================= -->
+<section aria-label="Center Stage Velocity Cockpit" class="flex-1 flex flex-col justify-between rounded-lg border border-hud-border bg-[#050912]/95 relative overflow-hidden p-3 shadow-2xl">
+<!-- Red & Cyan Radial Holographic Glow -->
+<div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_44%,rgba(255,23,68,0.16),transparent_60%)] pointer-events-none"></div>
+<div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_44%,rgba(0,240,255,0.08),transparent_75%)] pointer-events-none"></div>
+<!-- HUD Telemetry Angles & Reticle Crosshair Readouts -->
+<div class="absolute top-3 left-4 z-20 text-[8px] text-slate-400 font-mono space-y-0.5 border-l-2 border-t-2 border-neon-crimson pl-2 pt-1 pointer-events-none uppercase">
+<div class="">TARGETING LOCK // SECTOR QUEENS</div>
+<div class="text-neon-crimson font-bold tracking-[0.16em]">AZIMUTH: 312° // 120 FPS</div>
+</div>
+<div class="absolute top-3 right-4 z-20 text-[8px] text-slate-400 font-mono text-right space-y-0.5 border-r-2 border-t-2 border-spider-cyan pr-2 pt-1 pointer-events-none uppercase">
+<div class="">RANGEFINDER RADAR</div>
+<div class="text-spider-cyan font-bold tracking-[0.16em]">DIST: 42.8M // ELEV: +12°</div>
+</div>
+<div class="absolute bottom-40 left-4 z-20 text-[8px] text-slate-400 font-mono space-y-0.5 border-l-2 border-b-2 border-spider-cyan pl-2 pb-1 pointer-events-none uppercase">
+<div class="">BALLISTIC IMPACT POINT</div>
+<div class="text-white font-bold">MIDTOWN ROOFTOP SPAN</div>
+</div>
+<div class="absolute bottom-40 right-4 z-20 text-[8px] text-slate-400 font-mono text-right space-y-0.5 border-r-2 border-b-2 border-neon-crimson pr-2 pb-1 pointer-events-none uppercase">
+<div class="">WEB ANCHOR TENSION</div>
+<div class="text-iron-gold font-bold">14.2 kN (CARBON WEAVE)</div>
+</div>
+<!-- Header Cockpit Callout -->
+<div class="text-center z-10 pt-1 pointer-events-none">
+<div class="inline-flex items-center space-x-2 px-3 py-0.5 rounded-full bg-red-950/40 border border-neon-crimson/50 text-[9px] font-orbitron tracking-[0.25em] text-iron-gold uppercase mb-1">
+<span class="w-1.5 h-1.5 rounded-full bg-neon-crimson animate-pulse"></span>
+<span class="">AUTONOMOUS VELOCITY COCKPIT MK-II</span>
+</div>
+<h1 class="text-2xl 2xl:text-3xl font-orbitron font-extrabold text-white tracking-widest text-glow-red uppercase">
+        READY FOR WEB-LAUNCH, PETER.
+      </h1>
+<p class="text-[11px] text-slate-300 font-chakra tracking-wide mt-0.5">
+        "Air corridor clear over 5th Avenue. 8 recon drones deployed along rooftop perimeter."
+      </p>
+</div>
+<!-- ========================================================================= -->
+<!-- CENTRAL TACTICAL WEB-TARGET RETICLE & INSOMNIAC WHITE SPIDER EMBLEM -->
+<!-- ========================================================================= -->
+<div class="flex-1 flex items-center justify-center relative min-h-[310px] my-1" id="interactive-cockpit-target">
+<!-- Outer Rotating Targeting Ring (Cyan dashed) -->
+<div class="absolute w-80 h-80 2xl:w-96 2xl:h-96 rounded-full border border-spider-cyan/25 border-dashed reticle-spin-cw pointer-events-none"></div>
+<!-- Outer Segmented Crimson Ring Brackets -->
+<div class="absolute w-72 h-72 2xl:w-88 2xl:h-88 rounded-full border-2 border-transparent border-t-neon-crimson/70 border-b-neon-crimson/70 reticle-spin-ccw pointer-events-none"></div>
+<!-- Inner High-Tech Degree Compass Ring -->
+<div class="absolute w-60 h-60 2xl:w-72 2xl:h-72 rounded-full border border-iron-gold/25 pointer-events-none flex items-center justify-center">
+<!-- North / South Tick Marks -->
+<div class="absolute top-1 text-[7px] font-mono text-spider-cyan">N 000°</div>
+<div class="absolute bottom-1 text-[7px] font-mono text-spider-cyan">S 180°</div>
+<div class="absolute left-1 text-[7px] font-mono text-neon-crimson">W 270°</div>
+<div class="absolute right-1 text-[7px] font-mono text-neon-crimson">E 090°</div>
+</div>
+<!-- Central Web Crosshairs -->
+<div class="w-full h-px bg-gradient-to-r from-transparent via-neon-crimson/40 to-transparent absolute pointer-events-none"></div>
+<div class="h-full w-px bg-gradient-to-b from-transparent via-spider-cyan/40 to-transparent absolute pointer-events-none"></div>
+<!-- 4 Chamfered Bracket Corners for HUD Reticle -->
+<div class="w-48 h-48 2xl:w-56 2xl:h-56 relative flex items-center justify-center">
+<!-- Top Left Bracket -->
+<span class="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-spider-cyan"></span>
+<!-- Top Right Bracket -->
+<span class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-spider-cyan"></span>
+<!-- Bottom Left Bracket -->
+<span class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-neon-crimson"></span>
+<!-- Bottom Right Bracket -->
+<span class="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-neon-crimson"></span>
+<!-- WHITE SPIDER INSOMNIAC EMBLEM (Clean SVG Insignia https://lh3.googleusercontent.com/aida/AEtjO1VFlL92z9-qb4tOe6Hd1A4aT1NWFm6RNDUHYgEw_FEB5aro-o0JlGh-x3oaYNyHSpQGFxKZ-CVkF-rVly-nPviF0eoJRhp_pYQqKxeLhf01j5ieovIM3s8t_LeZXIDhKF-UB4XHS485KE0fgp3rob41xyBO0chbUSpCQ3HZ_wd2o46b6tQVYDL4VK6rt0j-V4Ytp91mJ_67GA9I4BTX4EkZBs-6A9gInWxuv2_bF3oyF2E7xbk5jCDkVQ / https://lh3.googleusercontent.com/aida-public/AB6AXuCkvCGczd1vpThVjE6HAXZi9VY7qW3OxO_MCSAT4EVDiFvMuLhqhtc_mDWRKdMKGxhknkpnUSVIe9pLe2IANsYGX4_9OXG6h4HjoRF2LQfY2QduxUpBQ7AvVY5Ke37HCXnDmu6IWufQAHsEgx3--glvOqWtDYIuPu-k_yucWFklrQraIloejhFGh2YyGaNG3RHStXdnt5e7wCg6A0JwRjhq6Ei0rpEY7Gkopiqs5lpAjKygkvBeDd_HwNIElDZgAv6Tyg) -->
+<div class="w-36 h-36 2xl:w-44 2xl:h-44 flex items-center justify-center relative cursor-pointer group spider-pulse hover:scale-110 transition duration-300" onclick="triggerWebShotPulse()" title="Interactive Web Core: Click to simulate instant web-shot pulse">
+<!-- Ambient glowing radial backdrop behind spider -->
+<div class="absolute inset-0 rounded-full bg-gradient-to-tr from-neon-crimson/25 via-transparent to-spider-cyan/30 filter blur-md"></div>
+<!-- Vector Insomniac Spider Logo https://lh3.googleusercontent.com/aida/AEtjO1VFlL92z9-qb4tOe6Hd1A4aT1NWFm6RNDUHYgEw_FEB5aro-o0JlGh-x3oaYNyHSpQGFxKZ-CVkF-rVly-nPviF0eoJRhp_pYQqKxeLhf01j5ieovIM3s8t_LeZXIDhKF-UB4XHS485KE0fgp3rob41xyBO0chbUSpCQ3HZ_wd2o46b6tQVYDL4VK6rt0j-V4Ytp91mJ_67GA9I4BTX4EkZBs-6A9gInWxuv2_bF3oyF2E7xbk5jCDkVQ -->
+<img alt="Marvel's Spider-Man Insomniac Advanced Suit white spider emblem" class="w-full h-full object-contain filter drop-shadow-[0_0_18px_rgba(255,255,255,0.95)] drop-shadow-[0_0_24px_rgba(0,240,255,0.6)] z-10" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCkvCGczd1vpThVjE6HAXZi9VY7qW3OxO_MCSAT4EVDiFvMuLhqhtc_mDWRKdMKGxhknkpnUSVIe9pLe2IANsYGX4_9OXG6h4HjoRF2LQfY2QduxUpBQ7AvVY5Ke37HCXnDmu6IWufQAHsEgx3--glvOqWtDYIuPu-k_yucWFklrQraIloejhFGh2YyGaNG3RHStXdnt5e7wCg6A0JwRjhq6Ei0rpEY7Gkopiqs5lpAjKygkvBeDd_HwNIElDZgAv6Tyg">
+</div>
+</div>
+<!-- Reticle Target Tracking Box Overlay -->
+<div class="absolute -bottom-1 z-20 flex items-center space-x-2 text-[9px] tracking-[0.2em] uppercase font-mono text-iron-gold pointer-events-none">
+<span class="w-2 h-2 rounded-full bg-neon-crimson animate-ping"></span>
+<span class="text-white font-bold bg-black/60 px-2 py-0.5 rounded border border-hud-border">TARGET LOCK: OSCORP ROOFTOP SPIRE // READY</span>
+</div>
+</div>
+<!-- AUDIO & VOCAL COMMAND INTERFACE (NEON CRIMSON & CYAN EQUALIZERS) -->
+<div class="flex flex-col items-center justify-center space-y-1.5 z-20 my-1">
+<div class="flex items-center space-x-3 sm:space-x-4">
+<!-- Suit Synthesizer Audio Trigger -->
+<button class="w-9 h-9 rounded-full bg-[#0a111e] border border-hud-border text-slate-400 hover:text-spider-cyan hover:border-spider-cyan flex items-center justify-center transition" id="speaker-btn" title="Karen Voice Synthesizer">
+<span class="material-symbols-outlined text-[19px]">volume_up</span>
+</button>
+<!-- Left Equalizer Waveform Bars (Cyan & Crimson) -->
+<div class="flex items-center space-x-1 h-6 px-1">
+<span class="eq-bar w-1 bg-spider-cyan rounded-full h-2" style="height: 4px;"></span>
+<span class="eq-bar w-1 bg-neon-crimson rounded-full h-3" style="height: 3px;"></span>
+<span class="eq-bar w-1 bg-spider-cyan rounded-full h-5" style="height: 3px;"></span>
+<span class="eq-bar w-1 bg-neon-crimson rounded-full h-3" style="height: 7px;"></span>
+</div>
+<!-- Center Glowing Microphone Button (High-Contrast Iron Spider Core) -->
+<button class="w-13 h-13 rounded-full bg-transparent p-0.5 border border-neon-crimson flex items-center justify-center transition group relative hover:scale-105 active:scale-95 glow-red" id="mic-trigger-btn" title="Voice Input (Press Space or Click)">
+<div class="w-12 h-12 rounded-full bg-[#14060d] flex items-center justify-center border border-neon-crimson group-hover:bg-red-950/80 transition">
+<span class="material-symbols-outlined text-neon-crimson text-2xl drop-shadow-[0_0_8px_#ff1744]">mic</span>
+</div>
+</button>
+<!-- Right Equalizer Waveform Bars (Crimson & Cyan) -->
+<div class="flex items-center space-x-1 h-6 px-1">
+<span class="eq-bar w-1 bg-neon-crimson rounded-full h-3" style="height: 4px;"></span>
+<span class="eq-bar w-1 bg-spider-cyan rounded-full h-5" style="height: 6px;"></span>
+<span class="eq-bar w-1 bg-neon-crimson rounded-full h-3" style="height: 10px;"></span>
+<span class="eq-bar w-1 bg-spider-cyan rounded-full h-2" style="height: 5px;"></span>
+</div>
+<!-- Session Air-Time Timer -->
+<button class="w-9 h-9 rounded-full bg-[#0a111e] border border-hud-border text-slate-400 hover:text-white flex items-center justify-center transition" title="Swing Air-Time Stopwatch">
+<span class="material-symbols-outlined text-[19px]">timer</span>
+</button>
+<!-- Reload Reflex Stream -->
+<button class="w-9 h-9 rounded-full bg-[#0a111e] border border-hud-border text-slate-400 hover:text-white flex items-center justify-center transition" id="reset-stream-btn" title="Refresh HUD Mesh">
+<span class="material-symbols-outlined text-[19px]">refresh</span>
+</button>
+</div>
+<!-- Voice Instruction Pill -->
+<div class="text-[8.5px] text-slate-400 font-mono tracking-wider flex items-center space-x-1.5">
+<span class="">Speak suit command or press</span>
+<kbd class="px-1.5 py-0.2 rounded bg-hud-card border border-hud-border text-neon-crimson text-[8px] font-mono font-bold">Space</kbd>
+<span class="">(e.g., "Karen, deploy web bomb", "boost velocity")</span>
+</div>
+</div>
+<!-- QUICK-TOGGLE SUIT SYSTEMS ROW -->
+<div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-1.5 bg-[#070d18] p-1.5 rounded-lg border border-hud-border/80 z-20 text-xs font-mono">
+<!-- Spider-Sense L0 -->
+<div class="flex items-center justify-between p-1 rounded bg-[#0a1220] border border-hud-border/70">
+<div>
+<div class="text-[8.5px] font-bold text-white truncate">Spider-Sense L0</div>
+<div class="text-[7.5px] text-emerald-400">Reflex Armed</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer ml-1">
+<input checked="" class="sr-only peer" type="checkbox">
+<div class="w-5 h-2.5 bg-slate-800 rounded-full peer peer-checked:bg-neon-crimson after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:after:translate-x-2.5"></div>
+</label>
+</div>
+<!-- Electro-Web -->
+<div class="flex items-center justify-between p-1 rounded bg-[#0a1220] border border-hud-border/70">
+<div>
+<div class="text-[8.5px] font-bold text-white truncate">Electro-Web</div>
+<div class="text-[7.5px] text-spider-cyan">Charged High</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer ml-1">
+<input checked="" class="sr-only peer" type="checkbox">
+<div class="w-5 h-2.5 bg-slate-800 rounded-full peer peer-checked:bg-spider-cyan after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:after:translate-x-2.5"></div>
+</label>
+</div>
+<!-- 8 Micro Drones -->
+<div class="flex items-center justify-between p-1 rounded bg-[#0a1220] border border-hud-border/70">
+<div>
+<div class="text-[8.5px] font-bold text-white truncate">8 Micro Drones</div>
+<div class="text-[7.5px] text-iron-gold">Midtown Grid</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer ml-1">
+<input checked="" class="sr-only peer" type="checkbox">
+<div class="w-5 h-2.5 bg-slate-800 rounded-full peer peer-checked:bg-iron-gold after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:after:translate-x-2.5"></div>
+</label>
+</div>
+<!-- Suit Heater -->
+<div class="flex items-center justify-between p-1 rounded bg-[#0a1220] border border-hud-border/70">
+<div>
+<div class="text-[8.5px] font-bold text-white truncate">Suit Heater</div>
+<div class="text-[7.5px] text-emerald-400">37.2°C Sync</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer ml-1">
+<input checked="" class="sr-only peer" type="checkbox">
+<div class="w-5 h-2.5 bg-slate-800 rounded-full peer peer-checked:bg-neon-crimson after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:after:translate-x-2.5"></div>
+</label>
+</div>
+<!-- Spatial Mic -->
+<div class="flex items-center justify-between p-1 rounded bg-[#0a1220] border border-hud-border/70">
+<div>
+<div class="text-[8.5px] font-bold text-white truncate">Spatial Mic</div>
+<div class="text-[7.5px] text-spider-cyan">Noise Filtered</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer ml-1">
+<input checked="" class="sr-only peer" type="checkbox">
+<div class="w-5 h-2.5 bg-slate-800 rounded-full peer peer-checked:bg-spider-cyan after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:after:translate-x-2.5"></div>
+</label>
+</div>
+<!-- Optics HUD -->
+<div class="flex items-center justify-between p-1 rounded bg-[#0a1220] border border-hud-border/70">
+<div>
+<div class="text-[8.5px] font-bold text-white truncate">Optics HUD</div>
+<div class="text-[7.5px] text-emerald-400">Night &amp; Thermal</div>
+</div>
+<label class="relative inline-flex items-center cursor-pointer ml-1">
+<input checked="" class="sr-only peer" type="checkbox">
+<div class="w-5 h-2.5 bg-slate-800 rounded-full peer peer-checked:bg-emerald-400 after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:rounded-full after:h-2 after:w-2 after:transition-all peer-checked:after:translate-x-2.5"></div>
+</label>
+</div>
+</div>
+<!-- BOTTOM LIVE ACTIVITY STREAM FEED -->
+<div class="mt-1.5 p-2 chamfer-panel rounded text-xs z-20 relative">
+<div class="flex items-center justify-between border-b border-hud-border/80 pb-1 mb-1">
+<div class="flex items-center space-x-1.5">
+<span class="w-1.5 h-1.5 rounded-full bg-iron-gold animate-pulse"></span>
+<span class="text-[9px] font-orbitron font-bold uppercase text-slate-200">TACTICAL PATROL ACTIVITY FEED</span>
+</div>
+<span class="text-[8px] text-slate-400 font-mono">SECTOR: MANHATTAN / QUEENS LINK</span>
+</div>
+<div class="font-mono text-[8.5px] space-y-1 max-h-12 overflow-y-auto text-slate-300" id="activity-logs">
+<div class="flex items-center space-x-2">
+<span class="text-slate-500">00:26:26</span>
+<span class="w-1 h-1 bg-iron-gold rounded-full"></span>
+<span class="text-white">VELOCITY COMBAT HUD INITIALIZED · AIRSPEED 185 KM/H STABLE.</span>
+</div>
+<div class="flex items-center space-x-2">
+<span class="text-slate-500">00:25:40</span>
+<span class="w-1 h-1 bg-spider-cyan rounded-full"></span>
+<span class="text-slate-300">Point Launch web-anchor attached to Chrysler Building cornice.</span>
+</div>
+<div class="flex items-center space-x-2">
+<span class="text-slate-500">00:24:12</span>
+<span class="w-1 h-1 bg-neon-crimson rounded-full"></span>
+<span class="text-slate-300">Rooftop snipers tagged via AR visor: 3 hostiles armed.</span>
+</div>
+</div>
+</div>
+</section>
+<!-- ========================================================================= -->
+<!-- COLUMN 3: RIGHT OPERATIONAL DECK (KAREN COMBAT TRANSCRIPT & DISPATCH) -->
+<!-- ========================================================================= -->
+<section aria-label="Right Operational Deck" class="w-80 2xl:w-[22rem] flex flex-col justify-between chamfer-panel chamfer-panel-red rounded overflow-hidden shrink-0 relative">
+<!-- Assistant Combat Header -->
+<div class="p-2.5 border-b border-hud-border flex items-center justify-between bg-[#080e18]">
+<div class="flex items-center space-x-2">
+<div class="p-1 rounded bg-red-950/70 text-neon-crimson border border-neon-crimson/40">
+<span class="material-symbols-outlined text-base">smart_toy</span>
+</div>
+<div>
+<div class="flex items-center space-x-1.5">
+<span class="text-[11px] font-extrabold text-white font-orbitron">KAREN // SUIT LADY</span>
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+</div>
+<div class="text-[8px] text-slate-400 font-mono">Reflex AI router · Stark nanotech protocol</div>
+</div>
+</div>
+<button class="p-1 rounded text-slate-400 hover:text-white transition" onclick="newChatSession()" title="Clear Active Audio Log">
+<span class="material-symbols-outlined text-sm">restart_alt</span>
+</button>
+</div>
+<!-- Tabs: Audio Combat Transcript & Threat Radar -->
+<div class="flex border-b border-hud-border bg-[#060a12] text-[9px] px-2 pt-1 font-mono">
+<button class="py-1.5 px-3 border-b-2 border-neon-crimson text-white font-bold tracking-wider" id="tab-conv" onclick="switchRightTab('conv')">Combat Audio</button>
+<button class="py-1.5 px-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 tracking-wider" id="tab-radar" onclick="switchRightTab('radar')">Sector Threat Radar</button>
+</div>
+<!-- Conversation Container -->
+<div class="flex-1 overflow-y-auto p-2.5 space-y-2.5 font-chakra text-xs" id="chat-messages-container">
+<div class="text-center text-[8px] text-slate-500 font-mono uppercase tracking-widest my-0.5">
+        TODAY // QUEENS PATROL COMBAT LOG
+      </div>
+<!-- Dialogue 1: User Peter -->
+<div class="flex flex-col items-end space-y-1">
+<div class="flex items-center space-x-1.5 text-[8.5px] text-slate-400 font-mono">
+<span class="text-spider-cyan font-bold tracking-wider">PETER</span>
+<span class="">19:48</span>
+</div>
+<div class="bg-hud-card border border-hud-border text-slate-200 px-3 py-2 rounded max-w-[92%] text-[11px] font-normal leading-relaxed">
+          Karen, how's the perimeter look around Midtown East? We've got high wind gusts.
+        </div>
+</div>
+<!-- Dialogue 2: AI Karen -->
+<div class="flex flex-col items-start space-y-1">
+<div class="flex items-center space-x-1.5 text-[8.5px] text-slate-400 font-mono">
+<span class="text-neon-crimson font-bold font-orbitron tracking-wider">KAREN</span>
+<span class="">19:48</span>
+</div>
+<div class="bg-[#140810] border border-neon-crimson/50 text-slate-200 px-3 py-2 rounded max-w-[95%] leading-relaxed text-[11px] relative glow-red">
+          Aerodynamic stabilizers active, Peter. Wind shear calculated at 18.4 knots. Web tensile strength compensated +12%. You're clear for a high-velocity dive.
+        </div>
+</div>
+<!-- Dialogue 3: User Peter -->
+<div class="flex flex-col items-end space-y-1">
+<div class="flex items-center space-x-1.5 text-[8.5px] text-slate-400 font-mono">
+<span class="text-spider-cyan font-bold tracking-wider">PETER</span>
+<span class="">19:50</span>
+</div>
+<div class="bg-hud-card border border-hud-border text-slate-200 px-3 py-2 rounded max-w-[92%] text-[11px] font-normal leading-relaxed">
+          Switch left shooter to Electric Web Dart and prep Web Bomb Scatter on hotkey.
+        </div>
+</div>
+<!-- Dialogue 4: AI Karen -->
+<div class="flex flex-col items-start space-y-1">
+<div class="flex items-center space-x-1.5 text-[8.5px] text-slate-400 font-mono">
+<span class="text-neon-crimson font-bold font-orbitron tracking-wider">KAREN</span>
+<span class="">19:50</span>
+</div>
+<div class="bg-[#140810] border border-neon-crimson/50 text-slate-200 px-3 py-2 rounded max-w-[95%] leading-relaxed text-[11px] relative glow-red">
+          Cartridges switched to high-voltage taser micro-filaments. 4 Web Bombs primed. Rooftop snipers at Azimuth 048° locked onto AR visor.
+        </div>
+</div>
+<!-- SECTOR THREAT RADAR LIST (Switchable or Inset) -->
+<div class="p-2 rounded bg-[#080f1b] border border-hud-border space-y-1.5 font-mono text-[9px] mt-2">
+<div class="text-[8px] uppercase tracking-wider text-iron-gold font-bold flex justify-between">
+<span class="">ACTIVE QUEENS THREAT RADAR:</span>
+<span class="">3 SECTORS</span>
+</div>
+<div class="space-y-1">
+<div class="flex items-center justify-between p-1 bg-black/40 rounded border border-red-950">
+<span class="text-white font-bold">Fisk Gang Arms Cache</span>
+<span class="text-neon-crimson font-bold">DOCKS (350m)</span>
+</div>
+<div class="flex items-center justify-between p-1 bg-black/40 rounded border border-red-950">
+<span class="text-white font-bold">Roxxon Heavy Security Patrol</span>
+<span class="text-iron-gold font-bold">PLAZA (520m)</span>
+</div>
+<div class="flex items-center justify-between p-1 bg-black/40 rounded border border-red-950">
+<span class="text-white font-bold">Escaped Ryker Convicts</span>
+<span class="text-spider-cyan font-bold">ALLEYWAY (140m)</span>
+</div>
+</div>
+</div>
+</div>
+<!-- QUICK COMMAND CHIPS -->
+<div class="px-2 pt-1 pb-1 border-t border-hud-border/70 bg-[#070b13] flex flex-wrap gap-1">
+<button class="px-2 py-0.5 rounded bg-hud-card hover:bg-[#121c2c] border border-hud-border text-[8.5px] font-mono text-slate-300 transition" onclick="triggerProtocol('Point Launch Boost')">
+        ⚡ Point Launch
+      </button>
+<button class="px-2 py-0.5 rounded bg-hud-card hover:bg-[#121c2c] border border-hud-border text-[8.5px] font-mono text-slate-300 transition" onclick="triggerProtocol('Scan Roxxon Patrol')">
+        🔍 Scan Roxxon
+      </button>
+<button class="px-2 py-0.5 rounded bg-hud-card hover:bg-[#121c2c] border border-hud-border text-[8.5px] font-mono text-slate-300 transition" onclick="triggerProtocol('Deploy Web Blossom')">
+        🌸 Web Blossom
+      </button>
+</div>
+<!-- MISSION DISPATCH INPUT FOOTER -->
+<div class="p-2 border-t border-hud-border bg-[#050912] space-y-1.5">
+<div class="flex items-center justify-between text-[8px] font-mono px-1">
+<span class="flex items-center space-x-1 text-slate-400">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+<span class="">Reflex Dispatch Engine</span>
+</span>
+<span class="text-spider-cyan font-bold" id="active-char-label">CHAR: KAREN</span>
+</div>
+<div class="relative bg-[#09101c] border border-hud-border rounded p-1.5">
+<textarea class="w-full bg-transparent border-none text-[11px] text-slate-200 placeholder-slate-500 focus:ring-0 focus:outline-none resize-none font-chakra" id="command-input" placeholder="Give combat order... (e.g., 'Karen, target roof snipers', 'cloak suit')" rows="2"></textarea>
+<div class="flex items-center justify-between pt-1 border-t border-hud-border/60">
+<div class="flex items-center space-x-2 text-slate-400">
+<button class="hover:text-spider-cyan transition" title="Attach GPS Route Marker">
+<span class="material-symbols-outlined text-[17px]">share_location</span>
+</button>
+<button class="hover:text-neon-crimson transition" onclick="toggleMicRecording()" title="Toggle Mic Input">
+<span class="material-symbols-outlined text-[17px]">mic</span>
+</button>
+</div>
+<div class="flex items-center space-x-1.5">
+<span class="text-[8px] text-slate-500 font-mono">↵ send</span>
+<button class="px-2.5 py-1 bg-neon-crimson hover:bg-red-600 text-white font-bold rounded flex items-center space-x-1 text-[9px] transition glow-red" id="send-cmd-btn" onclick="sendUserCommand()">
+<span class="">TRANSMIT</span>
+<span class="material-symbols-outlined text-xs">send</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- ========================================================================= -->
+<!-- BOTTOM GLOBAL FOOTER -->
+<!-- ========================================================================= -->
+<footer class="h-7 border-t border-hud-border bg-[#05080e] px-4 flex items-center justify-between text-[10px] font-mono text-slate-400 z-40 shrink-0">
+<div class="flex items-center space-x-2">
+<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+<span class="text-slate-400 tracking-wider text-[9px]">
+      EDITH MK-II // INSOMNIAC VELOCITY ENGINE · CREATOR: <span class="text-white font-semibold">JASHWANTH RAJ</span>
+</span>
+</div>
+<div class="flex items-center space-x-4 text-[9px]">
+<div class="">AIR PATROL TIME: <span class="text-slate-200 font-mono">00:42:18</span></div>
+<div class="hidden sm:inline">RAPID DODGE: <kbd class="px-1 py-0.2 bg-[#080d16] border border-hud-border text-iron-gold rounded font-bold">O / Circle</kbd></div>
+<div class="text-spider-cyan font-semibold">● SATELLITE SYNCED</div>
+</div>
+</footer>
+<!-- ========================================================================= -->
+<!-- JAVASCRIPT: VELOCITY HUD SYSTEM LOGIC -->
+<!-- ========================================================================= -->
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    // 1. Live Military Clock
+    function updateClock() {
+      const clockEl = document.getElementById("live-clock");
+      if (clockEl) {
+        const now = new Date();
+        const hrs = String(now.getHours()).padStart(2, '0');
+        const mins = String(now.getMinutes()).padStart(2, '0');
+        const secs = String(now.getSeconds()).padStart(2, '0');
+        clockEl.textContent = `${hrs}:${mins}:${secs}`;
+      }
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // 2. Neon Equalizer Simulation
+    initAudioEqualizer();
+
+    // 3. Audio Triggers & Mic Setup
+    setupAudioTriggers();
+
+    // 4. Persona Switcher
+    setupPersonaSwitcher();
+
+    // 5. Enter Key Dispatch
+    const cmdInput = document.getElementById('command-input');
+    if (cmdInput) {
+      cmdInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          sendUserCommand();
+        }
+      });
+    }
+  });
+
+  // Dynamic Segmented Equalizer visualizer
+  function initAudioEqualizer() {
+    const bars = document.querySelectorAll('.eq-bar');
+    setInterval(() => {
+      const isUserSpeaking = (window.userSpeakingLevel || 0) > 0.1;
+      const isKarenSpeaking = window.karenSpeaking === true;
+
+      bars.forEach((bar) => {
+        let h = 4;
+        if (isUserSpeaking) {
+          h = Math.floor(Math.random() * 22) + 6;
+        } else if (isKarenSpeaking) {
+          h = Math.floor(Math.random() * 26) + 8;
+        } else {
+          h = Math.floor(Math.random() * 8) + 3;
+        }
+        bar.style.height = `${h}px`;
+      });
+    }, 85);
+  }
+
+  // Mic & Voice simulation
+  let isListening = false;
+  function toggleMicRecording() {
+    isListening = !isListening;
+    const micBtn = document.getElementById('mic-trigger-btn');
+    if (isListening) {
+      micBtn.classList.add('ring-4', 'ring-neon-crimson');
+      window.userSpeakingLevel = 0.85;
+      logActivity("Acoustic suit feed active - listening for Peter's orders...");
+    } else {
+      micBtn.classList.remove('ring-4', 'ring-neon-crimson');
+      window.userSpeakingLevel = 0;
+      logActivity("Acoustic voice feed on standby.");
+    }
+  }
+
+  function setupAudioTriggers() {
+    const micBtn = document.getElementById('mic-trigger-btn');
+    if (micBtn) {
+      micBtn.addEventListener('click', toggleMicRecording);
+    }
+
+    // Spacebar to talk
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && document.activeElement.tagName !== 'TEXTAREA' && document.activeElement.tagName !== 'INPUT') {
+        e.preventDefault();
+        window.userSpeakingLevel = 0.9;
+      }
+    });
+    window.addEventListener('keyup', (e) => {
+      if (e.code === 'Space' && !isListening) {
+        window.userSpeakingLevel = 0;
+      }
+    });
+
+    // Speaker trigger test
+    const spkBtn = document.getElementById('speaker-btn');
+    if (spkBtn) {
+      spkBtn.addEventListener('click', () => {
+        window.karenSpeaking = !window.karenSpeaking;
+        if (window.karenSpeaking) {
+          logActivity("Karen Voice Synthesizer active: 'Web fluid temperature nominal, Peter.'");
+          setTimeout(() => { window.karenSpeaking = false; }, 3200);
+        }
+      });
+    }
+
+    // Reset stream
+    const rstBtn = document.getElementById('reset-stream-btn');
+    if (rstBtn) {
+      rstBtn.addEventListener('click', () => {
+        window.karenSpeaking = false;
+        window.userSpeakingLevel = 0;
+        logActivity("Reflex core refreshed. Spider-Net latency re-synced.");
+      });
+    }
+
+    // Emergency Suit Dampener
+    const estop = document.getElementById('estop-btn');
+    if (estop) {
+      estop.addEventListener('click', () => {
+        alert("EMERGENCY DAMPENER ENGAGED:\nAll velocity boosters suspended. Nanotech parachute & kinetic safety foam armed. Peter Parker identity verified.");
+        logActivity("SUIT SAFETY DAMPENER LOCK ENGAGED.");
+      });
+    }
+  }
+
+  // Persona Switcher
+  function setupPersonaSwitcher() {
+    const tabs = document.querySelectorAll('.persona-tab');
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => {
+          t.className = 'persona-tab px-2.5 py-0.5 rounded text-slate-400 hover:text-white transition';
+        });
+        tab.className = 'persona-tab px-3 py-0.5 rounded-full bg-neon-crimson text-white border border-neon-crimson glow-red flex items-center space-x-1.5 transition';
+        
+        const persona = tab.dataset.persona;
+        const charLabel = document.getElementById('active-char-label');
+        if (charLabel) charLabel.textContent = `CHAR: ${persona}`;
+        logActivity(`Suit personality shifted to ${persona}. Tactical model updated.`);
+      });
+    });
+  }
+
+  // Activity Log Writer
+  function logActivity(text) {
+    const logBox = document.getElementById('activity-logs');
+    if (!logBox) return;
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+    const row = document.createElement('div');
+    row.className = 'flex items-center space-x-2';
+    row.innerHTML = `<span class="text-slate-500 font-mono">${timeStr}</span><span class="w-1 h-1 bg-neon-crimson rounded-full"></span><span class="uppercase font-mono text-white">${text}</span>`;
+    logBox.insertBefore(row, logBox.firstChild);
+  }
+
+  // Interactive Web-Shot Pulse simulation
+  function triggerWebShotPulse() {
+    logActivity("CENTRAL WEB CORE ACTIVATED: Dual web-shooters discharged.");
+    const emblem = document.querySelector('#interactive-cockpit-target');
+    if (emblem) {
+      emblem.classList.add('scale-[1.02]');
+      setTimeout(() => emblem.classList.remove('scale-[1.02]'), 200);
+    }
+    triggerProtocol("High-Velocity Web Sling Pulse");
+  }
+
+  // Rapid Combat Protocol trigger
+  function triggerProtocol(actionName) {
+    logActivity(`Order triggered: ${actionName}`);
+    appendChatMessage('user', `Deploy ${actionName}`);
+    setTimeout(() => {
+      appendChatMessage('ai', `KAREN`, `Acknowledged Peter. Executing ${actionName}. Nanotech web actuators locked on target.`);
+      window.karenSpeaking = true;
+      setTimeout(() => { window.karenSpeaking = false; }, 2600);
+    }, 450);
+  }
+
+  // Chat message injection
+  function appendChatMessage(sender, nameOrText, text) {
+    const container = document.getElementById('chat-messages-container');
+    if (!container) return;
+
+    const wrapper = document.createElement('div');
+    const now = new Date();
+    const timeStr = `${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+
+    if (sender === 'user') {
+      wrapper.className = 'flex flex-col items-end space-y-1';
+      wrapper.innerHTML = `
+        <div class="flex items-center space-x-1.5 text-[8.5px] text-slate-400 font-mono">
+          <span class="text-spider-cyan font-bold tracking-wider">PETER</span>
+          <span>${timeStr}</span>
+        </div>
+        <div class="bg-hud-card border border-hud-border text-slate-200 px-3 py-2 rounded max-w-[92%] text-[11px] font-normal leading-relaxed">
+          ${nameOrText}
+        </div>
+      `;
+    } else {
+      wrapper.className = 'flex flex-col items-start space-y-1';
+      wrapper.innerHTML = `
+        <div class="flex items-center space-x-1.5 text-[8.5px] text-slate-400 font-mono">
+          <span class="text-neon-crimson font-bold font-orbitron tracking-wider">${nameOrText}</span>
+          <span>${timeStr}</span>
+        </div>
+        <div class="bg-[#140810] border border-neon-crimson/50 text-slate-200 px-3 py-2 rounded max-w-[95%] leading-relaxed text-[11px] relative glow-red font-normal">
+          ${text}
+        </div>
+      `;
+    }
+
+    container.appendChild(wrapper);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  function sendUserCommand() {
+    const input = document.getElementById('command-input');
+    if (!input || !input.value.trim()) return;
+    const val = input.value.trim();
+    input.value = '';
+    appendChatMessage('user', val);
+    logActivity(`Order dispatched: ${val}`);
+
+    setTimeout(() => {
+      appendChatMessage('ai', 'KAREN', `Understood, Peter. Dispatched "${val}" to Stark Reflex engine. Stand by for telemetry confirmation.`);
+      window.karenSpeaking = true;
+      setTimeout(() => { window.karenSpeaking = false; }, 2500);
+    }, 500);
+  }
+
+  function newChatSession() {
+    const container = document.getElementById('chat-messages-container');
+    if (container) {
+      container.innerHTML = `
+        <div class="flex items-center justify-center py-2 text-[10px] text-neon-crimson font-mono uppercase tracking-widest">
+          -- COMBAT AUDIO LOG RESET // KAREN STANDING BY --
+        </div>
+      `;
+    }
+  }
+
+  function switchRightTab(tab) {
+    const btnConv = document.getElementById('tab-conv');
+    const btnRadar = document.getElementById('tab-radar');
+    if (tab === 'conv') {
+      btnConv.className = 'py-1.5 px-3 border-b-2 border-neon-crimson text-white font-bold tracking-wider';
+      btnRadar.className = 'py-1.5 px-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 tracking-wider';
+    } else {
+      btnRadar.className = 'py-1.5 px-3 border-b-2 border-neon-crimson text-white font-bold tracking-wider';
+      btnConv.className = 'py-1.5 px-3 border-b-2 border-transparent text-slate-400 hover:text-slate-200 tracking-wider';
+    }
+  }
+</script>
+
+
+</body></html>

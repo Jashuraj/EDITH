@@ -2,7 +2,7 @@
   "provider": "localtunnel",
   "subdomain": "edith-jashu",
   "custom_url": null,
-  "active_url": null,
-  "healthy": false,
-  "updated_at": 1791744072.9413335
+  "active_url": "https://edith-jashu.loca.lt",
+  "healthy": true,
+  "updated_at": 1791815316.5973244
 }

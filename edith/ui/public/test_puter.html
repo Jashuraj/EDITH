@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EDITH | Claude Opus 5.5 Puter Bridge</title>
+    <script src="https://js.puter.com/v2/"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: radial-gradient(circle at 50% 20%, #0d1b2a, #030712 80%);
+            color: #00f0ff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+        .hud-card {
+            background: rgba(10, 25, 47, 0.85);
+            border: 1px solid rgba(0, 240, 255, 0.4);
+            border-radius: 12px;
+            box-shadow: 0 0 30px rgba(0, 240, 255, 0.2);
+            backdrop-filter: blur(12px);
+            max-width: 760px;
+            width: 100%;
+            padding: 32px;
+        }
+        .header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+            padding-bottom: 16px;
+            margin-bottom: 24px;
+        }
+        .title {
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        .badge {
+            background: rgba(0, 240, 255, 0.15);
+            border: 1px solid #00f0ff;
+            color: #00f0ff;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+        .btn-action {
+            background: linear-gradient(135deg, #00f0ff, #0077b6);
+            color: #030712;
+            font-weight: 700;
+            font-size: 14px;
+            letter-spacing: 1.5px;
+            border: none;
+            border-radius: 8px;
+            padding: 14px 28px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(0, 240, 255, 0.4);
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        .btn-action:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 25px rgba(0, 240, 255, 0.8);
+        }
+        .status-box {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(0, 240, 255, 0.2);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #ffaa00;
+            box-shadow: 0 0 10px #ffaa00;
+            animation: pulse 1.5s infinite;
+        }
+        .status-dot.connected {
+            background: #00ff88;
+            box-shadow: 0 0 10px #00ff88;
+        }
+        .console-box {
+            background: #020617;
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 8px;
+            padding: 18px;
+            min-height: 220px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #e2e8f0;
+            white-space: pre-wrap;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.4; }
+            50% { opacity: 1; }
+            100% { opacity: 0.4; }
+        }
+    </style>
+</head>
+<body>
+    <div class="hud-card">
+        <div class="header">
+            <div class="title">Claude Opus 5.5 Bridge</div>
+            <div class="badge" id="model-tag">MODEL: CLAUDE-OPUS-5-5</div>
+        </div>
+
+        <button class="btn-action" id="action-btn" onclick="authorizeAndExecute()">
+            Authorize With Puter & Run Opus 5.5
+        </button>
+
+        <div class="status-box">
+            <div class="status-dot" id="status-dot"></div>
+            <div id="status-text">Click the button above to authorize with Puter (free 1-click sign-in).</div>
+        </div>
+
+        <div class="console-box" id="console-output">Waiting for user authorization...</div>
+    </div>
+
+    <script>
+        const statusDot = document.getElementById('status-dot');
+        const statusText = document.getElementById('status-text');
+        const consoleOutput = document.getElementById('console-output');
+        const actionBtn = document.getElementById('action-btn');
+
+        async function authorizeAndExecute() {
+            actionBtn.disabled = true;
+            statusText.innerText = 'Connecting to Puter... Please complete the popup dialog.';
+            consoleOutput.innerText = '[1/3] Launching Puter authorization window...\n';
+
+            try {
+                // Trigger Puter sign-in dialog
+                const authRes = await puter.auth.signIn();
+                statusDot.classList.add('connected');
+                statusText.innerText = 'Authenticated! Saving token to EDITH backend...';
+                consoleOutput.innerText += '[2/3] Puter authorization succeeded!\n';
+
+                // Grab token
+                const token = puter.authToken;
+                if (token) {
+                    consoleOutput.innerText += '[+] Extracted Puter Auth Token: ' + token.substring(0, 10) + '...\n';
+                    // Persist to local server
+                    try {
+                        await fetch('/api/puter/save_token', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ token: token })
+                        });
+                        consoleOutput.innerText += '[+] Token saved to EDITH backend environment (.env.local).\n';
+                    } catch (e) {
+                        consoleOutput.innerText += '[!] Local backend sync skipped: ' + e.message + '\n';
+                    }
+                }
+
+                // Query Claude Opus 5.5 with streaming
+                statusText.innerText = 'Streaming response from Claude Opus 5.5...';
+                consoleOutput.innerText += '[3/3] Querying claude-opus-5-5 now...\n\n--- OPUS 5.5 STREAM BEGIN ---\n';
+
+                const response = await puter.ai.chat(
+                    "You are EDITH powered by Claude Opus 5.5. Confirm your model version, capabilities, and salute the user.",
+                    { model: "claude-opus-5-5", stream: true }
+                );
+
+                for await (const chunk of response) {
+                    consoleOutput.innerText += chunk?.text || "";
+                    consoleOutput.scrollTop = consoleOutput.scrollHeight;
+                }
+
+                consoleOutput.innerText += '\n\n--- OPUS 5.5 STREAM COMPLETE ---';
+                statusText.innerText = 'Claude Opus 5.5 verified and online!';
+                actionBtn.innerText = 'Run Another Query';
+                actionBtn.disabled = false;
+            } catch (err) {
+                statusDot.classList.remove('connected');
+                statusText.innerText = 'Error: ' + (err.message || String(err));
+                consoleOutput.innerText += '\n[!] Error encountered:\n' + JSON.stringify(err, null, 2);
+                actionBtn.disabled = false;
+            }
+        }
+
+        // Auto trigger on load if already authenticated
+        window.addEventListener('load', async () => {
+            if (puter.auth.isSignedIn()) {
+                authorizeAndExecute();
+            }
+        });
+    </script>
+</body>
+</html>

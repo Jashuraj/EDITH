@@ -182,6 +182,30 @@ class TestUIServer(unittest.TestCase):
                 or audio.startswith(b"\xff\xf2")
             )
 
+    def test_peter_mode_endpoints(self):
+        # 1. Test /peter route
+        req = urllib.request.Request("http://127.0.0.1:8796/peter")
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            html = res.read().decode("utf-8")
+            self.assertIn("Insomniac Velocity Cockpit", html)
+            self.assertIn("SPIDER-MAN", html)
+
+        # 2. Test /peter.html static route
+        req = urllib.request.Request("http://127.0.0.1:8796/peter.html")
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            html = res.read().decode("utf-8")
+            self.assertIn("WEB FLUID CANISTERS", html)
+
+        # 3. Test /command endpoint alias
+        body = json.dumps({"command": "what is your status"}).encode("utf-8")
+        req = urllib.request.Request("http://127.0.0.1:8796/command", data=body, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            data = json.loads(res.read().decode("utf-8"))
+            self.assertTrue(data["matched"])
+
 
 if __name__ == "__main__":
     unittest.main()
