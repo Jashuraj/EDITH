@@ -232,6 +232,21 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                 chk_cnt = conn.execute("SELECT COUNT(*) as c FROM rag_chunks;").fetchone()["c"]
             self._send_json({"indexed_documents": doc_cnt, "indexed_chunks": chk_cnt})
 
+        # Proactive Cron Patrol Status
+        elif parsed.path == "/api/cron/status":
+            from edith.tasks.cron_patrol import CRON_PATROL
+            self._send_json(CRON_PATROL.get_status())
+
+        # Smart Home IoT Bridge Status
+        elif parsed.path == "/api/iot/status":
+            from edith.tools.iot_bridge import IOT_BRIDGE
+            self._send_json({"status": IOT_BRIDGE.get_status(), "states": IOT_BRIDGE.get_states()})
+
+        # Global Hotkey Daemon Status
+        elif parsed.path == "/api/hotkeys/status":
+            from edith.tools.hotkeys import HOTKEY_DAEMON
+            self._send_json(HOTKEY_DAEMON.get_status())
+
         elif parsed.path == "/weather":
             try:
                 req = urllib.request.Request(
@@ -1146,6 +1161,52 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                     for r in results
                 ],
             })
+            return
+
+        # Multi-Agent Swarm Orchestrator Endpoint
+        elif parsed.path == "/api/swarm/run":
+            goal = str(data.get("goal") or data.get("prompt") or "").strip()
+            if not goal:
+                self._send_json({"success": False, "error": "No goal provided"}, status=400)
+                return
+            from edith.tasks.agent_swarm import AGENT_SWARM
+            loop = asyncio.new_event_loop()
+            try:
+                swarm_res = loop.run_until_complete(AGENT_SWARM.execute_swarm(goal=goal))
+                self._send_json({
+                    "success": swarm_res.success,
+                    "goal": swarm_res.goal,
+                    "consensus": swarm_res.consensus,
+                    "duration_ms": swarm_res.total_duration_ms,
+                    "reports": [
+                        {
+                            "role": r.role.value,
+                            "perspective": r.perspective,
+                            "content": r.content,
+                            "duration_ms": r.duration_ms,
+                            "success": r.success,
+                        }
+                        for r in swarm_res.reports
+                    ],
+                })
+            except Exception as ex:
+                self._send_json({"success": False, "error": str(ex)}, status=500)
+            finally:
+                loop.close()
+            return
+
+        # Trigger Proactive Patrol Job
+        elif parsed.path == "/api/cron/trigger":
+            job_id = str(data.get("job_id") or "vitals_patrol")
+            from edith.tasks.cron_patrol import CRON_PATROL
+            self._send_json(CRON_PATROL.run_once(job_id))
+            return
+
+        # Smart Home IoT Peter Mode Ambient Profile
+        elif parsed.path == "/api/iot/ambient":
+            entity = str(data.get("entity_id") or "light.ambient_lights")
+            from edith.tools.iot_bridge import IOT_BRIDGE
+            self._send_json(IOT_BRIDGE.set_peter_mode_ambient(entity))
             return
 
         else:

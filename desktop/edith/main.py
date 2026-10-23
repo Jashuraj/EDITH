@@ -133,6 +133,12 @@ def serve_all(ui_port: int = 8794, phone_port: int = 8795) -> None:
 
     STATE.set_state_sync(SystemState.READY, reason="EDITH daemon servers online")
 
+    # Start proactive autonomy cron engine and global hotkey daemon
+    from edith.tasks.cron_patrol import CRON_PATROL
+    from edith.tools.hotkeys import HOTKEY_DAEMON
+    CRON_PATROL.start()
+    HOTKEY_DAEMON.start()
+
     # Start double clap welcome listener in background (disabled by default)
     clap_active = False
     if CONFIG.clap_welcome_enabled:
@@ -185,6 +191,8 @@ def serve_all(ui_port: int = 8794, phone_port: int = 8795) -> None:
             time.sleep(1)
     except KeyboardInterrupt:
         print("\nShutting down EDITH servers...")
+        CRON_PATROL.stop()
+        HOTKEY_DAEMON.stop()
         if clap_active:
             try:
                 from edith.voice.clap_detector import CLAP_DETECTOR

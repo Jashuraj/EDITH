@@ -376,3 +376,70 @@ def register_builtin_tools(registry) -> None:
         fn=lambda **kwargs: __import__("edith.tools.mcp_client", fromlist=["MCP_CLIENT"]).MCP_CLIENT.get_status(),
     )
 
+    # Headless Web & Browser Agent Pack
+    registry.register(
+        name="browser_fetch_page",
+        description="Fetch clean readable text and hyperlinks from any web page URL",
+        action_pack="BROWSER_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda url="", **kwargs: {
+            "title": __import__("edith.tools.browser_agent", fromlist=["BROWSER_AGENT"]).BROWSER_AGENT.fetch_page(url or kwargs.get("target") or "").title,
+            "text": __import__("edith.tools.browser_agent", fromlist=["BROWSER_AGENT"]).BROWSER_AGENT.fetch_page(url or kwargs.get("target") or "").text_content[:2000],
+            "status": __import__("edith.tools.browser_agent", fromlist=["BROWSER_AGENT"]).BROWSER_AGENT.fetch_page(url or kwargs.get("target") or "").status_code,
+        },
+        parameters_schema={"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"]},
+    )
+    registry.register(
+        name="browser_capture_screenshot",
+        description="Capture full-page screenshot of a web page using headless Edge/Chrome",
+        action_pack="BROWSER_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda url="", **kwargs: {
+            "screenshot_path": __import__("edith.tools.browser_agent", fromlist=["BROWSER_AGENT"]).BROWSER_AGENT.capture_screenshot(url or kwargs.get("target") or "")
+        },
+        parameters_schema={"type": "object", "properties": {"url": {"type": "string"}}, "required": ["url"]},
+    )
+
+    # Smart Home & IoT Pack
+    registry.register(
+        name="smart_home_set_light",
+        description="Turn on/off or set brightness and color of a Home Assistant smart light",
+        action_pack="WINDOWS_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda entity_id="", state=True, **kwargs: (
+            __import__("edith.tools.iot_bridge", fromlist=["IOT_BRIDGE"]).IOT_BRIDGE.set_light_state(
+                entity_id or kwargs.get("light") or "light.desk_lamp",
+                bool(state),
+                brightness=kwargs.get("brightness"),
+                rgb_color=kwargs.get("rgb_color"),
+            )
+        ),
+        parameters_schema={"type": "object", "properties": {"entity_id": {"type": "string"}, "state": {"type": "boolean"}}, "required": ["entity_id"]},
+    )
+    registry.register(
+        name="smart_home_peter_mode",
+        description="Switch smart home ambient lighting to Peter Mode crimson & gold",
+        action_pack="WINDOWS_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda entity_id="light.ambient_lights", **kwargs: (
+            __import__("edith.tools.iot_bridge", fromlist=["IOT_BRIDGE"]).IOT_BRIDGE.set_peter_mode_ambient(
+                entity_id or kwargs.get("light") or "light.ambient_lights"
+            )
+        ),
+    )
+
+    # Proactive Autonomy & Cron Patrol Pack
+    registry.register(
+        name="trigger_patrol_job",
+        description="Manually execute a scheduled background patrol (vitals_patrol, memory_cleanup)",
+        action_pack="WINDOWS_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda job_id="vitals_patrol", **kwargs: (
+            __import__("edith.tasks.cron_patrol", fromlist=["CRON_PATROL"]).CRON_PATROL.run_once(
+                job_id or kwargs.get("job") or "vitals_patrol"
+            )
+        ),
+        parameters_schema={"type": "object", "properties": {"job_id": {"type": "string"}}, "required": ["job_id"]},
+    )
+
+
