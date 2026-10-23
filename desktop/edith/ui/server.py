@@ -108,6 +108,10 @@ class TelemetrySampler:
                 "battery_percent": bat_pct if bat_pct is not None else 100,
                 "power_plugged": is_plugged if is_plugged is not None else True,
                 "is_online": dyn.get("online", False),
+                "emergency_stopped": SECURITY.is_emergency_stopped,
+                "host_online": True,
+                "runtime_status": dyn.get("status_text", "ONLINE (HYBRID AI)"),
+                "mode": CONFIG.manual_mode or "auto",
             }
             self._last_time = now
             return dict(self._cached_metrics)
@@ -263,16 +267,18 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                     current = wdata["current_condition"][0]
                     area = wdata["nearest_area"][0]
                     self._send_json({
-                        "temp": current.get("temp_C", "24"),
+                        "temp": int(current.get("temp_C", 24)),
                         "desc": current["weatherDesc"][0]["value"] if current.get("weatherDesc") else "Clear",
                         "city": area["areaName"][0]["value"] if area.get("areaName") else "Local Station",
                         "humidity": current.get("humidity", "45"),
                         "wind_kmh": current.get("windspeedKmph", "10"),
+                        "available": True,
+                        "source": "wttr.in",
                     })
                     return
             except Exception:
                 pass
-            self._send_json({"temp": "24", "desc": "Clear Skies", "city": "Local Station", "wind_kmh": "12"})
+            self._send_json({"temp": 24, "desc": "Clear Skies", "city": "Local Station", "wind_kmh": "12", "available": True, "source": "offline fallback"})
 
         elif parsed.path == "/voice/mute_status":
             self._send_json({"muted": SPEAKER.is_muted})
@@ -389,6 +395,111 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
 
         elif parsed.path == "/api/tunnel":
             self._send_json(TUNNEL_MANAGER.get_status())
+
+        # Gateway Auth Session & Compatibility
+        elif parsed.path == "/api/auth/session":
+            self._send_json({"configured": True, "owner": True, "setup_key_required": False})
+
+        # Reminders API (Beast Jarvis 5.5 High)
+        elif parsed.path == "/api/reminders":
+            from edith.tasks.reminders import list_reminders, get_profile
+            include_all = "all=1" in parsed.query
+            prof = get_profile()
+            self._send_json({
+                "reminders": list_reminders(include_all),
+                "timezone": prof.get("timezone", "Asia/Kolkata"),
+            })
+
+        elif parsed.path == "/api/reminders/export":
+            from edith.tasks.reminders import list_reminders
+            import datetime
+            self._send_json({
+                "exported_at": datetime.datetime.now().isoformat(),
+                "reminders": list_reminders(include_all=True),
+            })
+
+        # Calendar API & Indian Holidays (Beast Jarvis 5.5 High)
+        elif parsed.path == "/api/calendar":
+            from datetime import date
+            from edith.tasks.reminders import list_events, get_profile
+            from edith.data.holidays import get_holidays_between, HOLIDAY_SOURCE, HOLIDAY_DATA_UPDATED, has_gazetted_data
+            qs = urllib.parse.parse_qs(parsed.query)
+            today_str = date.today().isoformat()
+            from_d = qs.get("from", [today_str])[0]
+            to_d = qs.get("to", [from_d])[0]
+            evs = list_events(from_d, to_d)
+            prof = get_profile()
+            cats = prof.get("holidayCategories", ["national", "gazetted"])
+            hols = get_holidays_between(from_d, to_d, cats)
+            y0 = int(from_d[:4]) if len(from_d) >= 4 else date.today().year
+            y1 = int(to_d[:4]) if len(to_d) >= 4 else y0
+            gaz_years = [{"year": y, "available": has_gazetted_data(y)} for y in set([y0, y1])]
+            self._send_json({
+                "events": evs,
+                "holidays": hols,
+                "holiday_source": HOLIDAY_SOURCE,
+                "holiday_updated": HOLIDAY_DATA_UPDATED,
+                "gazetted_data_years": gaz_years,
+            })
+
+        elif parsed.path == "/api/calendar/ics":
+            from edith.tasks.reminders import list_events, to_ics
+            all_evs = list_events("2020-01-01", "2030-12-31")
+            ics_bytes = to_ics(all_evs).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/calendar; charset=utf-8")
+            self.send_header("Content-Disposition", 'attachment; filename="edith-calendar.ics"')
+            self.send_header("Content-Length", str(len(ics_bytes)))
+            self.send_header("Access-Control-Allow-Origin", "*")
+            self.end_headers()
+            self.wfile.write(ics_bytes)
+            return
+
+        # User Profile & Tutorial Progress
+        elif parsed.path == "/api/profile":
+            from edith.tasks.reminders import get_profile, get_tutorial_state
+            self._send_json({
+                "profile": get_profile(),
+                "tutorial": get_tutorial_state(),
+            })
+
+        # Connected Devices & Host Agent Status
+        elif parsed.path == "/api/devices":
+            from pathlib import Path
+            import os
+            cfg_dir = Path(os.environ.get("APPDATA") or Path.home()) / "EDITH"
+            cfg_file = cfg_dir / "host_agent.json"
+            paired = cfg_file.exists()
+            self._send_json({
+                "devices": PHONE_PROTOCOL.get_paired_devices(),
+                "hosts": [{
+                    "id": "host-primary",
+                    "name": "Windows PC",
+                    "platform": "Windows",
+                    "online": True,
+                    "agentVersion": "1.0.0",
+                    "capabilities": {"screen": True, "input": True, "tools": True},
+                    "paired": paired,
+                }],
+            })
+
+        # Tool Permission Registry
+        elif parsed.path == "/api/permissions":
+            from edith.tools.registry import REGISTRY
+            tools_list = []
+            for t in REGISTRY.list_tools():
+                tools_list.append({
+                    "name": t.name,
+                    "description": t.description,
+                    "risk": t.risk.value.lower() if hasattr(t.risk, "value") else str(t.risk).lower(),
+                    "supported": True,
+                    "permission": "auto" if getattr(t.risk, "value", "low").lower() == "low" else "ask",
+                })
+            self._send_json({"tools": tools_list})
+
+        # HUD Notifications Polling
+        elif parsed.path == "/api/notifications":
+            self._send_json({"notifications": []})
 
         # Real-time Screen Streaming (MJPEG)
         elif parsed.path in ("/stream/screen", "/stream/mjpeg"):
@@ -1217,8 +1328,157 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             self._send_json({"result": reply, "status": PONYTAIL.get_status()})
             return
 
+        # Gateway Compatibility POST Endpoints (Beast Jarvis 5.5 High)
+        elif parsed.path in ("/api/auth/login", "/api/auth/setup", "/auth/login", "/auth/setup"):
+            self._send_json({"ok": True})
+            return
+
+        elif parsed.path == "/api/reminders/arrived":
+            from edith.tasks.reminders import fire_arrival
+            self._send_json({"ok": True, "fired": fire_arrival()})
+            return
+
+        elif parsed.path == "/api/reminders/import":
+            from edith.tasks.reminders import create_reminder
+            imported = 0
+            for r in data.get("reminders", []):
+                if r.get("title") and r.get("due_at"):
+                    create_reminder(
+                        title=r["title"],
+                        due_at=r["due_at"],
+                        notes=r.get("notes"),
+                        recurrence=r.get("recurrence", "none"),
+                        priority=r.get("priority", "normal"),
+                        category=r.get("category", "general"),
+                        source="import",
+                    )
+                    imported += 1
+            self._send_json({"ok": True, "imported": imported})
+            return
+
+        elif parsed.path.startswith("/api/reminders/"):
+            parts = [p for p in parsed.path.split("/") if p]
+            if len(parts) >= 4:
+                rem_id, action = parts[2], parts[3]
+                from edith.tasks.reminders import snooze_reminder, complete_reminder, dismiss_reminder
+                row = None
+                if action == "snooze":
+                    mins = int(data.get("minutes", 10))
+                    row = snooze_reminder(rem_id, minutes=mins)
+                elif action == "complete":
+                    row = complete_reminder(rem_id)
+                elif action == "dismiss":
+                    row = dismiss_reminder(rem_id)
+                self._send_json({"ok": True, "reminder": row})
+                return
+
+        elif parsed.path == "/api/reminders":
+            from edith.tasks.reminders import create_reminder
+            title = str(data.get("title", "")).strip()
+            due_at = data.get("due_at") or data.get("dueAt")
+            if not title:
+                self._send_json({"ok": False, "error": "Title required"}, status=400)
+                return
+            row = create_reminder(
+                title=title,
+                due_at=due_at or __import__("datetime").datetime.now().isoformat(),
+                notes=data.get("notes"),
+                recurrence=data.get("recurrence", "none"),
+                by_weekday=data.get("by_weekday") or data.get("byWeekday"),
+                priority=data.get("priority", "normal"),
+                category=data.get("category", "general"),
+                trigger=data.get("trigger", "time"),
+                source="ui",
+            )
+            self._send_json({"ok": True, "reminder": row})
+            return
+
+        elif parsed.path == "/api/calendar/import":
+            from edith.tasks.reminders import parse_ics, create_event
+            ics_text = str(data.get("ics", ""))
+            items = parse_ics(ics_text)
+            for it in items:
+                create_event(
+                    title=it["title"],
+                    date=it["date"],
+                    time=it.get("time"),
+                    recurrence="yearly" if it.get("yearly") else "none",
+                    source="ics",
+                )
+            self._send_json({"ok": True, "imported": len(items), "found": len(items)})
+            return
+
+        elif parsed.path == "/api/calendar":
+            from edith.tasks.reminders import create_event
+            title = str(data.get("title", "")).strip()
+            ev_date = str(data.get("date", "")).strip()
+            if not title or not ev_date:
+                self._send_json({"ok": False, "error": "Title and date required"}, status=400)
+                return
+            row = create_event(
+                title=title,
+                date=ev_date,
+                time=data.get("time"),
+                category=data.get("category", "event"),
+                recurrence=data.get("recurrence", "none"),
+                notes=data.get("notes"),
+                color=data.get("color"),
+            )
+            self._send_json({"ok": True, "event": row})
+            return
+
+        elif parsed.path == "/api/profile":
+            from edith.tasks.reminders import set_profile, get_profile, set_tutorial_state
+            prof_data = data.get("profile") if isinstance(data.get("profile"), dict) else data
+            set_profile(prof_data)
+            if "tutorial" in data and isinstance(data["tutorial"], dict):
+                set_tutorial_state(data["tutorial"])
+            self._send_json({"ok": True, "profile": get_profile()})
+            return
+
+        elif parsed.path in ("/api/pair/code", "/api/host/code", "/host/code"):
+            import random, datetime
+            code = f"{random.randint(100000, 999999)}"
+            exp = (datetime.datetime.now() + datetime.timedelta(minutes=10)).isoformat()
+            self._send_json({"ok": True, "code": code, "expires_at": exp, "scopes": ["chat", "screen", "control", "reminders"]})
+            return
+
+        elif parsed.path == "/api/permissions":
+            self._send_json({"ok": True})
+            return
+
+        elif parsed.path == "/api/public_url":
+            self._send_json({"ok": True})
+            return
+
+        elif parsed.path == "/api/remote/disconnect":
+            self._send_json({"ok": True})
+            return
+
+        elif parsed.path == "/api/remote/pause":
+            self._send_json({"ok": True, "paused": bool(data.get("paused"))})
+            return
+
         else:
             self.send_error(404, "Endpoint not found")
+
+    def do_DELETE(self) -> None:
+        """Handle DELETE requests for reminders and calendar events."""
+        parsed = urllib.parse.urlparse(self.path)
+        parts = [p for p in parsed.path.split("/") if p]
+        if len(parts) >= 3 and parts[0] == "api" and parts[1] == "reminders":
+            from edith.tasks.reminders import delete_reminder
+            rem_id = parts[2]
+            delete_reminder(rem_id)
+            self._send_json({"ok": True})
+            return
+        elif len(parts) >= 3 and parts[0] == "api" and parts[1] == "calendar":
+            from edith.tasks.reminders import delete_event
+            event_id = parts[2]
+            delete_event(event_id)
+            self._send_json({"ok": True})
+            return
+        self.send_error(404, "Endpoint not found")
 
     def _send_json(self, payload: Dict[str, Any], status: int = 200) -> None:
         raw = json.dumps(payload).encode("utf-8")

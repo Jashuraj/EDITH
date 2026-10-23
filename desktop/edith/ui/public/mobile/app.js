@@ -2623,7 +2623,10 @@
     dom.btnSaveSettings.addEventListener("click", async () => {
       state.localUrl = dom.cfgLocalUrl.value.trim() || defaultLocalUrl;
       state.cloudUrl = dom.cfgCloudUrl.value.trim();
-      state.token = dom.cfgToken.value.trim();
+      state.token = await (window.edithResolveToken
+        ? window.edithResolveToken(dom.cfgToken.value.trim(), state.cloudUrl || state.localUrl, logConsole)
+        : dom.cfgToken.value.trim());
+      dom.cfgToken.value = state.token;
 
       if (dom.cfgTheme) setMobileTheme(dom.cfgTheme.value);
       if (dom.cfgVoiceChar) setMobileVoiceCharacter(dom.cfgVoiceChar.value);
@@ -3039,9 +3042,19 @@
     };
     window.saveHostSettings = async () => {
       const inp = document.getElementById("setting-host-url") || document.getElementById("cfg-local-url");
+      const tokInp = document.getElementById("setting-token") || document.getElementById("cfg-token");
       if (inp && inp.value.trim()) {
-        state.localUrl = inp.value.trim();
+        state.localUrl = inp.value.trim().replace(/\/+$/, "");
         localStorage.setItem(STORAGE_KEYS.LOCAL_URL, state.localUrl);
+        if (tokInp && tokInp.value.trim() && window.edithResolveToken) {
+          const t = await window.edithResolveToken(tokInp.value.trim(), state.localUrl, logConsole);
+          if (t) {
+            state.token = t;
+            localStorage.setItem(STORAGE_KEYS.TOKEN, t);
+            tokInp.value = "";
+            tokInp.placeholder = "Paired ✓ (enter a new code to re-pair)";
+          }
+        }
         window.closeModal("settings");
         await resolveActiveEndpoint();
         await pollLaptopVitals();

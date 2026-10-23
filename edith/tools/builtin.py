@@ -456,4 +456,106 @@ def register_builtin_tools(registry) -> None:
         parameters_schema={"type": "object", "properties": {"command": {"type": "string"}}},
     )
 
+    # EDITH Gateway & Host Agent Pack (Beast Jarvis 5.5 High)
+    def _get_gateway_status(**kwargs):
+        import urllib.request, json
+        gw_url = kwargs.get("url") or "http://127.0.0.1:3000"
+        status = {"gateway_url": gw_url, "online": False, "version": "2.1.0"}
+        try:
+            req = urllib.request.Request(f"{gw_url}/api/state", headers={"User-Agent": "EDITH-Internal"})
+            with urllib.request.urlopen(req, timeout=1.5) as res:
+                if res.status == 200:
+                    status["online"] = True
+                    try:
+                        status["data"] = json.loads(res.read().decode())
+                    except Exception:
+                        pass
+        except Exception as e:
+            status["error"] = str(e)
+        return status
+
+    def _get_host_agent_status(**kwargs):
+        from pathlib import Path
+        import json, os
+        cfg_dir = Path(os.environ.get("APPDATA") or Path.home()) / "EDITH"
+        cfg_file = cfg_dir / "host_agent.json"
+        if cfg_file.exists():
+            try:
+                data = json.loads(cfg_file.read_text(encoding="utf-8"))
+                return {
+                    "installed": True,
+                    "config_path": str(cfg_file),
+                    "gateway": data.get("gateway"),
+                    "device_name": data.get("name"),
+                    "paired": bool(data.get("token")),
+                }
+            except Exception as e:
+                return {"installed": True, "error": str(e)}
+        return {"installed": False, "config_path": str(cfg_file), "paired": False}
+
+    registry.register(
+        name="gateway_status",
+        description="Check EDITH Next.js Gateway (port 3000) connectivity and state",
+        action_pack="SYSTEM_PACK",
+        risk=RiskLevel.LOW,
+        fn=_get_gateway_status,
+    )
+    registry.register(
+        name="host_agent_status",
+        description="Check Windows Host Agent configuration and pairing status",
+        action_pack="WINDOWS_PACK",
+        risk=RiskLevel.LOW,
+        fn=_get_host_agent_status,
+    )
+    registry.register(
+        name="create_reminder",
+        description="Create a persistent scheduled reminder with optional recurrence",
+        action_pack="SYSTEM_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda title="", due_at="", **kwargs: (
+            __import__("edith.tasks.reminders", fromlist=["create_reminder"]).create_reminder(
+                title=title, due_at=due_at or kwargs.get("due", ""), **kwargs
+            )
+        ),
+    )
+    registry.register(
+        name="list_reminders",
+        description="List active reminders and scheduled alerts",
+        action_pack="SYSTEM_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda include_all=False, **kwargs: (
+            __import__("edith.tasks.reminders", fromlist=["list_reminders"]).list_reminders(
+                include_all=include_all
+            )
+        ),
+    )
+    registry.register(
+        name="get_holidays",
+        description="Query Indian National and Gazetted holidays in a date range",
+        action_pack="SYSTEM_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda from_date="", to_date="", **kwargs: (
+            __import__("edith.data.holidays", fromlist=["get_holidays_between"]).get_holidays_between(
+                from_date=from_date or "2026-01-01",
+                to_date=to_date or "2026-12-31",
+                categories=kwargs.get("categories"),
+            )
+        ),
+    )
+    registry.register(
+        name="set_timer",
+        description="Start a countdown timer alert",
+        action_pack="SYSTEM_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda minutes=10, label="Timer", **kwargs: (
+            __import__("edith.tasks.reminders", fromlist=["create_reminder"]).create_reminder(
+                title=f"Timer: {label}",
+                due_at=(__import__("datetime").datetime.now() + __import__("datetime").timedelta(minutes=minutes)).isoformat(),
+                priority="high",
+                source="tool",
+            )
+        ),
+    )
+
+
 

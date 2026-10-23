@@ -229,6 +229,54 @@ class ReflexEngine:
         # Ponytail Minimalist Lazy Senior Dev Mode (/pony, /ponytail)
         self.register(r"^(?:/)?(?:pony|ponytail)(?:\s+(?P<args>.*))?$", "ponytail_mode", "system", {})
 
+        # Gateway & Host Agent Status Reflex (<15ms)
+        self.register(app_prefix + r"(?:check\s+gateway|gateway\s+status|is\s+gateway\s+online)$", "gateway_status", "system", {})
+        self.register(app_prefix + r"(?:check\s+host\s+agent|host\s+agent\s+status)$", "host_agent_status", "system", {})
+
+        # Reminders, Timers, and Calendar Reflexes (Beast Jarvis 5.5 High)
+        self.register(
+            app_prefix + r"(?:remind\s+me|set\s+(?:a\s+)?reminder|create\s+(?:a\s+)?reminder|add\s+(?:a\s+)?reminder)\s*(?:to|about|that|for)?\s+(?P<reminder_text>.+)$",
+            "set_reminder",
+            "system",
+            {},
+        )
+        self.register(
+            app_prefix + r"(?:set\s+(?:a\s+)?)?timer(?:\s+for)?\s+(?P<duration>\d+|an?|one|half\s+an?)\s*(?P<unit>minutes?|mins?|hours?|hrs?|seconds?|secs?)?(?:\s+(?:for|to|called)\s+(?P<label>.+))?$",
+            "set_timer",
+            "system",
+            {},
+        )
+        self.register(
+            app_prefix + r"(?:what(?:'s|\s+is)\s+on\s+today|today(?:'s)?\s+(?:schedule|events|agenda|reminders)|what\s+do\s+i\s+have\s+today)$",
+            "today_agenda",
+            "system",
+            {},
+        )
+        self.register(
+            app_prefix + r"(?:what\s+(?:are\s+the\s+)?(?:next\s+|upcoming\s+|next\s+upcoming\s+)?holidays|upcoming\s+holidays|next\s+holiday|indian\s+holidays)$",
+            "upcoming_holidays",
+            "system",
+            {},
+        )
+        self.register(
+            app_prefix + r"(?:go\s+offline|enter\s+offline\s+mode|enable\s+offline\s+mode|set\s+mode\s+offline)$",
+            "set_mode_offline",
+            "system",
+            {},
+        )
+        self.register(
+            app_prefix + r"(?:go\s+online|enter\s+online\s+mode|enable\s+online\s+mode|set\s+mode\s+online)$",
+            "set_mode_online",
+            "system",
+            {},
+        )
+        self.register(
+            app_prefix + r"(?:set\s+mode\s+auto|enter\s+auto\s+mode|auto\s+mode)$",
+            "set_mode_auto",
+            "system",
+            {},
+        )
+
 
     def register(self, regex_pattern: str, command_name: str, action_type: str, params: Dict[str, Any]) -> None:
         """Register a new deterministic pattern."""
@@ -438,6 +486,148 @@ class ReflexEngine:
             from edith.tools.ponytail import PONYTAIL
             raw_args = match.params.get("args") or ""
             return PONYTAIL.handle_command(raw_args)
+        elif match.command_name == "gateway_status":
+            from edith.tools.registry import REGISTRY
+            fn = REGISTRY.get("gateway_status")
+            status = fn.fn() if fn else {"online": False}
+            if status.get("online"):
+                return f"EDITH Gateway is ONLINE at {status.get('gateway_url')} (v{status.get('version', '2.1.0')})."
+            return f"EDITH Gateway is OFFLINE at {status.get('gateway_url')}."
+        elif match.command_name == "host_agent_status":
+            from edith.tools.registry import REGISTRY
+            fn = REGISTRY.get("host_agent_status")
+            status = fn.fn() if fn else {}
+            if status.get("paired"):
+                return f"Windows Host Agent is PAIRED to {status.get('gateway')} ({status.get('device_name')})."
+            elif status.get("installed"):
+                return "Windows Host Agent is installed but not paired."
+            return "Windows Host Agent is not configured. Run python host-agent/edith_host_agent.py to configure."
+        elif match.command_name == "set_reminder":
+            from datetime import datetime, timedelta
+            import re
+            from edith.tasks.reminders import create_reminder
+            raw = (match.params.get("reminder_text") or "").strip()
+            arr_m = re.search(r"\bwhen\s+i\s+(?:reach|get|arrive|come)\s+(?:home|back|office|college|school)\b", raw, re.I)
+            if arr_m:
+                title = re.sub(r"\bwhen\s+i\s+(?:reach|get|arrive|come)\s+(?:home|back|office|college|school)\b", "", raw, flags=re.I).strip() or raw
+                title = re.sub(r"^(?:to|about|that|for)\s+", "", title, flags=re.I).strip()
+                create_reminder(title=title, due_at=datetime.now(), trigger="manual_arrival", source="reflex")
+                return f"Reminder set: “{title}” (fires when you tap “Arrived” in Today)."
+            rel_m = re.search(r"\bin\s+(\d+|an?|one|half\s+an?)\s*(minutes?|mins?|hours?|hrs?)\b", raw, re.I)
+            if rel_m:
+                n_raw = rel_m.group(1).lower()
+                n = 0.5 if "half" in n_raw else (1.0 if n_raw in ("a", "an", "one") else float(n_raw))
+                if rel_m.group(2).lower().startswith("h"):
+                    n *= 60
+                due = datetime.now() + timedelta(minutes=int(round(n)))
+                title = raw[:rel_m.start()].strip() + " " + raw[rel_m.end():].strip()
+                title = re.sub(r"^(?:to|about|that|for)\s+", "", title.strip(), flags=re.I).strip() or "Reminder"
+                create_reminder(title=title, due_at=due, recurrence="none", source="reflex")
+                return f"Reminder set for {due.strftime('%I:%M %p')}: “{title}” (in {int(round(n))} min)."
+            rec = "none"
+            by_weekday = None
+            if re.search(r"\b(every\s+weekday|on\s+weekdays|weekdays)\b", raw, re.I):
+                rec = "weekdays"
+            elif re.search(r"\b(every\s*day|daily|each\s+day)\b", raw, re.I):
+                rec = "daily"
+            else:
+                weekdays = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+                days_m = re.search(r"\bevery\s+((?:sun|mon|tue|wed|thu|fri|sat)\w*(?:\s*(?:,|and)\s*(?:sun|mon|tue|wed|thu|fri|sat)\w*)*)\b", raw, re.I)
+                if days_m:
+                    rec = "weekly"
+                    by_weekday = []
+                    for part in re.split(r"\s*(?:,|and)\s*", days_m.group(1), flags=re.I):
+                        for idx, day_name in enumerate(weekdays):
+                            if day_name.startswith(part.lower()[:3]):
+                                by_weekday.append(idx)
+                                break
+            time_m = re.search(r"\b(?:at\s+)?(\d{1,2})(?::|\.)?(\d{2})?\s*(a\.?m\.?|p\.?m\.?)?\b", raw, re.I)
+            due = datetime.now() + timedelta(hours=1)
+            if time_m and (time_m.group(3) or ":" in time_m.group(0) or "at " in time_m.group(0)):
+                h = int(time_m.group(1))
+                m = int(time_m.group(2)) if time_m.group(2) else 0
+                ap = (time_m.group(3) or "").lower().replace(".", "")
+                if ap == "pm" and h < 12:
+                    h += 12
+                elif ap == "am" and h == 12:
+                    h = 0
+                now = datetime.now()
+                target = now.replace(hour=h, minute=m, second=0, microsecond=0)
+                if target <= now:
+                    target += timedelta(days=1)
+                due = target
+            title = raw
+            for pat in [
+                r"\b(?:at\s+)?\d{1,2}(?::|\.)?\d{2}?\s*(?:a\.?m\.?|p\.?m\.?)?\b",
+                r"\bevery\s+\w+\b",
+                r"\bdaily\b",
+                r"\bweekdays\b",
+                r"\b(?:on\s+)?tomorrow\b"
+            ]:
+                title = re.sub(pat, "", title, flags=re.I).strip()
+            title = re.sub(r"^(?:to|about|that|for)\s+", "", title, flags=re.I).strip() or raw
+            create_reminder(title=title, due_at=due, recurrence=rec, by_weekday=by_weekday, source="reflex")
+            rec_str = f" ({rec})" if rec != "none" else ""
+            return f"Reminder set for {due.strftime('%I:%M %p')}{rec_str}: “{title}”."
+        elif match.command_name == "set_timer":
+            from datetime import datetime, timedelta
+            from edith.tasks.reminders import create_reminder
+            dur_raw = match.params.get("duration", "10").lower()
+            unit = (match.params.get("unit") or "minutes").lower()
+            label = (match.params.get("label") or "Timer").strip()
+            val = 0.5 if "half" in dur_raw else (1.0 if dur_raw in ("a", "an", "one") else float(dur_raw))
+            if unit.startswith("h"):
+                secs = int(val * 3600)
+                desc = f"{int(val)} hour" if val == 1 else f"{val} hours"
+            elif unit.startswith("s"):
+                secs = int(val)
+                desc = f"{int(val)} seconds"
+            else:
+                secs = int(val * 60)
+                desc = f"{int(val)} minute" if val == 1 else f"{int(val)} minutes"
+            due = datetime.now() + timedelta(seconds=secs)
+            create_reminder(title=f"Timer: {label}", due_at=due, priority="high", source="reflex")
+            return f"Timer started for {desc} ({label}). Alert due at {due.strftime('%I:%M %p')}."
+        elif match.command_name == "today_agenda":
+            from datetime import date
+            from edith.tasks.reminders import list_reminders, list_events
+            from edith.data.holidays import get_holidays_between
+            today_str = date.today().isoformat()
+            rems = [r for r in list_reminders() if r.get("due_at", "").startswith(today_str)]
+            evs = list_events(today_str, today_str)
+            hols = get_holidays_between(today_str, today_str)
+            lines = [f"Schedule for Today ({date.today().strftime('%A, %d %B %Y')}):"]
+            if hols:
+                lines.append(f"• Holiday: {hols[0]['name']} ({hols[0]['category'].title()})")
+            if rems:
+                lines.append(f"• Reminders ({len(rems)}): " + ", ".join([r['title'] for r in rems[:3]]))
+            if evs:
+                lines.append(f"• Events ({len(evs)}): " + ", ".join([e['title'] for e in evs[:3]]))
+            if not hols and not rems and not evs:
+                lines.append("• No scheduled events, reminders, or holidays for today. All systems nominal.")
+            return "\n".join(lines)
+        elif match.command_name == "upcoming_holidays":
+            from edith.data.holidays import get_upcoming_holidays
+            hols = get_upcoming_holidays(5)
+            if not hols:
+                return "No upcoming holidays found in verified gazetted records."
+            items = [f"• {h['date']}: {h['name']} ({h['category'].title()}{' - tentative' if h.get('tentative') else ''})" for h in hols]
+            return "Upcoming Indian Holidays:\n" + "\n".join(items)
+        elif match.command_name == "set_mode_offline":
+            from edith.core.config import CONFIG
+            CONFIG.offline_mode = True
+            CONFIG.manual_mode = "offline"
+            return "System mode switched to OFFLINE (Local Ollama/Hermes inference only, no external calls)."
+        elif match.command_name == "set_mode_online":
+            from edith.core.config import CONFIG
+            CONFIG.offline_mode = False
+            CONFIG.manual_mode = "online"
+            return "System mode switched to ONLINE (Cloud AI providers prioritized)."
+        elif match.command_name == "set_mode_auto":
+            from edith.core.config import CONFIG
+            CONFIG.offline_mode = False
+            CONFIG.manual_mode = "auto"
+            return "System mode switched to AUTO (Intelligent local-cloud hybrid routing)."
         elif match.command_name == "switch_mic_bluetooth":
             from edith.voice.clap_detector import CLAP_DETECTOR
             import sounddevice as sd
