@@ -96,6 +96,68 @@ class TestReflexEngine(unittest.TestCase):
         self.assertEqual(res_theme["action"], "switch_theme")
         self.assertEqual(res_theme["theme"], "spiderman")
 
+    def test_peter_voice_and_theme_reflexes(self):
+        voice_phrases = (
+            "switch voice to peter 1",
+            "switch character to peter one",
+            "switch voice to edith peter 1",
+            "switch voice to edith peter one",
+            "switch voice to edith // peter 1",
+            "activate edith peter 1",
+            "activate peter 1",
+            "switch to peter 1",
+        )
+        for phrase in voice_phrases:
+            match = self.engine.evaluate(phrase)
+            self.assertIsNotNone(match, f"Failed match on: {phrase}")
+            self.assertEqual(match.command_name, "switch_voice_character")
+            res = self.engine.execute_match(match)
+            self.assertIsInstance(res, dict)
+            self.assertEqual(res["character"]["id"], "peter")
+            self.assertEqual(res["character"]["name"], "PETER 1 (EDITH)")
+
+        theme_phrases = (
+            "switch theme to peter 1",
+            "change theme to peter one",
+            "switch theme to edith peter 1",
+            "switch theme to edith peter one",
+            "switch theme to edith // peter 1",
+            "activate peter 1 theme",
+            "activate edith peter 1 theme",
+            "switch to peter 1 theme",
+        )
+        for phrase in theme_phrases:
+            match = self.engine.evaluate(phrase)
+            self.assertIsNotNone(match, f"Failed match on: {phrase}")
+            self.assertEqual(match.command_name, "switch_theme")
+            res = self.engine.execute_match(match)
+            self.assertIsInstance(res, dict)
+            self.assertEqual(res["theme"], "peter1")
+
+    def test_spider_suit_reflexes(self):
+        suit_phrases = [
+            ("web fluid check", "web_fluid_check", "Web fluid cartridges"),
+            ("calibrate web cartridges", "web_fluid_check", "Web fluid cartridges"),
+            ("deploy web net", "deploy_web_net", "High-tensile web net deployed"),
+            ("deploy web net on target", "deploy_web_net", "High-tensile web net deployed"),
+            ("orbital defense satellite drones", "orbital_defense_drones", "Orbital Defense Satellite"),
+            ("orbital defense satellite drones swarm", "orbital_defense_drones", "Orbital Defense Satellite"),
+            ("spider-sense threat scan", "spider_sense_scan", "Spider-Sense threat radar sweep"),
+            ("spider-sense threat radar scan", "spider_sense_scan", "Spider-Sense threat radar sweep"),
+            ("iron spider nanotech diagnostics", "nanotech_diagnostics", "Iron Spider Nanotech armor mesh"),
+            ("iron spider nanotech armor deploy", "nanotech_diagnostics", "Iron Spider Nanotech armor mesh"),
+            ("instant kill lockout", "instant_kill_lockout", "Instant Kill safety lockout active"),
+            ("instant kill safety lockout", "instant_kill_lockout", "Instant Kill safety lockout active"),
+            ("queens patrol route", "queens_patrol", "Queens Patrol Route initialized"),
+        ]
+        for phrase, expected_cmd, expected_kw in suit_phrases:
+            match = self.engine.evaluate(phrase)
+            self.assertIsNotNone(match, f"Reflex failed to match: '{phrase}'")
+            self.assertEqual(match.command_name, expected_cmd)
+            self.assertLess(match.duration_ms, 50.0)
+            res = self.engine.execute_match(match)
+            self.assertIn(expected_kw, str(res))
+
 
 if __name__ == "__main__":
     unittest.main()

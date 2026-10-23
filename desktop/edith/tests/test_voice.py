@@ -42,7 +42,16 @@ class TestVoiceSystem(unittest.TestCase):
 
         peter_info = speaker.set_character("peter")
         self.assertEqual(speaker.active_character, "peter")
-        self.assertIn("Spider-Man", peter_info["name"])
+        self.assertEqual(peter_info["name"], "PETER 1 (EDITH)")
+        self.assertEqual(peter_info["welcome"], "Hello Peter. E.D.I.T.H. systems online for Peter 1. Tactical defense ready.")
+
+        p1_info = speaker.set_character("peter 1")
+        self.assertEqual(speaker.active_character, "peter")
+        self.assertEqual(p1_info["name"], "PETER 1 (EDITH)")
+
+        edith_p1_info = speaker.set_character("edith peter 1")
+        self.assertEqual(speaker.active_character, "peter")
+        self.assertEqual(edith_p1_info["name"], "PETER 1 (EDITH)")
 
         edith_info = speaker.set_character("edith")
         self.assertEqual(speaker.active_character, "edith")

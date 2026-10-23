@@ -206,7 +206,8 @@
     jarvis: { rate: 0.95, pitch: 0.9, gender: "male", welcome: "At your service, sir." },
     friday: { rate: 1.15, pitch: 1.15, gender: "female", welcome: "Boss, FRIDAY is ready!" },
     karen: { rate: 1.0, pitch: 1.0, gender: "female", welcome: "Suit diagnostics online, Peter." },
-    peter: { rate: 1.2, pitch: 1.2, gender: "male", welcome: "Ready to swing into action!" },
+    peter: { rate: 1.2, pitch: 1.2, gender: "male", welcome: "Hello Peter. E.D.I.T.H. systems online for Peter 1. Tactical defense ready." },
+    peter1: { rate: 1.2, pitch: 1.2, gender: "male", welcome: "Hello Peter. E.D.I.T.H. systems online for Peter 1. Tactical defense ready." },
     ultron: { rate: 0.85, pitch: 0.65, gender: "male", welcome: "There are no strings on me." },
   };
 
@@ -218,6 +219,7 @@
     "theme-ultron",
     "theme-spiderman",
     "theme-peter",
+    "theme-peter1",
     "theme-focus",
     "theme-bnd",
     "theme-default"
@@ -228,7 +230,11 @@
     jarvis: "jarvis",
     friday: "friday",
     karen: "karen",
-    peter: "spiderman",
+    peter: "peter1",
+    peter1: "peter1",
+    "peter 1": "peter1",
+    "peter-one": "peter1",
+    spiderman: "spiderman",
     ultron: "ultron",
   };
 
@@ -240,6 +246,7 @@
     ultron: { primary: "255, 23, 68", accent: "183, 28, 28" },
     spiderman: { primary: "255, 23, 68", accent: "0, 240, 255" },
     peter: { primary: "255, 23, 68", accent: "0, 240, 255" },
+    peter1: { primary: "255, 23, 68", accent: "0, 240, 255" },
     focus: { primary: "255, 61, 0", accent: "255, 23, 68" },
   };
 
@@ -253,6 +260,7 @@
   function setMobileTheme(mode, syncVoice = true) {
     let target = mode || "edith";
     if (target === "default") target = "edith";
+    if (target === "peter" || target === "peter 1" || target === "peter-one") target = "peter1";
     if (VOICE_THEME_MAP[target]) target = VOICE_THEME_MAP[target];
 
     document.body.classList.remove(...ALL_THEME_CLASSES);
@@ -261,7 +269,7 @@
     if (dom.cfgTheme) dom.cfgTheme.value = target;
 
     if (syncVoice && activeMobileVoiceChar) {
-      const expectedChar = target === "spiderman" ? "peter" : target;
+      const expectedChar = (target === "spiderman" || target === "peter1" || target === "peter") ? "peter" : target;
       if (MOBILE_CHARACTER_VOICES[expectedChar] && activeMobileVoiceChar !== expectedChar) {
         setMobileVoiceCharacter(expectedChar, false, false);
       }

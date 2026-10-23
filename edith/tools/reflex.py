@@ -149,12 +149,24 @@ class ReflexEngine:
         self.register(app_prefix + r"(?:unmute|turn\s+on|enable|start)\s+(?:jarvis\s+|edith\s+)?(?:voice|speech|speaker)$", "unmute_voice", "voice", {})
 
         # Voice Character & Personality Switching (<15ms)
-        self.register(app_prefix + r"(?:switch|change|set)\s+(?:voice|character|personality)\s+(?:to\s+)?(?P<character>edith|jarvis|friday|karen|peter|spiderman|ultron)$", "switch_voice_character", "voice", {})
-        self.register(app_prefix + r"(?:activate|switch\s+to|change\s+to)\s+(?P<character>edith|jarvis|friday|karen|peter|spiderman|ultron)\s+(?:voice|mode|personality)$", "switch_voice_character", "voice", {})
+        voice_char_re = r"(?:edith\s*(?://\s*)?peter\s+(?:1|one)|edith\s+peter1|peter\s+(?:1|one)|peter1|edith|jarvis|friday|karen|peter|spiderman|ultron)"
+        self.register(app_prefix + rf"(?:switch|change|set)\s+(?:voice|character|personality)\s+(?:to\s+)?(?P<character>{voice_char_re})$", "switch_voice_character", "voice", {})
+        self.register(app_prefix + rf"(?:activate|switch\s+to|change\s+to)\s+(?P<character>{voice_char_re})(?:\s+(?:voice|mode|personality))?$", "switch_voice_character", "voice", {})
         self.register(app_prefix + r"(?:list|show|what\s+are)\s+(?:available\s+)?(?:voices|characters|personalities)$", "list_voice_characters", "voice", {})
 
         # Theme Switching (<15ms)
-        self.register(app_prefix + r"(?:switch|change|set)\s+theme\s+(?:to\s+)?(?P<theme>default|cyan|jarvis|bnd|focus|tactical|spiderman)$", "switch_theme", "ui", {})
+        theme_re = r"(?:edith\s*(?://\s*)?peter\s+(?:1|one)|edith\s+peter1|peter\s+(?:1|one)|peter1|peter|default|cyan|jarvis|bnd|focus|tactical|spiderman)"
+        self.register(app_prefix + rf"(?:switch|change|set)\s+theme\s+(?:to\s+)?(?P<theme>{theme_re})$", "switch_theme", "ui", {})
+        self.register(app_prefix + rf"(?:activate|switch\s+to|change\s+to)\s+(?P<theme>{theme_re})\s+theme$", "switch_theme", "ui", {})
+
+        # Peter 1 Suit & Tactical Defense Reflexes (<15ms)
+        self.register(app_prefix + r"(?:suit\s+diagnostics(?:\s+and\s+web\s+fluid\s+check)?|web\s+fluid\s+check|web\s+fluid\s+reload|check\s+web\s+fluid|web\s+fluid|calibrate\s+web\s+cartridges)$", "web_fluid_check", "suit", {})
+        self.register(app_prefix + r"(?:deploy\s+web\s+net(?:\s+on\s+target)?|fire\s+web|shoot\s+web)$", "deploy_web_net", "suit", {})
+        self.register(app_prefix + r"(?:spider\s+drone\s+recon|orbital\s+defense(?:\s+satellite)?\s+drones?(?:\s+swarm)?|deploy\s+orbital\s+drones?|deploy\s+spider\s+drone)$", "orbital_defense_drones", "suit", {})
+        self.register(app_prefix + r"(?:spider[-\s]?sense\s+threat(?:\s+radar)?\s+scan|threat\s+radar(?:\s+scan)?|spider[-\s]?sense|scan\s+queens\s+sector[-\s]?09)$", "spider_sense_scan", "suit", {})
+        self.register(app_prefix + r"(?:(?:iron\s+spider\s+)?nanotech(?:\s+armor|\s+diagnostics)?(?:\s+deploy)?|iron\s+spider\s+nanotech\s+diagnostics|deploy\s+nanotech)$", "nanotech_diagnostics", "suit", {})
+        self.register(app_prefix + r"(?:instant\s+kill(?:\s+safety)?\s+lockout|toggle\s+instant\s+kill|instant\s+kill)$", "instant_kill_lockout", "suit", {})
+        self.register(app_prefix + r"(?:queens\s+patrol\s+route|patrol\s+queens)$", "queens_patrol", "suit", {})
 
         # Bluetooth Microphone Selection (<15ms)
         self.register(app_prefix + r"(?:switch|change|set|use)\s+(?:mic|microphone)\s+(?:to\s+)?bluetooth$", "switch_mic_bluetooth", "voice", {})
@@ -387,13 +399,41 @@ class ReflexEngine:
             lines = [f"• {c['name']} ({c['role']}) - {c['description']}" for c in chars]
             return "Available voice characters:\n" + "\n".join(lines)
         elif match.command_name == "switch_theme":
-            raw_mode = match.params.get("theme", "spiderman")
-            mode = "spiderman" if "spider" in raw_mode.lower() else ("bnd" if "bnd" in raw_mode.lower() else ("focus" if "tactical" in raw_mode.lower() or "focus" in raw_mode.lower() else "default"))
+            raw_mode = match.params.get("theme", "peter")
+            raw_lower = raw_mode.lower()
+            if "peter" in raw_lower:
+                mode = "peter1"
+            elif "spider" in raw_lower:
+                mode = "spiderman"
+            elif "bnd" in raw_lower:
+                mode = "bnd"
+            elif "focus" in raw_lower or "tactical" in raw_lower:
+                mode = "focus"
+            elif "jarvis" in raw_lower:
+                mode = "jarvis"
+            elif "cyan" in raw_lower or "edith" in raw_lower:
+                mode = "cyan"
+            else:
+                mode = "default"
             return {
                 "message": f"HUD theme switched to {mode.upper()}.",
                 "theme": mode,
                 "action": "switch_theme",
             }
+        elif match.command_name == "web_fluid_check":
+            return "Web fluid cartridges A & B calibrated at 94% and 88% capacity. Pressure nominal. Ready for deployment, Peter 1."
+        elif match.command_name == "deploy_web_net":
+            return "High-tensile web net deployed on target. Micro-tensile strength optimal."
+        elif match.command_name == "orbital_defense_drones":
+            return "E.D.I.T.H. Orbital Defense Satellite network locked. 512 tactical drones armed in Low Earth Orbit. Tactical recon active for Peter 1."
+        elif match.command_name == "spider_sense_scan":
+            return "Spider-Sense threat radar sweep active: Queens Sector 09 perimeter clear. Zero immediate hostiles detected."
+        elif match.command_name == "nanotech_diagnostics":
+            return "Iron Spider Nanotech armor mesh integrity 100%. Waldoes calibrated and ready on stand-by."
+        elif match.command_name == "instant_kill_lockout":
+            return "Instant Kill safety lockout active. Safety protocols engaged. Biometric confirmation required to disengage."
+        elif match.command_name == "queens_patrol":
+            return "Queens Patrol Route initialized: Midtown High through Astoria Bridge. Optical perimeter tracking active."
         elif match.command_name == "ponytail_mode":
             from edith.tools.ponytail import PONYTAIL
             raw_args = match.params.get("args") or ""

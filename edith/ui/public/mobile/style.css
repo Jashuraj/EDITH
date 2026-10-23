@@ -149,9 +149,10 @@ body.theme-focus {
   --text-cyan: #ff5252;
 }
 
-/* SPIDER-MAN - Comic Scarlet / Cobalt Web-Blue Theme */
+/* SPIDER-MAN & PETER 1 - Comic Scarlet / Cobalt Web-Blue Theme */
 body.theme-spiderman,
-body.theme-peter {
+body.theme-peter,
+body.theme-peter1 {
   --hud: #ff1744;
   --hud-soft: rgba(255, 23, 68, 0.45);
   --hud-faint: rgba(255, 23, 68, 0.14);
@@ -177,7 +178,17 @@ body.theme-spiderman .card,
 body.theme-spiderman .hud-card,
 body.theme-spiderman .vitals-card,
 body.theme-spiderman .quick-action-card,
-body.theme-spiderman .spidey-card {
+body.theme-spiderman .spidey-card,
+body.theme-peter1 .card,
+body.theme-peter1 .hud-card,
+body.theme-peter1 .vitals-card,
+body.theme-peter1 .quick-action-card,
+body.theme-peter1 .spidey-card,
+body.theme-peter .card,
+body.theme-peter .hud-card,
+body.theme-peter .vitals-card,
+body.theme-peter .quick-action-card,
+body.theme-peter .spidey-card {
   position: relative;
   background: linear-gradient(135deg, rgba(12, 18, 28, 0.95) 0%, rgba(7, 12, 20, 0.98) 100%) !important;
   border: 1px solid rgba(24, 38, 60, 0.9) !important;
@@ -192,7 +203,17 @@ body.theme-spiderman .card::before,
 body.theme-spiderman .hud-card::before,
 body.theme-spiderman .vitals-card::before,
 body.theme-spiderman .quick-action-card::before,
-body.theme-spiderman .spidey-card::before {
+body.theme-spiderman .spidey-card::before,
+body.theme-peter1 .card::before,
+body.theme-peter1 .hud-card::before,
+body.theme-peter1 .vitals-card::before,
+body.theme-peter1 .quick-action-card::before,
+body.theme-peter1 .spidey-card::before,
+body.theme-peter .card::before,
+body.theme-peter .hud-card::before,
+body.theme-peter .vitals-card::before,
+body.theme-peter .quick-action-card::before,
+body.theme-peter .spidey-card::before {
   content: '';
   position: absolute;
   top: 0; left: 0; width: 6px; height: 6px;
@@ -204,7 +225,17 @@ body.theme-spiderman .card::after,
 body.theme-spiderman .hud-card::after,
 body.theme-spiderman .vitals-card::after,
 body.theme-spiderman .quick-action-card::after,
-body.theme-spiderman .spidey-card::after {
+body.theme-spiderman .spidey-card::after,
+body.theme-peter1 .card::after,
+body.theme-peter1 .hud-card::after,
+body.theme-peter1 .vitals-card::after,
+body.theme-peter1 .quick-action-card::after,
+body.theme-peter1 .spidey-card::after,
+body.theme-peter .card::after,
+body.theme-peter .hud-card::after,
+body.theme-peter .vitals-card::after,
+body.theme-peter .quick-action-card::after,
+body.theme-peter .spidey-card::after {
   content: '';
   position: absolute;
   bottom: 0; right: 0; width: 6px; height: 6px;

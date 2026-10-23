@@ -78,8 +78,10 @@ body[data-theme="karen"] {
 
 body.theme-spiderman,
 body.theme-peter,
+body.theme-peter1,
 body[data-theme="spiderman"],
-body[data-theme="peter"] {
+body[data-theme="peter"],
+body[data-theme="peter1"] {
   --bg: #060a10;
   --panel: #0a101b;
   --line: #18263c;

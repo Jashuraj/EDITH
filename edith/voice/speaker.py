@@ -75,8 +75,8 @@ VOICE_CHARACTERS: Dict[str, Dict[str, Any]] = {
     },
     "peter": {
         "id": "peter",
-        "name": "PETER (Spider-Man)",
-        "role": "Agile Web-Slinger & Gaming Specialist",
+        "name": "PETER 1 (EDITH)",
+        "role": "Peter 1 Tactical AR Defense & Web Specialist",
         "gender": "Male",
         "sapi_voice": "Microsoft David Desktop",
         "neural_voice": "en-US-AndrewNeural",
@@ -84,8 +84,8 @@ VOICE_CHARACTERS: Dict[str, Dict[str, Any]] = {
         "pitch_shift": 2,
         "web_rate": 1.2,
         "web_pitch": 1.2,
-        "description": "Youthful, energetic, high-speed hero mode.",
-        "welcome": "Hey! Ready to swing into action. What are we doing?",
+        "description": "Tom Holland Peter 1 unified with E.D.I.T.H. tactical defense.",
+        "welcome": "Hello Peter. E.D.I.T.H. systems online for Peter 1. Tactical defense ready.",
     },
     "ultron": {
         "id": "ultron",
@@ -123,6 +123,13 @@ class SpeechSynthesizer:
     def get_character_info(self, character_name: Optional[str] = None) -> Dict[str, Any]:
         """Get profile data for a specific character or the active character."""
         key = (character_name or self._active_character).lower().strip()
+        peter_aliases = (
+            "peter", "peter 1", "peter1", "peter-1", "peter_1",
+            "peter one", "peter-one", "edith peter 1", "edith peter one",
+            "edith // peter 1", "edith-peter-1", "edith peter1", "spidey", "spiderman",
+        )
+        if key in peter_aliases:
+            return VOICE_CHARACTERS["peter"]
         if key in VOICE_CHARACTERS:
             return VOICE_CHARACTERS[key]
         for k, v in VOICE_CHARACTERS.items():

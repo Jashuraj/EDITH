@@ -33,6 +33,7 @@
     karen: { pale: '#fb7185', rim: '#be123c' },
     spiderman: { pale: '#00f0ff', rim: '#ff1744' },
     peter: { pale: '#00f0ff', rim: '#ff1744' },
+    peter1: { pale: '#00f0ff', rim: '#ff1744' },
     ultron: { pale: '#ff5252', rim: '#990000' }
   };
   let currentPalette = THEME_PALETTES.edith;
@@ -227,7 +228,7 @@
     spiderLogo3D.scale.set(0.24, 0.24, 0.24);
     globeGroup.add(spiderLogo3D);
 
-    const isSpidey = currentThemeName === 'spiderman' || currentThemeName === 'peter' || currentThemeName === 'spidey';
+    const isSpidey = currentThemeName === 'spiderman' || currentThemeName === 'peter' || currentThemeName === 'peter1' || currentThemeName === 'peter 1' || currentThemeName === 'peter one' || currentThemeName === 'edith // peter 1' || currentThemeName === 'spidey';
     spiderLogo3D.visible = isSpidey;
     if (dotsMesh) dotsMesh.visible = !isSpidey;
     if (shellMesh) shellMesh.visible = !isSpidey;
@@ -464,8 +465,8 @@
   };
 
   window.setActiveTheme = function (themeName) {
-    const raw = (themeName || 'edith').toLowerCase();
-    const key = (raw === 'peter' || raw === 'spidey') ? 'spiderman' : raw;
+    const raw = (themeName || 'edith').toLowerCase().trim();
+    const key = (raw === 'peter' || raw === 'peter1' || raw === 'peter 1' || raw === 'peter one' || raw === 'edith // peter 1' || raw === 'spidey') ? 'spiderman' : raw;
     currentThemeName = key;
     if (THEME_PALETTES[key]) {
       currentPalette = THEME_PALETTES[key];

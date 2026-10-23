@@ -208,7 +208,41 @@ class TestUIServer(unittest.TestCase):
             self.assertIn("PETER", html)
             self.assertIn("SPIDER-MAN", html)
 
-        # 4. Test /command endpoint alias
+        # 4. Test /peter1 route redirects to ?theme=peter1
+        req = urllib.request.Request("http://127.0.0.1:8796/peter1")
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            self.assertIn("theme=peter1", res.geturl())
+            html = res.read().decode("utf-8")
+            self.assertIn("EDITH // PETER 1", html)
+            self.assertIn("PETER 1 PROTOCOL", html)
+            self.assertIn("WEB FLUID CANISTERS", html)
+
+        # 5. Test /peter-one route redirects to ?theme=peter1
+        req = urllib.request.Request("http://127.0.0.1:8796/peter-one")
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            self.assertIn("theme=peter1", res.geturl())
+            html = res.read().decode("utf-8")
+            self.assertIn("EDITH // PETER 1", html)
+
+        # 6. Test /peter-one.html route redirects to ?theme=peter1
+        req = urllib.request.Request("http://127.0.0.1:8796/peter-one.html")
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            self.assertIn("theme=peter1", res.geturl())
+            html = res.read().decode("utf-8")
+            self.assertIn("EDITH // PETER 1", html)
+
+        # 7. Test direct /?theme=peter1 query
+        req = urllib.request.Request("http://127.0.0.1:8796/?theme=peter1")
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            html = res.read().decode("utf-8")
+            self.assertIn("EDITH // PETER 1", html)
+            self.assertIn("PETER 1 PROTOCOL", html)
+
+        # 8. Test /command endpoint alias
         body = json.dumps({"command": "what is your status"}).encode("utf-8")
         req = urllib.request.Request("http://127.0.0.1:8796/command", data=body, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=3.0) as res:

@@ -448,10 +448,10 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(content)
                 return
 
-        # PETER Mode Theme: Standalone /peter route replaced by native Peter theme redirect
-        elif parsed.path in ("/peter", "/peter/", "/peter.html"):
+        # PETER 1 Mode Theme: /peter, /peter1, /peter-one redirect cleanly to /?theme=peter1
+        elif parsed.path in ("/peter", "/peter/", "/peter.html", "/peter1", "/peter1/", "/peter1.html", "/peter-one", "/peter-one/", "/peter-one.html"):
             self.send_response(302)
-            self.send_header("Location", "/?theme=peter")
+            self.send_header("Location", "/?theme=peter1")
             self.end_headers()
             return
 

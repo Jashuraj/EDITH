@@ -158,8 +158,10 @@
     }
     body.theme-spiderman,
     body.theme-peter,
+    body.theme-peter1,
     body[data-theme="spiderman"],
-    body[data-theme="peter"] {
+    body[data-theme="peter"],
+    body[data-theme="peter1"] {
       --os-amber: #ff1744;
       --os-amber-glow: #ff2a55;
       --os-gold: #ffbe28;
@@ -172,8 +174,10 @@
     }
     body.theme-spiderman .stark-card,
     body.theme-peter .stark-card,
+    body.theme-peter1 .stark-card,
     body[data-theme="spiderman"] .stark-card,
     body[data-theme="peter"] .stark-card,
+    body[data-theme="peter1"] .stark-card,
     .spidey-card {
       position: relative;
       background: linear-gradient(135deg, rgba(12, 18, 28, 0.95) 0%, rgba(7, 12, 20, 0.98) 100%) !important;
@@ -187,8 +191,10 @@
     }
     body.theme-spiderman .stark-card::before,
     body.theme-peter .stark-card::before,
+    body.theme-peter1 .stark-card::before,
     body[data-theme="spiderman"] .stark-card::before,
     body[data-theme="peter"] .stark-card::before,
+    body[data-theme="peter1"] .stark-card::before,
     .spidey-card::before {
       content: '';
       position: absolute;
@@ -199,8 +205,10 @@
     }
     body.theme-spiderman .stark-card::after,
     body.theme-peter .stark-card::after,
+    body.theme-peter1 .stark-card::after,
     body[data-theme="spiderman"] .stark-card::after,
     body[data-theme="peter"] .stark-card::after,
+    body[data-theme="peter1"] .stark-card::after,
     .spidey-card::after {
       content: '';
       position: absolute;
@@ -213,38 +221,52 @@
     body.theme-spiderman .reticle-bracket-tr,
     body.theme-peter .reticle-bracket-tl,
     body.theme-peter .reticle-bracket-tr,
+    body.theme-peter1 .reticle-bracket-tl,
+    body.theme-peter1 .reticle-bracket-tr,
     body[data-theme="spiderman"] .reticle-bracket-tl,
     body[data-theme="spiderman"] .reticle-bracket-tr,
     body[data-theme="peter"] .reticle-bracket-tl,
-    body[data-theme="peter"] .reticle-bracket-tr {
+    body[data-theme="peter"] .reticle-bracket-tr,
+    body[data-theme="peter1"] .reticle-bracket-tl,
+    body[data-theme="peter1"] .reticle-bracket-tr {
       border-color: #ff1744 !important;
     }
     body.theme-spiderman .reticle-bracket-bl,
     body.theme-spiderman .reticle-bracket-br,
     body.theme-peter .reticle-bracket-bl,
     body.theme-peter .reticle-bracket-br,
+    body.theme-peter1 .reticle-bracket-bl,
+    body.theme-peter1 .reticle-bracket-br,
     body[data-theme="spiderman"] .reticle-bracket-bl,
     body[data-theme="spiderman"] .reticle-bracket-br,
     body[data-theme="peter"] .reticle-bracket-bl,
-    body[data-theme="peter"] .reticle-bracket-br {
+    body[data-theme="peter"] .reticle-bracket-br,
+    body[data-theme="peter1"] .reticle-bracket-bl,
+    body[data-theme="peter1"] .reticle-bracket-br {
       border-color: #00f0ff !important;
     }
     body.theme-spiderman .glow-amber-sm,
     body.theme-peter .glow-amber-sm,
+    body.theme-peter1 .glow-amber-sm,
     body[data-theme="spiderman"] .glow-amber-sm,
-    body[data-theme="peter"] .glow-amber-sm {
+    body[data-theme="peter"] .glow-amber-sm,
+    body[data-theme="peter1"] .glow-amber-sm {
       box-shadow: 0 0 10px rgba(255, 23, 68, 0.45), inset 0 0 8px rgba(255, 23, 68, 0.12) !important;
     }
     body.theme-spiderman .glow-amber-lg,
     body.theme-peter .glow-amber-lg,
+    body.theme-peter1 .glow-amber-lg,
     body[data-theme="spiderman"] .glow-amber-lg,
-    body[data-theme="peter"] .glow-amber-lg {
+    body[data-theme="peter"] .glow-amber-lg,
+    body[data-theme="peter1"] .glow-amber-lg {
       box-shadow: 0 0 25px rgba(255, 23, 68, 0.6), 0 0 8px rgba(255, 42, 85, 0.4) !important;
     }
     body.theme-spiderman .text-glow-amber,
     body.theme-peter .text-glow-amber,
+    body.theme-peter1 .text-glow-amber,
     body[data-theme="spiderman"] .text-glow-amber,
-    body[data-theme="peter"] .text-glow-amber {
+    body[data-theme="peter"] .text-glow-amber,
+    body[data-theme="peter1"] .text-glow-amber {
       text-shadow: 0 0 12px rgba(255, 23, 68, 0.8), 0 0 22px rgba(255, 42, 85, 0.4) !important;
     }
 
@@ -353,7 +375,7 @@
         <div class="flex items-center space-x-2">
           <span class="font-michroma tracking-[0.25em] text-white font-bold text-xs">E.D.I.T.H.</span>
           <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-os-amber text-os-black uppercase tracking-[0.14em] font-chakra" id="brand-badge-mark">MARK II</span>
-          <span class="hidden text-[9px] font-bold px-1.5 py-0.2 rounded bg-[#ff1744] text-white uppercase tracking-[0.14em] font-chakra border border-[#ff1744] glow-red-sm" id="brand-badge-spidey">SPIDER-MAN // Insomniac Velocity Cockpit</span>
+          <span class="hidden text-[9px] font-bold px-1.5 py-0.2 rounded bg-[#ff1744] text-white uppercase tracking-[0.14em] font-chakra border border-[#ff1744] glow-red-sm" id="brand-badge-spidey" title="SPIDER-MAN // Insomniac Velocity Cockpit">EDITH // PETER 1 TACTICAL HUD</span>
           <span class="text-xs text-os-border-glow font-mono px-1">//</span>
         </div>
         <p class="text-[9px] text-slate-400 font-mono tracking-[0.15em] uppercase" id="brand-subtitle">EVEN DEAD, I'M THE HERO | LOCAL-FIRST AUTONOMOUS AI OS</p>
@@ -362,15 +384,13 @@
 
     <!-- Center: Persona Switcher Selector Tabs -->
     <nav aria-label="AI Personas" class="flex items-center bg-[#05080e]/95 p-1 rounded-md border border-os-border/90 space-x-1 font-chakra font-bold tracking-[0.12em]">
-      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="EDITH">EDITH</button>
+      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="EDITH // PETER 1">EDITH // PETER 1</button>
       <button class="persona-tab px-3 py-0.5 text-[10px] rounded-full tracking-[0.14em] bg-transparent text-os-amber border border-os-amber/80 flex items-center space-x-1.5 transition glow-amber-sm" data-persona="JARVIS">
         <span class="w-1.5 h-1.5 rounded-full bg-os-amber"></span><span>JARVIS</span>
       </button>
       <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="FRIDAY">FRIDAY</button>
       <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="KAREN">KAREN</button>
-      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="PETER">PETER</button>
       <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-red-400 transition" data-persona="ULTRON">ULTRON</button>
-
     </nav>
 
     <!-- Right: Telemetry, Clock, E-Stop -->
@@ -531,38 +551,98 @@
         <div class="flex items-center justify-between border-b border-os-border/80 pb-1.5">
           <div class="flex items-center space-x-2">
             <svg class="w-3.5 h-3.5 text-[#ff1744]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 19 8 19 16 12 22 5 16 5 8"></polygon></svg>
-            <span class="text-[9px] font-bold tracking-[0.16em] uppercase text-white font-mono">SPIDER-MAN SUIT &amp; WEB FLUID CANISTERS</span>
+            <span class="text-[9px] font-bold tracking-[0.16em] uppercase text-white font-mono" id="lbl-suit-card-title">EDITH // PETER 1 TACTICAL HUD // SUIT &amp; WEB FLUID CANISTERS</span>
           </div>
-          <span class="text-[8px] font-mono px-1 py-0.2 rounded bg-[#ff1744]/20 text-[#ff1744] border border-[#ff1744]/40 font-bold animate-pulse">ARMED</span>
+          <span class="text-[8px] font-mono px-1 py-0.2 rounded bg-[#ff1744]/20 text-[#ff1744] border border-[#ff1744]/40 font-bold animate-pulse" id="suit-armed-badge">ARMED</span>
         </div>
-        <div class="grid grid-cols-2 gap-2 text-[10px] font-mono pt-0.5">
-          <div class="p-1.5 rounded bg-[#0c1422] border border-[#18263c]">
-            <div class="flex justify-between items-center text-slate-400 text-[8.5px] uppercase mb-0.5">
-              <span>Cartridge A</span>
-              <span class="text-[#00f0ff] font-bold" id="val-cart-a">94%</span>
-            </div>
-            <div class="w-full bg-slate-900 h-1 rounded overflow-hidden">
-              <div class="bg-[#00f0ff] h-full" style="width: 94%;"></div>
-            </div>
-            <div class="text-[7.5px] text-slate-500 mt-1 uppercase">High-Tensile Net · Web Fluid Canisters</div>
+
+        <!-- 1. Web Fluid Canisters -->
+        <div>
+          <div class="flex justify-between items-center text-[8.5px] uppercase font-mono text-slate-400 mb-1">
+            <span class="text-white font-bold tracking-wider">1. Web Fluid Canisters</span>
+            <button onclick="reloadWebFluid()" class="px-1.5 py-0.2 rounded bg-[#00f0ff]/10 hover:bg-[#00f0ff]/30 text-[#00f0ff] border border-[#00f0ff]/30 text-[8px] font-bold tracking-wider transition">RELOAD &amp; CALIBRATE</button>
           </div>
-          <div class="p-1.5 rounded bg-[#0c1422] border border-[#18263c]">
-            <div class="flex justify-between items-center text-slate-400 text-[8.5px] uppercase mb-0.5">
-              <span>Cartridge B</span>
-              <span class="text-[#ff1744] font-bold" id="val-cart-b">88%</span>
+          <div class="grid grid-cols-2 gap-2 text-[10px] font-mono">
+            <div class="p-1.5 rounded bg-[#0c1422] border border-[#18263c]">
+              <div class="flex justify-between items-center text-slate-400 text-[8.5px] uppercase mb-0.5">
+                <span>Cartridge A</span>
+                <span class="text-[#00f0ff] font-bold" id="val-cart-a">94%</span>
+              </div>
+              <div class="w-full bg-slate-900 h-1 rounded overflow-hidden">
+                <div class="bg-[#00f0ff] h-full transition-all duration-300" id="bar-cart-a" style="width: 94%;"></div>
+              </div>
+              <div class="text-[7.5px] text-slate-500 mt-1 uppercase">High-Tensile Net · Web Fluid Canisters</div>
             </div>
-            <div class="w-full bg-slate-900 h-1 rounded overflow-hidden">
-              <div class="bg-[#ff1744] h-full" style="width: 88%;"></div>
+            <div class="p-1.5 rounded bg-[#0c1422] border border-[#18263c]">
+              <div class="flex justify-between items-center text-slate-400 text-[8.5px] uppercase mb-0.5">
+                <span>Cartridge B</span>
+                <span class="text-[#ff1744] font-bold" id="val-cart-b">88%</span>
+              </div>
+              <div class="w-full bg-slate-900 h-1 rounded overflow-hidden">
+                <div class="bg-[#ff1744] h-full transition-all duration-300" id="bar-cart-b" style="width: 88%;"></div>
+              </div>
+              <div class="text-[7.5px] text-slate-500 mt-1 uppercase">Taser Web Pulse · Web Fluid Canisters</div>
             </div>
-            <div class="text-[7.5px] text-slate-500 mt-1 uppercase">Taser Web Pulse · Web Fluid Canisters</div>
           </div>
         </div>
-        <div class="flex items-center justify-between text-[9px] font-mono text-slate-400 pt-1 border-t border-os-border/40">
-          <span class="flex items-center space-x-1">
-            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
-            <span>Mesh Integrity: <strong class="text-white">100%</strong></span>
-          </span>
-          <span class="text-[#ffbe28] font-bold">SECTOR-09 NOMINAL</span>
+
+        <!-- 2. Iron Spider Nanotech -->
+        <div class="p-1.5 rounded bg-[#0c1422] border border-[#18263c] space-y-1">
+          <div class="flex justify-between items-center text-[8.5px] font-mono uppercase">
+            <span class="text-white font-bold flex items-center space-x-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+              <span>2. Iron Spider Nanotech</span>
+            </span>
+            <button onclick="deployNanotech()" class="px-1.5 py-0.2 rounded bg-[#ffbe28]/10 hover:bg-[#ffbe28]/30 text-[#ffbe28] border border-[#ffbe28]/30 text-[8px] font-bold tracking-wider transition">DEPLOY NANOTECH</button>
+          </div>
+          <div class="flex justify-between items-center text-[8px] font-mono text-slate-400">
+            <span>Mesh Integrity: <strong class="text-white font-bold" id="val-nano-mesh">100%</strong></span>
+            <span class="text-[#00f0ff]" id="val-waldoes">Waldoes: 4x Retractable Ready</span>
+          </div>
+        </div>
+
+        <!-- 3. Orbital Defense Satellite Drones -->
+        <div class="p-1.5 rounded bg-[#0c1422] border border-[#18263c] space-y-1">
+          <div class="flex justify-between items-center text-[8.5px] font-mono uppercase">
+            <span class="text-white font-bold flex items-center space-x-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-pulse"></span>
+              <span>3. Orbital Defense Satellite Drones</span>
+            </span>
+            <button onclick="deployOrbitalDrones()" class="px-1.5 py-0.2 rounded bg-[#00f0ff]/10 hover:bg-[#00f0ff]/30 text-[#00f0ff] border border-[#00f0ff]/30 text-[8px] font-bold tracking-wider transition">ORBITAL RECON</button>
+          </div>
+          <div class="flex justify-between items-center text-[8px] font-mono text-slate-400">
+            <span>E.D.I.T.H. Satellite Network: <strong class="text-emerald-400 font-bold">LOCKED</strong></span>
+            <span class="text-slate-300" id="val-orbital-drones">512 Tactical Drones in LEO</span>
+          </div>
+        </div>
+
+        <!-- 4. Spider-Sense Threat Radar -->
+        <div class="p-1.5 rounded bg-[#0c1422] border border-[#18263c] space-y-1">
+          <div class="flex justify-between items-center text-[8.5px] font-mono uppercase">
+            <span class="text-white font-bold flex items-center space-x-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-[#ff1744] animate-ping"></span>
+              <span>4. Spider-Sense Threat Radar</span>
+            </span>
+            <button onclick="scanThreatRadar()" class="px-1.5 py-0.2 rounded bg-[#ff1744]/10 hover:bg-[#ff1744]/30 text-[#ff1744] border border-[#ff1744]/30 text-[8px] font-bold tracking-wider transition">RADAR SCAN</button>
+          </div>
+          <div class="relative w-full h-8 bg-[#060a10] rounded border border-[#18263c]/80 flex items-center justify-between px-2 overflow-hidden">
+            <span class="text-[8.5px] font-mono text-[#00f0ff] font-bold z-10" id="val-threat-radar">SECTOR-09 NOMINAL</span>
+            <div class="flex items-center space-x-1 z-10">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" id="radar-blip"></span>
+              <span class="text-[8px] font-mono text-emerald-400">CLEAR</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Instant Kill Lockout -->
+        <div class="flex items-center justify-between text-[9px] font-mono pt-1 border-t border-os-border/40">
+          <div class="flex items-center space-x-1.5">
+            <span class="text-[8.5px] uppercase font-bold text-slate-300">5. Instant Kill Lockout:</span>
+            <span class="text-[8px] px-1 rounded bg-[#ff1744]/20 text-[#ff1744] border border-[#ff1744]/40 font-bold" id="val-instant-kill-status">LOCKED // SAFETY ENGAGED</span>
+          </div>
+          <button onclick="toggleInstantKillLockout()" class="px-2 py-0.5 rounded bg-red-950/60 hover:bg-red-700 text-red-300 hover:text-white text-[8px] font-mono font-bold border border-red-500/60 transition" id="btn-instant-kill-lockout">
+            TOGGLE LOCKOUT
+          </button>
         </div>
       </div>
 
@@ -684,17 +764,17 @@
             </div>
           </button>
 
-          <button class="w-full text-left p-1.5 rounded bg-[#101726] hover:bg-[#141e32] border border-[#ff1744]/40 flex items-center space-x-2 transition" onclick="submitTextCommand('spider drone recon')">
+          <button class="w-full text-left p-1.5 rounded bg-[#101726] hover:bg-[#141e32] border border-[#ff1744]/40 flex items-center space-x-2 transition" onclick="deployOrbitalDrones()">
             <div class="p-1 rounded bg-[#00f0ff]/20 text-[#00f0ff]">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M12 2v3m0 14v3M2 12h3m14 0h3"></path></svg>
             </div>
             <div>
-              <div class="text-[10px] font-medium text-white font-chakra">Spider Drone Recon</div>
-              <div class="text-[8px] text-slate-400 font-mono uppercase">Deploy chest reconnaissance drone</div>
+              <div class="text-[10px] font-medium text-white font-chakra">Orbital Defense Satellite Drones</div>
+              <div class="text-[8px] text-slate-400 font-mono uppercase">E.D.I.T.H. Low Earth Orbit Swarm Recon</div>
             </div>
           </button>
 
-          <button class="w-full text-left p-1.5 rounded bg-[#101726] hover:bg-[#141e32] border border-[#ff1744]/40 flex items-center space-x-2 transition" onclick="submitTextCommand('web fluid check')">
+          <button class="w-full text-left p-1.5 rounded bg-[#101726] hover:bg-[#141e32] border border-[#ff1744]/40 flex items-center space-x-2 transition" onclick="reloadWebFluid()">
             <div class="p-1 rounded bg-[#ffbe28]/20 text-[#ffbe28]">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
             </div>
@@ -704,23 +784,33 @@
             </div>
           </button>
 
-          <button class="w-full text-left p-1.5 rounded bg-[#101726] hover:bg-[#141e32] border border-[#ff1744]/40 flex items-center space-x-2 transition" onclick="submitTextCommand('spider-sense threat scan')">
+          <button class="w-full text-left p-1.5 rounded bg-[#101726] hover:bg-[#141e32] border border-[#ff1744]/40 flex items-center space-x-2 transition" onclick="scanThreatRadar()">
             <div class="p-1 rounded bg-[#00f0ff]/20 text-[#00f0ff]">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><line x1="12" y1="2" x2="12" y2="6"></line></svg>
             </div>
             <div>
-              <div class="text-[10px] font-medium text-white font-chakra">Spider-Sense Threat Scan</div>
+              <div class="text-[10px] font-medium text-white font-chakra">Spider-Sense Threat Radar Scan</div>
               <div class="text-[8px] text-slate-400 font-mono uppercase">Perimeter danger assessment</div>
             </div>
           </button>
 
-          <button class="w-full text-left p-1.5 rounded bg-[#101726] hover:bg-[#141e32] border border-[#ff1744]/40 flex items-center space-x-2 transition" onclick="toggleEmergencyStop()">
+          <button class="w-full text-left p-1.5 rounded bg-[#101726] hover:bg-[#141e32] border border-[#ff1744]/40 flex items-center space-x-2 transition" onclick="deployNanotech()">
+            <div class="p-1 rounded bg-[#ffbe28]/20 text-[#ffbe28]">
+              <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path></svg>
+            </div>
+            <div>
+              <div class="text-[10px] font-medium text-white font-chakra">Iron Spider Nanotech Armor</div>
+              <div class="text-[8px] text-slate-400 font-mono uppercase">Nanotech hardening &amp; waldoes standby</div>
+            </div>
+          </button>
+
+          <button class="w-full text-left p-1.5 rounded bg-[#101726] hover:bg-[#141e32] border border-[#ff1744]/40 flex items-center space-x-2 transition" onclick="toggleInstantKillLockout()">
             <div class="p-1 rounded bg-red-950/60 text-[#ff1744]">
               <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"></circle><line x1="12" y1="8" x2="12" y2="12"></line></svg>
             </div>
             <div>
               <div class="text-[10px] font-medium text-white font-chakra">Instant Kill Lockout</div>
-              <div class="text-[8px] text-slate-400 font-mono uppercase">Safety protocols disengage</div>
+              <div class="text-[8px] text-slate-400 font-mono uppercase">Safety protocols &amp; tactical override</div>
             </div>
           </button>
         </div>
@@ -1012,11 +1102,17 @@
             <button class="w-full text-left p-1.5 rounded bg-[#101726]/80 hover:bg-[#141e32] border border-[#ff1744]/40 text-[10px] text-slate-200 font-mono flex items-center space-x-2 transition" onclick="submitTextCommand('deploy web net on target')">
               <span class="text-[#00f0ff]">🕸</span><span>Deploy Web Net on Target</span>
             </button>
-            <button class="w-full text-left p-1.5 rounded bg-[#101726]/80 hover:bg-[#141e32] border border-[#ff1744]/40 text-[10px] text-slate-200 font-mono flex items-center space-x-2 transition" onclick="submitTextCommand('scan queens sector-09')">
-              <span class="text-[#ff1744]">🎯</span><span>Scan Queens Sector-09</span>
+            <button class="w-full text-left p-1.5 rounded bg-[#101726]/80 hover:bg-[#141e32] border border-[#ff1744]/40 text-[10px] text-slate-200 font-mono flex items-center space-x-2 transition" onclick="deployOrbitalDrones()">
+              <span class="text-[#00f0ff]">🛰</span><span>Orbital Defense Satellite Drones Swarm</span>
             </button>
-            <button class="w-full text-left p-1.5 rounded bg-[#101726]/80 hover:bg-[#141e32] border border-[#ff1744]/40 text-[10px] text-slate-200 font-mono flex items-center space-x-2 transition" onclick="submitTextCommand('suit diagnostics and web fluid check')">
-              <span class="text-[#ffbe28]">⚡</span><span>Suit Diagnostics &amp; Web Fluid Check</span>
+            <button class="w-full text-left p-1.5 rounded bg-[#101726]/80 hover:bg-[#141e32] border border-[#ff1744]/40 text-[10px] text-slate-200 font-mono flex items-center space-x-2 transition" onclick="scanThreatRadar()">
+              <span class="text-[#ff1744]">🎯</span><span>Spider-Sense Threat Radar Scan</span>
+            </button>
+            <button class="w-full text-left p-1.5 rounded bg-[#101726]/80 hover:bg-[#141e32] border border-[#ff1744]/40 text-[10px] text-slate-200 font-mono flex items-center space-x-2 transition" onclick="deployNanotech()">
+              <span class="text-[#ffbe28]">⚡</span><span>Iron Spider Nanotech Armor Deploy</span>
+            </button>
+            <button class="w-full text-left p-1.5 rounded bg-[#101726]/80 hover:bg-[#141e32] border border-[#ff1744]/40 text-[10px] text-slate-200 font-mono flex items-center space-x-2 transition" onclick="toggleInstantKillLockout()">
+              <span class="text-[#ff1744]">⚠</span><span>Instant Kill Safety Lockout</span>
             </button>
           </div>
         </div>
@@ -1398,10 +1494,13 @@
 
     const PERSONA_COLORS = {
       'EDITH': 0x00f0ff,
+      'EDITH // PETER 1': 0xff1744,
+      'PETER 1': 0xff1744,
+      'PETER1': 0xff1744,
+      'PETER': 0xff1744,
       'JARVIS': 0xffa800,
       'FRIDAY': 0x38bdf8,
       'KAREN': 0x34d399,
-      'PETER': 0xff1744,
       'SPIDEY': 0xff1744,
       'SPIDERMAN': 0xff1744,
       'ULTRON': 0xef4444
@@ -1939,8 +2038,9 @@
     function switchPersona(persona) {
       const pStr = String(persona || '').trim();
       const pUpper = pStr.toUpperCase();
-      const isPeter = pUpper === 'PETER' || pUpper === 'SPIDEY' || pUpper === 'SPIDERMAN';
+      const isPeter = pUpper === 'PETER' || pUpper === 'PETER1' || pUpper === 'PETER 1' || pUpper === 'PETER ONE' || pUpper === 'PETER-ONE' || pUpper === 'PETER_1' || pUpper === 'EDITH // PETER 1' || pUpper === 'EDITH' || pUpper === 'EDITH PETER 1' || pUpper === 'EDITH PETER ONE' || pUpper === 'EDITH PETER1' || pUpper === 'SPIDEY' || pUpper === 'SPIDERMAN';
       activeCharacter = isPeter ? 'peter' : pStr.toLowerCase();
+      document.title = isPeter ? 'EDITH // PETER 1 TACTICAL HUD // Stark Industries' : 'E.D.I.T.H. Mark II // Stark Industries Tactical HUD OS';
 
       if (typeof window.setActiveTheme === 'function') {
         window.setActiveTheme(isPeter ? 'spiderman' : activeCharacter);
@@ -1949,11 +2049,11 @@
       const tabs = document.querySelectorAll('.persona-tab');
       tabs.forEach(t => {
         const tabPersona = (t.dataset.persona || '').toUpperCase();
-        const isMatch = (isPeter && (tabPersona === 'PETER' || tabPersona === 'SPIDEY' || tabPersona === 'SPIDERMAN')) || (tabPersona === pUpper);
+        const isMatch = (isPeter && (tabPersona === 'EDITH // PETER 1' || tabPersona === 'PETER' || tabPersona === 'PETER1' || tabPersona === 'PETER 1' || tabPersona === 'PETER ONE' || tabPersona === 'PETER-ONE' || tabPersona === 'PETER_1' || tabPersona === 'EDITH' || tabPersona === 'EDITH PETER 1' || tabPersona === 'EDITH PETER ONE' || tabPersona === 'EDITH PETER1' || tabPersona === 'SPIDEY' || tabPersona === 'SPIDERMAN')) || (tabPersona === pUpper);
         if (isMatch) {
           if (isPeter) {
             t.className = 'persona-tab px-3 py-0.5 text-[10px] rounded-full tracking-[0.14em] bg-[#ff1744] text-white border border-[#ff1744] flex items-center space-x-1.5 transition glow-red-sm';
-            t.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-pulse"></span><span class="font-bold">PETER</span>`;
+            t.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-[#00f0ff] animate-pulse"></span><span class="font-bold">EDITH // PETER 1</span>`;
           } else {
             t.className = 'persona-tab px-3 py-0.5 text-[10px] rounded-full tracking-[0.14em] bg-transparent text-os-amber border border-os-amber/80 flex items-center space-x-1.5 transition glow-amber-sm';
             t.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-os-amber"></span><span>${t.dataset.persona}</span>`;
@@ -1965,9 +2065,9 @@
       });
 
       const charLabel = document.getElementById('active-char-label');
-      if (charLabel) charLabel.textContent = `CHAR: ${isPeter ? 'PETER' : pUpper}`;
+      if (charLabel) charLabel.textContent = `CHAR: ${isPeter ? 'EDITH // PETER 1' : pUpper}`;
       const badge = document.getElementById('active-voice-badge');
-      if (badge) badge.innerHTML = `<span>${isPeter ? 'PETER' : pUpper}</span>`;
+      if (badge) badge.innerHTML = `<span>${isPeter ? 'PETER 1 (EDITH)' : pUpper}</span>`;
 
       // Toggle Spider-Man 3D Emblem vs Fibonacci Point Cloud
       if (spiderLogo3D) spiderLogo3D.visible = isPeter;
@@ -2010,18 +2110,21 @@
 
       if (isPeter) {
         document.body.classList.remove('theme-edith', 'theme-jarvis', 'theme-friday', 'theme-karen', 'theme-ultron');
-        document.body.classList.add('theme-spiderman', 'theme-peter');
-        document.body.setAttribute('data-theme', 'peter');
+        document.body.classList.add('theme-spiderman', 'theme-peter', 'theme-peter1');
+        document.body.setAttribute('data-theme', 'peter1');
         if (brandDefault) brandDefault.classList.add('hidden');
         if (brandSpidey) brandSpidey.classList.remove('hidden');
-        if (badgeSpidey) badgeSpidey.classList.remove('hidden');
-        if (subtitleEl) subtitleEl.textContent = "EVEN DEAD, I'M THE HERO // PETER PARKER TACTICAL HUD // Insomniac Velocity Cockpit";
+        if (badgeSpidey) {
+          badgeSpidey.classList.remove('hidden');
+          badgeSpidey.textContent = 'EDITH // PETER 1 TACTICAL HUD';
+        }
+        if (subtitleEl) subtitleEl.textContent = "EVEN DEAD, I'M THE HERO // EDITH // PETER 1 TACTICAL HUD // AR Tactical Defense Cockpit";
         if (headline) {
-          headline.textContent = "At your service, Peter.";
+          headline.textContent = "At your service, Peter 1.";
           headline.classList.add("text-glow-red");
         }
         if (subcaption) {
-          subcaption.textContent = '"Queens is quiet tonight, Peter." Direct reflex execution ready.';
+          subcaption.textContent = "E.D.I.T.H. AR tactical defense active. Orbital satellite link nominal. Queens sector clear.";
         }
         if (hudLightStrip) {
           hudLightStrip.className = "fixed top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[#ff1744] via-[#00f0ff] to-transparent z-50 opacity-95";
@@ -2037,25 +2140,27 @@
         if (reticleLineV) {
           reticleLineV.className = "h-full w-px bg-gradient-to-b from-transparent via-[#00f0ff]/35 to-transparent absolute pointer-events-none";
         }
-        if (neuralTag) neuralTag.textContent = "PETER // SECTOR-09";
-        if (lblCoreReady) lblCoreReady.textContent = "P.E.T.E.R. PROTOCOL READY // QUEENS SECTOR 09";
+        if (neuralTag) neuralTag.textContent = "EDITH // PETER 1";
+        if (lblCoreReady) lblCoreReady.textContent = "PETER 1 PROTOCOL READY // E.D.I.T.H. AR TACTICAL DEFENSE";
 
         // Suit & Protocols toggles
         if (cardSpiderSuit) cardSpiderSuit.style.display = 'block';
+        const lblSuitCardTitle = document.getElementById('lbl-suit-card-title');
+        if (lblSuitCardTitle) lblSuitCardTitle.textContent = 'EDITH // PETER 1 TACTICAL HUD // SUIT & WEB FLUID CANISTERS';
         if (protocolsSpider) protocolsSpider.classList.remove('hidden');
         if (protocolsDefault) protocolsDefault.classList.add('hidden');
-        if (lblProtocolsTitle) lblProtocolsTitle.textContent = 'SUIT PROTOCOLS // QUEENS';
+        if (lblProtocolsTitle) lblProtocolsTitle.textContent = 'PETER 1 PROTOCOL // SUIT & DEFENSE';
         if (startersSpider) startersSpider.classList.remove('hidden');
         if (startersDefault) startersDefault.classList.add('hidden');
-        if (lblCmdCenterTitle) lblCmdCenterTitle.textContent = '+ SPIDER NANOTECH CORE';
-        if (lblCmdCenterBadge) lblCmdCenterBadge.textContent = 'PETER PROTOCOL';
-        if (lblCmdCenterSub) lblCmdCenterSub.textContent = 'Queens perimeter surveillance. Enhanced web optics. Reflex execution ready.';
-        if (lblSystemState) lblSystemState.textContent = 'P.E.T.E.R. PROTOCOL ONLINE // QUEENS SECTOR 09';
-        if (lblSystemSub) lblSystemSub.textContent = 'Reflex engine <15ms · Web fluid nominal';
+        if (lblCmdCenterTitle) lblCmdCenterTitle.textContent = '+ EDITH // PETER 1 TACTICAL HUD';
+        if (lblCmdCenterBadge) lblCmdCenterBadge.textContent = 'PETER 1 PROTOCOL';
+        if (lblCmdCenterSub) lblCmdCenterSub.textContent = 'E.D.I.T.H. AR tactical defense. Orbital satellite drones & nanotech online. Queens sector-09 nominal.';
+        if (lblSystemState) lblSystemState.textContent = 'EDITH // PETER 1 PROTOCOL ONLINE // QUEENS SECTOR 09';
+        if (lblSystemSub) lblSystemSub.textContent = 'Reflex engine <15ms · Web fluid nominal · Orbital drones armed';
         if (dockIconSpider) dockIconSpider.classList.remove('hidden');
         if (dockIconArc) dockIconArc.classList.add('hidden');
-        if (estopLabel) estopLabel.textContent = '[⚡ INSTANT KILL / E-STOP]';
-        if (commandInput) commandInput.placeholder = "Ask EDITH or give suit order... (e.g. 'deploy web net', 'scan queens sector 09')";
+        if (estopLabel) estopLabel.textContent = '[⚡ INSTANT KILL LOCKOUT]';
+        if (commandInput) commandInput.placeholder = "Ask EDITH or give Peter 1 order... (e.g. 'deploy web net', 'spider-sense threat scan', 'orbital defense drones')";
         if (latencyPath) latencyPath.setAttribute('stroke', '#ff1744');
 
         if (ring1Mesh) ring1Mesh.material.color.setHex(0xff1744);
@@ -2063,7 +2168,7 @@
         if (ringEquatorMesh) ringEquatorMesh.material.color.setHex(0xffbe28);
         if (auraMat) auraMat.color.setHex(0xff1744);
       } else {
-        document.body.classList.remove('theme-spiderman', 'theme-peter');
+        document.body.classList.remove('theme-spiderman', 'theme-peter', 'theme-peter1');
         document.body.setAttribute('data-theme', activeCharacter);
         if (brandDefault) brandDefault.classList.remove('hidden');
         if (brandSpidey) brandSpidey.classList.add('hidden');
@@ -2128,12 +2233,82 @@
       }).catch(() => {});
 
       if (isPeter) {
-        logActivity('Persona shifted to PETER. Peter Protocol HUD synchronized.');
+        logActivity('Persona shifted to EDITH // PETER 1. Peter 1 Protocol HUD synchronized.');
       } else {
         logActivity(`Persona shifted to ${pUpper}. Systems synchronized.`);
       }
     }
     window.switchPersona = switchPersona;
+    window.switchTheme = switchPersona;
+
+    // ── Peter 1 Suit & Defense Controls ──
+    let instantKillUnlocked = false;
+
+    function reloadWebFluid() {
+      const cartA = document.getElementById('val-cart-a');
+      const cartB = document.getElementById('val-cart-b');
+      const barA = document.getElementById('bar-cart-a');
+      const barB = document.getElementById('bar-cart-b');
+      if (cartA) cartA.textContent = '100%';
+      if (cartB) cartB.textContent = '100%';
+      if (barA) barA.style.width = '100%';
+      if (barB) barB.style.width = '100%';
+      submitTextCommand('web fluid check');
+      logActivity('Web fluid canisters recharged to 100%. Pressure calibrated.');
+    }
+
+    function deployNanotech() {
+      submitTextCommand('iron spider nanotech armor');
+      const mesh = document.getElementById('val-nano-mesh');
+      if (mesh) mesh.textContent = '100% (ARMORED)';
+      logActivity('Iron Spider Nanotech armor deployed. Micro-alloy mesh reinforced.');
+    }
+
+    function deployOrbitalDrones() {
+      submitTextCommand('orbital defense satellite drones');
+      logActivity('E.D.I.T.H. Low Earth Orbit satellite drones deployed for tactical recon.');
+    }
+
+    function scanThreatRadar() {
+      const blip = document.getElementById('radar-blip');
+      const label = document.getElementById('val-threat-radar');
+      if (label) label.textContent = 'SCANNING SECTOR 09...';
+      if (blip) blip.style.opacity = '0.3';
+      setTimeout(() => {
+        if (label) label.textContent = 'SECTOR-09 NOMINAL // CLEAR';
+        if (blip) blip.style.opacity = '1';
+      }, 500);
+      submitTextCommand('spider-sense threat scan');
+      logActivity('Spider-Sense threat radar sweep completed. Queens Sector 09 clear.');
+    }
+
+    function toggleInstantKillLockout() {
+      instantKillUnlocked = !instantKillUnlocked;
+      const status = document.getElementById('val-instant-kill-status');
+      const btn = document.getElementById('btn-instant-kill-lockout');
+      if (instantKillUnlocked) {
+        if (status) {
+          status.textContent = 'OVERRIDE DISENGAGED // COMBAT READY';
+          status.className = 'text-[8px] px-1 rounded bg-red-600 text-white border border-red-400 font-bold animate-pulse';
+        }
+        if (btn) btn.textContent = 'ENGAGE SAFETY';
+        logActivity('WARNING: Instant Kill lockout override active. Lethal defense disengaged for Peter 1.');
+      } else {
+        if (status) {
+          status.textContent = 'LOCKED // SAFETY ENGAGED';
+          status.className = 'text-[8px] px-1 rounded bg-[#ff1744]/20 text-[#ff1744] border border-[#ff1744]/40 font-bold';
+        }
+        if (btn) btn.textContent = 'TOGGLE LOCKOUT';
+        logActivity('Instant Kill safety lockout re-engaged. System nominal.');
+      }
+      submitTextCommand('instant kill lockout');
+    }
+
+    window.reloadWebFluid = reloadWebFluid;
+    window.deployNanotech = deployNanotech;
+    window.deployOrbitalDrones = deployOrbitalDrones;
+    window.scanThreatRadar = scanThreatRadar;
+    window.toggleInstantKillLockout = toggleInstantKillLockout;
     window.switchTheme = switchPersona;
 
     // ── Voice Input & Web Speech API ──
@@ -2288,7 +2463,10 @@
         logActivity(`Execution failed: ${err.message}`);
       } finally {
         isExecutingCommand = false;
-        if (headline) headline.textContent = 'At your service.';
+        if (headline) {
+          const isPeter = (activeCharacter === 'peter' || activeCharacter === 'peter1' || document.body.classList.contains('theme-peter') || document.body.classList.contains('theme-peter1'));
+          headline.textContent = isPeter ? 'At your service, Peter 1.' : 'At your service.';
+        }
       }
     }
 
