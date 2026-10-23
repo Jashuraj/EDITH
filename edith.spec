@@ -42,6 +42,7 @@ a = Analysis(
         'edith.tools.hotkeys',
         'edith.tools.browser_agent',
         'edith.tools.iot_bridge',
+        'edith.tools.ponytail',
         'edith.voice.voice_streamer',
         'edith.voice.transcript_stream',
         'edith.voice.whisper_engine',

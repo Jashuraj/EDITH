@@ -442,4 +442,18 @@ def register_builtin_tools(registry) -> None:
         parameters_schema={"type": "object", "properties": {"job_id": {"type": "string"}}, "required": ["job_id"]},
     )
 
+    # Ponytail Minimalist Lazy Senior Dev Pack
+    registry.register(
+        name="ponytail_exec",
+        description="Execute /pony command or minimalist code/review task",
+        action_pack="CODING_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda command="", **kwargs: (
+            __import__("edith.tools.ponytail", fromlist=["PONYTAIL"]).PONYTAIL.handle_command(
+                command or kwargs.get("task") or kwargs.get("args") or ""
+            )
+        ),
+        parameters_schema={"type": "object", "properties": {"command": {"type": "string"}}},
+    )
+
 

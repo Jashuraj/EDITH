@@ -955,6 +955,8 @@
     { cmd: "index documents", label: "Index RAG Docs", desc: "Scan and index local documents for offline RAG", cat: "system", icon: "📚" },
     { cmd: "query knowledge base", label: "Search Knowledge", desc: "Semantic retrieval across codebase and notes", cat: "system", icon: "🔍" },
     { cmd: "list mcp status", label: "MCP Status", desc: "Inspect connected Model Context Protocol servers", cat: "system", icon: "🔌" },
+    { cmd: "/pony", label: "Ponytail Mode", desc: "Lazy senior dev minimal code mode (/pony lite|full|ultra)", cat: "system", icon: "✂️" },
+    { cmd: "/pony review", label: "Ponytail Review", desc: "Audit code to strip bloat and over-engineering", cat: "system", icon: "🧹" },
   ];
 
   let guideActiveCategory = "all";

@@ -247,6 +247,11 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             from edith.tools.hotkeys import HOTKEY_DAEMON
             self._send_json(HOTKEY_DAEMON.get_status())
 
+        # Ponytail Status
+        elif parsed.path in ("/api/pony", "/api/pony/status"):
+            from edith.tools.ponytail import PONYTAIL
+            self._send_json(PONYTAIL.get_status())
+
         elif parsed.path == "/weather":
             try:
                 req = urllib.request.Request(
@@ -1207,6 +1212,14 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             entity = str(data.get("entity_id") or "light.ambient_lights")
             from edith.tools.iot_bridge import IOT_BRIDGE
             self._send_json(IOT_BRIDGE.set_peter_mode_ambient(entity))
+            return
+
+        # Ponytail Command Execution
+        elif parsed.path == "/api/pony":
+            cmd = str(data.get("command") or data.get("args") or data.get("task") or "").strip()
+            from edith.tools.ponytail import PONYTAIL
+            reply = PONYTAIL.handle_command(cmd)
+            self._send_json({"result": reply, "status": PONYTAIL.get_status()})
             return
 
         else:

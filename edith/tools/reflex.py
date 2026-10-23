@@ -214,6 +214,9 @@ class ReflexEngine:
         self.register(app_prefix + r"(?:abort|cancel\s+action|reject\s+action|no\s+cancel|deny)$", "confirm_action", "system", {"approved": False})
         self.register(app_prefix + r"(?:system\s+metrics|system\s+stats|hardware\s+stats|performance\s+stats)$", "system_metrics", "system", {})
 
+        # Ponytail Minimalist Lazy Senior Dev Mode (/pony, /ponytail)
+        self.register(r"^(?:/)?(?:pony|ponytail)(?:\s+(?P<args>.*))?$", "ponytail_mode", "system", {})
+
 
     def register(self, regex_pattern: str, command_name: str, action_type: str, params: Dict[str, Any]) -> None:
         """Register a new deterministic pattern."""
@@ -391,6 +394,10 @@ class ReflexEngine:
                 "theme": mode,
                 "action": "switch_theme",
             }
+        elif match.command_name == "ponytail_mode":
+            from edith.tools.ponytail import PONYTAIL
+            raw_args = match.params.get("args") or ""
+            return PONYTAIL.handle_command(raw_args)
         elif match.command_name == "switch_mic_bluetooth":
             from edith.voice.clap_detector import CLAP_DETECTOR
             import sounddevice as sd
