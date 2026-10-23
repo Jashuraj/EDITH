@@ -448,17 +448,12 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(content)
                 return
 
-        # PETER Mode Insomniac Velocity Cockpit (Stitch Screen 73ae9f005775484099fefc6ea5d1d9df)
-        elif parsed.path in ("/peter", "/peter/"):
-            peter_file = UI_DIR / "peter.html"
-            if peter_file.exists():
-                content = peter_file.read_bytes()
-                self.send_response(200)
-                self.send_header("Content-Type", "text/html; charset=utf-8")
-                self.send_header("Content-Length", str(len(content)))
-                self.end_headers()
-                self.wfile.write(content)
-                return
+        # PETER Mode Theme: Standalone /peter route replaced by native Peter theme redirect
+        elif parsed.path in ("/peter", "/peter/", "/peter.html"):
+            self.send_response(302)
+            self.send_header("Location", "/?theme=peter")
+            self.end_headers()
+            return
 
         # GameStream Telemetry & Discovery (Sunshine / Wolf / Moonlight)
         elif parsed.path == "/api/gamestream/status":

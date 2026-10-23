@@ -77,7 +77,9 @@ body[data-theme="karen"] {
 }
 
 body.theme-spiderman,
-body[data-theme="spiderman"] {
+body.theme-peter,
+body[data-theme="spiderman"],
+body[data-theme="peter"] {
   --bg: #060a10;
   --panel: #0a101b;
   --line: #18263c;

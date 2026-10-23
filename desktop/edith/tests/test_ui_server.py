@@ -183,22 +183,32 @@ class TestUIServer(unittest.TestCase):
             )
 
     def test_peter_mode_endpoints(self):
-        # 1. Test /peter route
+        # 1. Test /peter route redirects to ?theme=peter and serves HUD
         req = urllib.request.Request("http://127.0.0.1:8796/peter")
         with urllib.request.urlopen(req, timeout=3.0) as res:
             self.assertEqual(res.status, 200)
+            self.assertIn("theme=peter", res.geturl())
             html = res.read().decode("utf-8")
             self.assertIn("Insomniac Velocity Cockpit", html)
             self.assertIn("SPIDER-MAN", html)
 
-        # 2. Test /peter.html static route
+        # 2. Test /peter.html static route redirects to ?theme=peter
         req = urllib.request.Request("http://127.0.0.1:8796/peter.html")
         with urllib.request.urlopen(req, timeout=3.0) as res:
             self.assertEqual(res.status, 200)
+            self.assertIn("theme=peter", res.geturl())
             html = res.read().decode("utf-8")
             self.assertIn("WEB FLUID CANISTERS", html)
 
-        # 3. Test /command endpoint alias
+        # 3. Test direct /?theme=peter query
+        req = urllib.request.Request("http://127.0.0.1:8796/?theme=peter")
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            html = res.read().decode("utf-8")
+            self.assertIn("PETER", html)
+            self.assertIn("SPIDER-MAN", html)
+
+        # 4. Test /command endpoint alias
         body = json.dumps({"command": "what is your status"}).encode("utf-8")
         req = urllib.request.Request("http://127.0.0.1:8796/command", data=body, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=3.0) as res:

@@ -156,7 +156,10 @@
         linear-gradient(to bottom, rgba(24, 36, 56, 0.35) 1px, transparent 1px);
       background-size: 28px 28px, 28px 28px, 28px 28px;
     }
-    body.theme-spiderman {
+    body.theme-spiderman,
+    body.theme-peter,
+    body[data-theme="spiderman"],
+    body[data-theme="peter"] {
       --os-amber: #ff1744;
       --os-amber-glow: #ff2a55;
       --os-gold: #ffbe28;
@@ -168,6 +171,9 @@
       --os-black: #060a10;
     }
     body.theme-spiderman .stark-card,
+    body.theme-peter .stark-card,
+    body[data-theme="spiderman"] .stark-card,
+    body[data-theme="peter"] .stark-card,
     .spidey-card {
       position: relative;
       background: linear-gradient(135deg, rgba(12, 18, 28, 0.95) 0%, rgba(7, 12, 20, 0.98) 100%) !important;
@@ -180,6 +186,9 @@
       );
     }
     body.theme-spiderman .stark-card::before,
+    body.theme-peter .stark-card::before,
+    body[data-theme="spiderman"] .stark-card::before,
+    body[data-theme="peter"] .stark-card::before,
     .spidey-card::before {
       content: '';
       position: absolute;
@@ -189,6 +198,9 @@
       pointer-events: none;
     }
     body.theme-spiderman .stark-card::after,
+    body.theme-peter .stark-card::after,
+    body[data-theme="spiderman"] .stark-card::after,
+    body[data-theme="peter"] .stark-card::after,
     .spidey-card::after {
       content: '';
       position: absolute;
@@ -198,20 +210,41 @@
       pointer-events: none;
     }
     body.theme-spiderman .reticle-bracket-tl,
-    body.theme-spiderman .reticle-bracket-tr {
+    body.theme-spiderman .reticle-bracket-tr,
+    body.theme-peter .reticle-bracket-tl,
+    body.theme-peter .reticle-bracket-tr,
+    body[data-theme="spiderman"] .reticle-bracket-tl,
+    body[data-theme="spiderman"] .reticle-bracket-tr,
+    body[data-theme="peter"] .reticle-bracket-tl,
+    body[data-theme="peter"] .reticle-bracket-tr {
       border-color: #ff1744 !important;
     }
     body.theme-spiderman .reticle-bracket-bl,
-    body.theme-spiderman .reticle-bracket-br {
+    body.theme-spiderman .reticle-bracket-br,
+    body.theme-peter .reticle-bracket-bl,
+    body.theme-peter .reticle-bracket-br,
+    body[data-theme="spiderman"] .reticle-bracket-bl,
+    body[data-theme="spiderman"] .reticle-bracket-br,
+    body[data-theme="peter"] .reticle-bracket-bl,
+    body[data-theme="peter"] .reticle-bracket-br {
       border-color: #00f0ff !important;
     }
-    body.theme-spiderman .glow-amber-sm {
+    body.theme-spiderman .glow-amber-sm,
+    body.theme-peter .glow-amber-sm,
+    body[data-theme="spiderman"] .glow-amber-sm,
+    body[data-theme="peter"] .glow-amber-sm {
       box-shadow: 0 0 10px rgba(255, 23, 68, 0.45), inset 0 0 8px rgba(255, 23, 68, 0.12) !important;
     }
-    body.theme-spiderman .glow-amber-lg {
+    body.theme-spiderman .glow-amber-lg,
+    body.theme-peter .glow-amber-lg,
+    body[data-theme="spiderman"] .glow-amber-lg,
+    body[data-theme="peter"] .glow-amber-lg {
       box-shadow: 0 0 25px rgba(255, 23, 68, 0.6), 0 0 8px rgba(255, 42, 85, 0.4) !important;
     }
-    body.theme-spiderman .text-glow-amber {
+    body.theme-spiderman .text-glow-amber,
+    body.theme-peter .text-glow-amber,
+    body[data-theme="spiderman"] .text-glow-amber,
+    body[data-theme="peter"] .text-glow-amber {
       text-shadow: 0 0 12px rgba(255, 23, 68, 0.8), 0 0 22px rgba(255, 42, 85, 0.4) !important;
     }
 
@@ -320,7 +353,7 @@
         <div class="flex items-center space-x-2">
           <span class="font-michroma tracking-[0.25em] text-white font-bold text-xs">E.D.I.T.H.</span>
           <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-os-amber text-os-black uppercase tracking-[0.14em] font-chakra" id="brand-badge-mark">MARK II</span>
-          <span class="hidden text-[9px] font-bold px-1.5 py-0.2 rounded bg-[#ff1744] text-white uppercase tracking-[0.14em] font-chakra border border-[#ff1744] glow-red-sm" id="brand-badge-spidey">P.E.T.E.R. PROTOCOL</span>
+          <span class="hidden text-[9px] font-bold px-1.5 py-0.2 rounded bg-[#ff1744] text-white uppercase tracking-[0.14em] font-chakra border border-[#ff1744] glow-red-sm" id="brand-badge-spidey">SPIDER-MAN // Insomniac Velocity Cockpit</span>
           <span class="text-xs text-os-border-glow font-mono px-1">//</span>
         </div>
         <p class="text-[9px] text-slate-400 font-mono tracking-[0.15em] uppercase" id="brand-subtitle">EVEN DEAD, I'M THE HERO | LOCAL-FIRST AUTONOMOUS AI OS</p>
@@ -337,7 +370,7 @@
       <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="KAREN">KAREN</button>
       <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="PETER">PETER</button>
       <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-red-400 transition" data-persona="ULTRON">ULTRON</button>
-      <a href="/peter" target="_blank" class="hidden sm:inline-flex items-center space-x-1 px-2 py-0.5 text-[9px] rounded font-mono border border-[#ff1744]/40 text-[#ff1744] hover:bg-[#ff1744] hover:text-white transition" title="Open Stitch Insomniac Velocity Cockpit in a new window"><span>COCKPIT</span><span class="text-[8px]">↗</span></a>
+
     </nav>
 
     <!-- Right: Telemetry, Clock, E-Stop -->
@@ -498,7 +531,7 @@
         <div class="flex items-center justify-between border-b border-os-border/80 pb-1.5">
           <div class="flex items-center space-x-2">
             <svg class="w-3.5 h-3.5 text-[#ff1744]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 19 8 19 16 12 22 5 16 5 8"></polygon></svg>
-            <span class="text-[9px] font-bold tracking-[0.16em] uppercase text-white font-mono">SUIT &amp; WEB FLUID TELEMETRY</span>
+            <span class="text-[9px] font-bold tracking-[0.16em] uppercase text-white font-mono">SPIDER-MAN SUIT &amp; WEB FLUID CANISTERS</span>
           </div>
           <span class="text-[8px] font-mono px-1 py-0.2 rounded bg-[#ff1744]/20 text-[#ff1744] border border-[#ff1744]/40 font-bold animate-pulse">ARMED</span>
         </div>
@@ -511,7 +544,7 @@
             <div class="w-full bg-slate-900 h-1 rounded overflow-hidden">
               <div class="bg-[#00f0ff] h-full" style="width: 94%;"></div>
             </div>
-            <div class="text-[7.5px] text-slate-500 mt-1 uppercase">High-Tensile Net</div>
+            <div class="text-[7.5px] text-slate-500 mt-1 uppercase">High-Tensile Net · Web Fluid Canisters</div>
           </div>
           <div class="p-1.5 rounded bg-[#0c1422] border border-[#18263c]">
             <div class="flex justify-between items-center text-slate-400 text-[8.5px] uppercase mb-0.5">
@@ -521,7 +554,7 @@
             <div class="w-full bg-slate-900 h-1 rounded overflow-hidden">
               <div class="bg-[#ff1744] h-full" style="width: 88%;"></div>
             </div>
-            <div class="text-[7.5px] text-slate-500 mt-1 uppercase">Taser Web Pulse</div>
+            <div class="text-[7.5px] text-slate-500 mt-1 uppercase">Taser Web Pulse · Web Fluid Canisters</div>
           </div>
         </div>
         <div class="flex items-center justify-between text-[9px] font-mono text-slate-400 pt-1 border-t border-os-border/40">
@@ -1370,6 +1403,7 @@
       'KAREN': 0x34d399,
       'PETER': 0xff1744,
       'SPIDEY': 0xff1744,
+      'SPIDERMAN': 0xff1744,
       'ULTRON': 0xef4444
     };
 
@@ -1893,44 +1927,29 @@
         });
       });
 
-      // Listen for cross-frame persona switches from embedded Peter cockpit
-      window.addEventListener('message', (e) => {
-        if (e.data && e.data.type === 'switchPersona') {
-          switchPersona(e.data.persona);
-        }
-      });
 
       // Handle URL param ?persona=PETER
       const urlParams = new URLSearchParams(window.location.search);
-      const initialPersona = urlParams.get('persona');
+      const initialPersona = urlParams.get('persona') || urlParams.get('theme');
       if (initialPersona) {
         switchPersona(initialPersona);
       }
     }
 
     function switchPersona(persona) {
-      const isPeter = persona.toUpperCase() === 'PETER' || persona.toUpperCase() === 'SPIDEY' || persona.toLowerCase() === 'spiderman';
-      activeCharacter = isPeter ? 'peter' : persona.toLowerCase();
+      const pStr = String(persona || '').trim();
+      const pUpper = pStr.toUpperCase();
+      const isPeter = pUpper === 'PETER' || pUpper === 'SPIDEY' || pUpper === 'SPIDERMAN';
+      activeCharacter = isPeter ? 'peter' : pStr.toLowerCase();
 
-      // Toggle embedded Stitch Peter cockpit HUD
-      const peterOverlay = document.getElementById('peter-cockpit-overlay');
-      const peterFrame = document.getElementById('peter-cockpit-frame');
-      if (isPeter) {
-        if (peterOverlay) {
-          peterOverlay.classList.remove('hidden');
-          if (peterFrame && (!peterFrame.src || peterFrame.src === 'about:blank' || !peterFrame.src.includes('peter.html'))) {
-            peterFrame.src = '/peter.html';
-          }
-        }
-      } else {
-        if (peterOverlay) {
-          peterOverlay.classList.add('hidden');
-        }
+      if (typeof window.setActiveTheme === 'function') {
+        window.setActiveTheme(isPeter ? 'spiderman' : activeCharacter);
       }
 
       const tabs = document.querySelectorAll('.persona-tab');
       tabs.forEach(t => {
-        const isMatch = (isPeter && (t.dataset.persona === 'PETER' || t.dataset.persona === 'SPIDEY')) || (t.dataset.persona === persona);
+        const tabPersona = (t.dataset.persona || '').toUpperCase();
+        const isMatch = (isPeter && (tabPersona === 'PETER' || tabPersona === 'SPIDEY' || tabPersona === 'SPIDERMAN')) || (tabPersona === pUpper);
         if (isMatch) {
           if (isPeter) {
             t.className = 'persona-tab px-3 py-0.5 text-[10px] rounded-full tracking-[0.14em] bg-[#ff1744] text-white border border-[#ff1744] flex items-center space-x-1.5 transition glow-red-sm';
@@ -1946,9 +1965,9 @@
       });
 
       const charLabel = document.getElementById('active-char-label');
-      if (charLabel) charLabel.textContent = `CHAR: ${isPeter ? 'PETER' : persona}`;
+      if (charLabel) charLabel.textContent = `CHAR: ${isPeter ? 'PETER' : pUpper}`;
       const badge = document.getElementById('active-voice-badge');
-      if (badge) badge.innerHTML = `<span>${isPeter ? 'PETER' : persona}</span>`;
+      if (badge) badge.innerHTML = `<span>${isPeter ? 'PETER' : pUpper}</span>`;
 
       // Toggle Spider-Man 3D Emblem vs Fibonacci Point Cloud
       if (spiderLogo3D) spiderLogo3D.visible = isPeter;
@@ -1990,12 +2009,13 @@
       const latencyPath = document.getElementById('latency-svg-path');
 
       if (isPeter) {
-        document.body.classList.add('theme-spiderman');
-        document.body.setAttribute('data-theme', 'spiderman');
+        document.body.classList.remove('theme-edith', 'theme-jarvis', 'theme-friday', 'theme-karen', 'theme-ultron');
+        document.body.classList.add('theme-spiderman', 'theme-peter');
+        document.body.setAttribute('data-theme', 'peter');
         if (brandDefault) brandDefault.classList.add('hidden');
         if (brandSpidey) brandSpidey.classList.remove('hidden');
         if (badgeSpidey) badgeSpidey.classList.remove('hidden');
-        if (subtitleEl) subtitleEl.textContent = "EVEN DEAD, I'M THE HERO // PETER PARKER TACTICAL HUD";
+        if (subtitleEl) subtitleEl.textContent = "EVEN DEAD, I'M THE HERO // PETER PARKER TACTICAL HUD // Insomniac Velocity Cockpit";
         if (headline) {
           headline.textContent = "At your service, Peter.";
           headline.classList.add("text-glow-red");
@@ -2043,7 +2063,7 @@
         if (ringEquatorMesh) ringEquatorMesh.material.color.setHex(0xffbe28);
         if (auraMat) auraMat.color.setHex(0xff1744);
       } else {
-        document.body.classList.remove('theme-spiderman');
+        document.body.classList.remove('theme-spiderman', 'theme-peter');
         document.body.setAttribute('data-theme', activeCharacter);
         if (brandDefault) brandDefault.classList.remove('hidden');
         if (brandSpidey) brandSpidey.classList.add('hidden');
@@ -2091,7 +2111,7 @@
         if (commandInput) commandInput.placeholder = "Ask EDITH or give order... (e.g. 'open youtube and play trailer', 'lock pc')";
         if (latencyPath) latencyPath.setAttribute('stroke', '#ffa800');
 
-        const hex = PERSONA_COLORS[persona] || 0xffa800;
+        const hex = PERSONA_COLORS[pUpper] || PERSONA_COLORS[activeCharacter.toUpperCase()] || 0xffa800;
         if (wireMat) wireMat.color.setHex(hex);
         if (pMat) pMat.color.setHex(hex);
         if (ring1Mesh) ring1Mesh.material.color.setHex(hex);
@@ -2107,8 +2127,14 @@
         body: JSON.stringify({ character: isPeter ? 'peter' : activeCharacter })
       }).catch(() => {});
 
-      logActivity(`Persona shifted to ${isPeter ? 'PETER' : persona}. Peter Protocol HUD synchronized.`);
+      if (isPeter) {
+        logActivity('Persona shifted to PETER. Peter Protocol HUD synchronized.');
+      } else {
+        logActivity(`Persona shifted to ${pUpper}. Systems synchronized.`);
+      }
     }
+    window.switchPersona = switchPersona;
+    window.switchTheme = switchPersona;
 
     // ── Voice Input & Web Speech API ──
     function toggleVoice() {
@@ -2746,10 +2772,7 @@
     }
   </script>
 
-  <!-- Embedded Stitch Peter Mode HUD (Screen 73ae9f005775484099fefc6ea5d1d9df) -->
-  <div id="peter-cockpit-overlay" class="fixed inset-0 z-[100] bg-[#04070d] hidden flex flex-col">
-    <iframe id="peter-cockpit-frame" src="about:blank" class="w-full h-full border-0"></iframe>
-  </div>
+
 
 </body>
 </html>
