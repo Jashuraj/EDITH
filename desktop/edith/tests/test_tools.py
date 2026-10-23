@@ -1,6 +1,7 @@
 """Unit tests for Tool Registry and Action Packs."""
 
 import unittest
+from unittest.mock import patch
 from edith.core.security import RiskLevel
 from edith.tools.registry import ToolRegistry
 
@@ -50,10 +51,12 @@ class TestWindowsTools(unittest.TestCase):
         from edith.tools.windows import WindowsTools
         self.tools = WindowsTools()
 
-    def test_launch_website_resolution(self):
+    @patch("edith.tools.windows.WindowsTools.open_url", return_value=True)
+    def test_launch_website_resolution(self, mock_open):
         res = self.tools.launch_app("youtube")
         self.assertTrue(res.get("success"))
         self.assertIn("Youtube", res.get("message", ""))
+        mock_open.assert_called_once()
 
     def test_kill_process_result_format(self):
         res = self.tools.kill_process("nonexistent_test_proc_xyz")

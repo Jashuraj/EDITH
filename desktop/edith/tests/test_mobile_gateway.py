@@ -100,7 +100,8 @@ class TestMobileAndTunnelSubsystems(unittest.TestCase):
                 self.assertEqual(res.status, 400)
         except urllib.error.HTTPError as ex:
             self.assertEqual(ex.code, 400)
-            err_data = json.loads(ex.read().decode("utf-8"))
+            with ex:
+                err_data = json.loads(ex.read().decode("utf-8"))
             self.assertIn("Empty command", err_data["error"])
 
     def test_command_validation_too_long(self):
@@ -111,7 +112,8 @@ class TestMobileAndTunnelSubsystems(unittest.TestCase):
                 self.assertEqual(res.status, 400)
         except urllib.error.HTTPError as ex:
             self.assertEqual(ex.code, 400)
-            err_data = json.loads(ex.read().decode("utf-8"))
+            with ex:
+                err_data = json.loads(ex.read().decode("utf-8"))
             self.assertIn("exceeds 1000 character limit", err_data["error"])
 
     def test_emergency_stop_and_resume_from_phone(self):
