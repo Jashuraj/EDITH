@@ -39,7 +39,13 @@ from edith.voice.whisper_engine import WHISPER_ENGINE
 
 logger = logging.getLogger("edith.ui.server")
 
-UI_DIR = Path(__file__).resolve().parent / "public"
+def _resolve_ui_dir() -> Path:
+    for candidate in (Path.cwd() / "edith" / "ui" / "public", Path(__file__).resolve().parent / "public"):
+        if candidate.exists() and (candidate / "index.html").exists():
+            return candidate
+    return Path(__file__).resolve().parent / "public"
+
+UI_DIR = _resolve_ui_dir()
 STATE_DIR = Path(__file__).resolve().parent / "state"
 
 
@@ -194,6 +200,37 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                 "models": models,
                 "active_model": CONFIG.primary_local_model,
             })
+
+        # OpenAI Compatible /v1/models Endpoint
+        elif parsed.path in ("/v1/models", "/api/v1/models"):
+            import time
+            self._send_json({
+                "object": "list",
+                "data": [
+                    {"id": "edith-default", "object": "model", "created": int(time.time()), "owned_by": "edith"},
+                    {"id": CONFIG.primary_local_model, "object": "model", "created": int(time.time()), "owned_by": "ollama"},
+                    {"id": "claude-opus-5.5", "object": "model", "created": int(time.time()), "owned_by": "codecraft"},
+                    {"id": "local-gguf", "object": "model", "created": int(time.time()), "owned_by": "llamacpp"},
+                ]
+            })
+
+        # Channel Bridge Status (WhatsApp, Telegram, Webhooks)
+        elif parsed.path == "/api/channels/status":
+            from edith.phone.channel_bridge import CHANNEL_BRIDGE
+            self._send_json(CHANNEL_BRIDGE.get_status())
+
+        # Model Context Protocol (MCP) Status
+        elif parsed.path == "/api/mcp/status":
+            from edith.tools.mcp_client import MCP_CLIENT
+            self._send_json(MCP_CLIENT.get_status())
+
+        # Local RAG Status
+        elif parsed.path == "/api/rag/status":
+            from edith.memory.rag import RAG
+            with RAG.store._connection() as conn:
+                doc_cnt = conn.execute("SELECT COUNT(*) as c FROM rag_documents;").fetchone()["c"]
+                chk_cnt = conn.execute("SELECT COUNT(*) as c FROM rag_chunks;").fetchone()["c"]
+            self._send_json({"indexed_documents": doc_cnt, "indexed_chunks": chk_cnt})
 
         elif parsed.path == "/weather":
             try:
@@ -391,6 +428,18 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(content)
                 return
 
+        # PETER Mode Insomniac Velocity Cockpit (Stitch Screen 73ae9f005775484099fefc6ea5d1d9df)
+        elif parsed.path in ("/peter", "/peter/"):
+            peter_file = UI_DIR / "peter.html"
+            if peter_file.exists():
+                content = peter_file.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(content)))
+                self.end_headers()
+                self.wfile.write(content)
+                return
+
         # GameStream Telemetry & Discovery (Sunshine / Wolf / Moonlight)
         elif parsed.path == "/api/gamestream/status":
             self._send_json(GAMESTREAM_ENGINE.get_status())
@@ -504,7 +553,7 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
         except Exception:
             data = {}
 
-        if parsed.path == "/cmd":
+        if parsed.path in ("/cmd", "/command"):
             command = data.get("command", "").strip()
             if not command:
                 self._send_json({"matched": False, "result": "Empty command provided", "state": "READY"})
@@ -948,6 +997,156 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
             action = data.get("action", "play_pause")
             res = AUDIO_MIXER.media_control(action)
             self._send_json(res)
+
+        elif parsed.path == "/api/puter/save_token":
+            token = (data.get("token") or "").strip()
+            if not token:
+                self._send_json({"success": False, "error": "No token provided"}, status=400)
+                return
+            os.environ["PUTER_AUTH_TOKEN"] = token
+            env_path = Path(__file__).resolve().parent.parent.parent / ".env.local"
+            try:
+                lines = []
+                if env_path.exists():
+                    lines = [l for l in env_path.read_text(encoding="utf-8").splitlines() if not l.startswith("PUTER_AUTH_TOKEN=")]
+                lines.append(f'PUTER_AUTH_TOKEN="{token}"')
+                env_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                logger.info("Successfully persisted PUTER_AUTH_TOKEN to .env.local")
+            except Exception as e:
+                logger.error("Failed saving PUTER_AUTH_TOKEN: %s", e)
+            self._send_json({"success": True, "message": "Puter auth token registered successfully."})
+
+        # OpenAI Compatible /v1/chat/completions Endpoint
+        elif parsed.path in ("/v1/chat/completions", "/api/v1/chat/completions"):
+            messages = data.get("messages", [])
+            prompt = ""
+            system_prompt = ""
+            for m in messages:
+                role = m.get("role", "")
+                content = m.get("content", "")
+                if role == "system":
+                    system_prompt = content
+                elif role == "user":
+                    prompt = content
+
+            loop = asyncio.new_event_loop()
+            try:
+                model_resp = loop.run_until_complete(
+                    ROUTER.execute(prompt=prompt, system_prompt=system_prompt)
+                )
+            finally:
+                loop.close()
+
+            content = model_resp.content if model_resp else "No response generated."
+            import time
+            resp_payload = {
+                "id": f"chatcmpl-{int(time.time()*1000)}",
+                "object": "chat.completion",
+                "created": int(time.time()),
+                "model": model_resp.model if model_resp else "edith",
+                "choices": [{
+                    "index": 0,
+                    "message": {
+                        "role": "assistant",
+                        "content": content
+                    },
+                    "finish_reason": "stop"
+                }],
+                "usage": {
+                    "prompt_tokens": len(prompt.split()),
+                    "completion_tokens": len(content.split()),
+                    "total_tokens": len(prompt.split()) + len(content.split())
+                }
+            }
+            self._send_json(resp_payload)
+            return
+
+        # Autonomous Multi-Step ToolUsingAgent
+        elif parsed.path == "/api/agent/run":
+            goal = str(data.get("goal") or data.get("prompt") or "").strip()
+            if not goal:
+                self._send_json({"success": False, "error": "No goal provided"}, status=400)
+                return
+            from edith.tasks.autonomous_agent import AUTONOMOUS_AGENT
+            loop = asyncio.new_event_loop()
+            try:
+                agent_res = loop.run_until_complete(AUTONOMOUS_AGENT.run(goal=goal))
+                self._send_json({
+                    "success": agent_res.success,
+                    "goal": agent_res.goal,
+                    "final_answer": agent_res.final_answer,
+                    "total_duration_ms": agent_res.total_duration_ms,
+                    "steps": [
+                        {
+                            "iteration": s.iteration,
+                            "thought": s.thought,
+                            "tool_name": s.tool_name,
+                            "tool_params": s.tool_params,
+                            "observation": s.observation,
+                            "duration_ms": s.duration_ms,
+                        }
+                        for s in agent_res.steps
+                    ],
+                })
+            except Exception as ex:
+                self._send_json({"success": False, "error": str(ex)}, status=500)
+            finally:
+                loop.close()
+            return
+
+        # Channel Bridge Inbound Message (WhatsApp, Telegram, Webhook)
+        elif parsed.path == "/api/channels/message":
+            channel = str(data.get("channel", "webhook")).lower()
+            sender_id = str(data.get("sender_id") or data.get("from") or "anonymous")
+            sender_name = str(data.get("sender_name") or data.get("name") or sender_id)
+            text = str(data.get("text") or data.get("message") or data.get("body") or "")
+            from edith.phone.channel_bridge import CHANNEL_BRIDGE
+            res = CHANNEL_BRIDGE.handle_incoming_message(
+                channel=channel,
+                sender_id=sender_id,
+                sender_name=sender_name,
+                text=text,
+            )
+            self._send_json(res)
+            return
+
+        # Model Context Protocol Connect Endpoint
+        elif parsed.path == "/api/mcp/connect":
+            server_id = str(data.get("server_id") or data.get("name") or "external_mcp")
+            url = str(data.get("url") or data.get("endpoint") or "").strip()
+            from edith.tools.mcp_client import MCP_CLIENT
+            res = MCP_CLIENT.connect_http_server(server_id=server_id, base_url=url)
+            # Register discovered tools into active registry
+            MCP_CLIENT.register_mcp_tools(REGISTRY)
+            self._send_json(res)
+            return
+
+        # Local RAG Index Endpoint
+        elif parsed.path == "/api/rag/index":
+            target_path = str(data.get("path") or ".").strip()
+            from edith.memory.rag import RAG
+            from pathlib import Path
+            p = Path(target_path).resolve()
+            if p.is_file():
+                cnt = RAG.index_file(p)
+            else:
+                cnt = RAG.index_directory(p)
+            self._send_json({"success": True, "indexed_count": cnt, "target": str(p)})
+            return
+
+        # Local RAG Search Endpoint
+        elif parsed.path == "/api/rag/search":
+            query = str(data.get("query") or data.get("q") or "").strip()
+            from edith.memory.rag import RAG
+            results = RAG.search(query=query, top_k=int(data.get("top_k", 4)))
+            self._send_json({
+                "success": True,
+                "matches": [
+                    {"path": r.doc_path, "chunk": r.chunk_index, "score": r.score, "content": r.content}
+                    for r in results
+                ],
+            })
+            return
 
         else:
             self.send_error(404, "Endpoint not found")

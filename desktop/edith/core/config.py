@@ -136,7 +136,7 @@ class SystemConfig:
     reflex_local_model: str = "tinydolphin:1.1b"
     vision_local_model: str = "qwen3-vl:2b"
     coder_local_model: str = "hhao/qwen2.5-coder-tools:0.5b"
-    cloud_model: str = "gemini-2.5-flash"
+    cloud_model: str = "claude-opus-5.5"
     ui_port: int = 8794
     phone_port: int = 8795
 

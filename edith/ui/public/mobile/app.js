@@ -950,8 +950,11 @@
     { cmd: "emergency stop", label: "Emergency Stop", desc: "Halt all active autonomous tasks", cat: "security", icon: "🛑" },
     { cmd: "resume", label: "Resume System", desc: "Clear emergency halt and resume operations", cat: "security", icon: "▶️" },
     { cmd: "mode auto", label: "Auto Mode", desc: "Switch to hybrid local/cloud routing", cat: "security", icon: "🤖" },
-    { cmd: "mode online", label: "Online Mode", desc: "Prioritize cloud models (Gemini Flash)", cat: "security", icon: "☁️" },
+    { cmd: "mode online", label: "Online Mode", desc: "Prioritize cloud models (Claude Opus 5.5)", cat: "security", icon: "☁️" },
     { cmd: "mode offline", label: "Offline Mode", desc: "Force air-gapped local AI inference", cat: "security", icon: "🛡️" },
+    { cmd: "index documents", label: "Index RAG Docs", desc: "Scan and index local documents for offline RAG", cat: "system", icon: "📚" },
+    { cmd: "query knowledge base", label: "Search Knowledge", desc: "Semantic retrieval across codebase and notes", cat: "system", icon: "🔍" },
+    { cmd: "list mcp status", label: "MCP Status", desc: "Inspect connected Model Context Protocol servers", cat: "system", icon: "🔌" },
   ];
 
   let guideActiveCategory = "all";

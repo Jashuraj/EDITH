@@ -92,6 +92,10 @@ class ToolRegistry:
         self._active_packs.discard(pack_name)
         logger.info("Deactivated action pack: %s", pack_name)
 
+    def get(self, tool_name: str) -> Optional[ToolDefinition]:
+        """Retrieve tool definition by name."""
+        return self._tools.get(tool_name)
+
     def get_active_tools(self) -> List[ToolDefinition]:
         """Return all tools belonging to currently active action packs."""
         active_tool_names: Set[str] = set()
@@ -102,6 +106,10 @@ class ToolRegistry:
     def get_tool_schemas(self) -> List[Dict[str, Any]]:
         """Return OpenAI / Ollama compatible function definitions for active tools."""
         return [tool.to_openai_schema() for tool in self.get_active_tools()]
+
+    def get_tools_schema(self) -> List[Dict[str, Any]]:
+        """Alias for get_tool_schemas."""
+        return self.get_tool_schemas()
 
     def execute_tool(self, tool_name: str, params: Any, is_autonomous: bool = False) -> Any:
         """Safely execute a tool through the security policy gate."""

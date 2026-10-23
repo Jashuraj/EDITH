@@ -208,51 +208,11 @@ function toggleOsMouse() {
 }
 window.toggleOsMouse = toggleOsMouse;
 
-function ensureWebcamDom() {
-  let box = document.getElementById('webcam-box');
-  if (!box) {
-    box = document.createElement('div');
-    box.id = 'webcam-box';
-    box.className = 'webcam-hud-box';
-    box.style.display = 'none';
-    box.innerHTML = `
-      <div class="webcam-hud-header">
-        <div class="webcam-hud-title">
-          <span class="status-dot green"></span>
-          <span>NEURAL HAND VISION</span>
-        </div>
-        <span id="gesture-tag" class="webcam-hud-tag">READY</span>
-        <button class="webcam-hud-close" onclick="toggleGestures()" title="Close Camera">&times;</button>
-      </div>
-      <div class="webcam-hud-viewport">
-        <video id="webcam-pip" autoplay playsinline muted></video>
-        <canvas id="webcam-overlay"></canvas>
-        <div class="stage-corner top-left"></div>
-        <div class="stage-corner top-right"></div>
-        <div class="stage-corner bottom-left"></div>
-        <div class="stage-corner bottom-right"></div>
-      </div>
-      <div class="webcam-hud-footer">
-        <div class="gesture-hints">
-          <span>🖐️ 1-Hand Pinch: Rotate</span>
-          <span>👐 2-Hands Pinch: Scale</span>
-        </div>
-        <button id="btn-os-mouse" class="hud-mini-btn" onclick="toggleOsMouse()">OS MOUSE: OFF</button>
-      </div>
-    `;
-    document.body.appendChild(box);
-  }
-  return box;
-}
-
 /**
  * Toggle webcam and gesture tracking pipeline.
  */
 async function toggleGestures() {
-  ensureWebcamDom();
-
-  const btn = document.getElementById('tgl-gestures') || document.getElementById('btn-gestures');
-  const lblState = document.getElementById('lbl-gesture-state');
+  const btn = document.getElementById('btn-gestures');
   const webcamBox = document.getElementById('webcam-box');
   videoElement = document.getElementById('webcam-pip');
   overlayCanvas = document.getElementById('webcam-overlay');
@@ -271,16 +231,9 @@ async function toggleGestures() {
       cancelAnimationFrame(animationFrameId);
       animationFrameId = null;
     }
-    if (btn) {
-      btn.classList.remove('active', 'is-on');
-      if (!btn.classList.contains('toggle')) {
-        btn.innerText = 'GESTURE: OFF';
-        btn.style.color = '';
-      }
-    }
-    if (lblState) lblState.textContent = 'Camera Ready';
-    if (statusTag) statusTag.innerText = 'STANDBY';
-
+    btn.innerText = 'GESTURE: OFF';
+    btn.style.color = '';
+    btn.classList.remove('active');
     const mouseBtn = document.getElementById('btn-os-mouse');
     if (mouseBtn) {
       mouseBtn.innerText = 'OS MOUSE: OFF';
@@ -288,7 +241,7 @@ async function toggleGestures() {
       mouseBtn.style.color = '';
     }
     document.body.classList.remove('ar-active');
-    if (webcamBox) webcamBox.style.display = 'none';
+    webcamBox.style.display = 'none';
     if (arContainer) arContainer.style.display = 'none';
     if (cursorElement) cursorElement.style.display = 'none';
     window.isUserPinching = false;
@@ -306,25 +259,18 @@ async function toggleGestures() {
       try { bgVideoElement.pause(); } catch (_) {}
       bgVideoElement.srcObject = null;
     }
-    if (window.addLog) window.addLog('Hand tracking paused // Camera stream closed', 'info');
     return;
   }
 
   // Activating tracking
-  if (btn) {
-    btn.classList.add('active', 'is-on');
-    if (!btn.classList.contains('toggle')) {
-      btn.innerText = 'CALIBRATING...';
-      btn.style.color = 'var(--amber)';
-    }
-  }
-  if (lblState) lblState.textContent = 'Requesting Camera...';
-  if (webcamBox) webcamBox.style.display = 'flex';
-  if (statusTag) statusTag.innerText = 'STARTING CAMERA...';
-  if (window.addLog) window.addLog('Requesting webcam access for gesture vision...', 'info');
+  btn.innerText = 'CALIBRATING...';
+  btn.style.color = 'var(--amber)';
+  webcamBox.style.display = 'block';
+  statusTag.innerText = 'STARTING CAMERA & AI VISION...';
 
   try {
-    // 1. Acquire video stream directly
+    await initLandmarker();
+
     const stream = await navigator.mediaDevices.getUserMedia({
       video: {
         width: { ideal: 640 },
@@ -334,16 +280,21 @@ async function toggleGestures() {
       audio: false
     });
 
-    if (videoElement) {
-      videoElement.srcObject = stream;
-      await videoElement.play();
+    videoElement.srcObject = stream;
+    await videoElement.play();
+
+    arBackgroundActive = false;
+    if (arContainer) arContainer.style.display = 'none';
+    document.body.classList.remove('ar-active');
+    const arBtn = document.getElementById('btn-ar-bg');
+    if (arBtn) {
+      arBtn.innerText = 'CAM BG: OFF';
+      arBtn.classList.remove('active');
     }
 
-    if (overlayCanvas && videoElement) {
-      overlayCanvas.width = videoElement.videoWidth || 640;
-      overlayCanvas.height = videoElement.videoHeight || 480;
-      overlayCtx = overlayCanvas.getContext('2d', { alpha: true });
-    }
+    overlayCanvas.width = videoElement.videoWidth || 640;
+    overlayCanvas.height = videoElement.videoHeight || 480;
+    overlayCtx = overlayCanvas.getContext('2d', { alpha: true });
 
     if (bgOverlayCanvas) {
       bgOverlayCanvas.width = window.innerWidth;
@@ -351,20 +302,18 @@ async function toggleGestures() {
       bgOverlayCtx = bgOverlayCanvas.getContext('2d', { alpha: true });
     }
 
-    if (statusTag) statusTag.innerText = 'INITIALIZING MEDIAPIPE AI...';
-    if (lblState) lblState.textContent = 'Loading AI...';
-
-    // 2. Load MediaPipe HandLandmarker
-    await initLandmarker();
+    window.addEventListener('resize', () => {
+      if (bgOverlayCanvas && arBackgroundActive) {
+        bgOverlayCanvas.width = window.innerWidth;
+        bgOverlayCanvas.height = window.innerHeight;
+      }
+    });
 
     gesturesActive = true;
-    if (btn && !btn.classList.contains('toggle')) {
-      btn.innerText = 'GESTURE: ACTIVE';
-      btn.style.color = 'var(--cyan-glow)';
-    }
-    if (lblState) lblState.textContent = 'Tracking Live';
-    if (statusTag) statusTag.innerText = 'VISION ONLINE: SHOW HANDS';
-    if (window.addLog) window.addLog('Neural vision online // Camera & MediaPipe active', 'success');
+    btn.innerText = 'GESTURE: ACTIVE';
+    btn.style.color = 'var(--cyan-glow)';
+    btn.classList.add('active');
+    statusTag.innerText = 'VISION ONLINE: 1-HAND ROTATE, 2-HANDS SCALE ORB';
 
     // Keep OS Mouse off by default so 3D Orb interaction is active
     osMouseActive = false;
@@ -385,18 +334,10 @@ async function toggleGestures() {
     renderGestureLoop();
   } catch (err) {
     console.error("[EDITH Vision] Failed to activate gestures:", err);
-    gesturesActive = false;
-    if (btn) btn.classList.remove('active', 'is-on');
-    if (lblState) lblState.textContent = 'Camera Error';
-    if (statusTag) statusTag.innerText = 'CAMERA / AI FAILED';
-    if (videoElement && videoElement.srcObject) {
-      videoElement.srcObject.getTracks().forEach(t => t.stop());
-      videoElement.srcObject = null;
-    }
-    if (webcamBox) {
-      setTimeout(() => { if (!gesturesActive) webcamBox.style.display = 'none'; }, 2500);
-    }
-    if (window.addLog) window.addLog(`Camera initialization notice: ${err.message}`, 'error');
+    btn.innerText = 'GESTURE: ERROR';
+    btn.style.color = 'var(--red)';
+    statusTag.innerText = 'CAMERA / VISION INITIALIZATION FAILED';
+    alert("Camera or MediaPipe initialization error: " + err.message);
   }
 }
 

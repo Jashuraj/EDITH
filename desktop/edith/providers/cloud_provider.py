@@ -33,7 +33,20 @@ logger = logging.getLogger("edith.providers.cloud")
 
 LLM_ENV_FILE = Path(__file__).resolve().parent.parent.parent / ".llm.env"
 
+BROWSER_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/130.0.0.0 Safari/537.36"
+)
+
 PROVIDER_METADATA: Dict[str, Dict[str, str]] = {
+    "codecraft": {
+        "name": "CodeCraft AI (Claude Opus 5.5)",
+        "url": "https://codecraftapi.com/v1",
+        "default_model": "claude-opus-5.5",
+        "key_env": "CODECRAFT_API_KEY",
+        "doc_url": "https://codecraftapi.com",
+    },
     "gemini": {
         "name": "Google Gemini",
         "url": "https://generativelanguage.googleapis.com/v1beta/openai",
@@ -92,6 +105,10 @@ class UniversalCloudProvider(LLMProvider):
                 self.keys[pid] = k
         if os.environ.get("GOOGLE_API_KEY"):
             self.keys["gemini"] = os.environ.get("GOOGLE_API_KEY", "").strip()
+        if os.environ.get("CODECRAFT_KEY"):
+            self.keys["codecraft"] = os.environ.get("CODECRAFT_KEY", "").strip()
+        if os.environ.get("CODECRAFT_BASE_URL"):
+            PROVIDER_METADATA["codecraft"]["url"] = os.environ.get("CODECRAFT_BASE_URL", "").strip()
         if os.environ.get("OMNIROUTE_BASE_URL"):
             self.gateway_url = os.environ.get("OMNIROUTE_BASE_URL", "").strip()
 
@@ -105,7 +122,11 @@ class UniversalCloudProvider(LLMProvider):
                     k, v = stripped.split("=", 1)
                     k = k.strip().upper()
                     v = v.strip().strip("'\"")
-                    if k in ("GEMINI_API_KEY", "GOOGLE_API_KEY") and v:
+                    if k in ("CODECRAFT_API_KEY", "CODECRAFT_KEY") and v:
+                        self.keys["codecraft"] = v
+                    elif k == "CODECRAFT_BASE_URL" and v:
+                        PROVIDER_METADATA["codecraft"]["url"] = v
+                    elif k in ("GEMINI_API_KEY", "GOOGLE_API_KEY") and v:
                         self.keys["gemini"] = v
                     elif k == "GROQ_API_KEY" and v:
                         self.keys["groq"] = v
@@ -145,8 +166,11 @@ class UniversalCloudProvider(LLMProvider):
             self.keys[p_clean] = api_key.strip()
         if model is not None and p_clean in PROVIDER_METADATA:
             self.models[p_clean] = model.strip()
-        if base_url is not None and p_clean == "gateway":
-            self.gateway_url = base_url.strip()
+        if base_url is not None:
+            if p_clean == "gateway":
+                self.gateway_url = base_url.strip()
+            elif p_clean in PROVIDER_METADATA:
+                PROVIDER_METADATA[p_clean]["url"] = base_url.strip()
         if p_clean in ("auto", "local") or p_clean in PROVIDER_METADATA:
             self.active_provider = p_clean
 
@@ -155,6 +179,10 @@ class UniversalCloudProvider(LLMProvider):
             "# E.D.I.T.H. LLM Configuration Environment",
             f"ACTIVE_AI_PROVIDER={self.active_provider}",
         ]
+        if "codecraft" in self.keys and self.keys["codecraft"]:
+            lines.append(f"CODECRAFT_API_KEY={self.keys['codecraft']}")
+        if PROVIDER_METADATA.get("codecraft", {}).get("url") != "https://codecraftapi.com/v1":
+            lines.append(f"CODECRAFT_BASE_URL={PROVIDER_METADATA['codecraft']['url']}")
         if "gemini" in self.keys and self.keys["gemini"]:
             lines.append(f"GEMINI_API_KEY={self.keys['gemini']}")
         if "groq" in self.keys and self.keys["groq"]:
@@ -191,6 +219,7 @@ class UniversalCloudProvider(LLMProvider):
                 "model": active_model,
                 "configured": configured,
                 "doc_url": meta["doc_url"],
+                "url": meta["url"],
             })
 
         return {
@@ -209,7 +238,7 @@ class UniversalCloudProvider(LLMProvider):
         if target_pid == "auto":
             # Pick first configured provider with a valid key
             found = False
-            for candidate in ("gemini", "groq", "openai", "openrouter", "gateway"):
+            for candidate in ("codecraft", "gemini", "groq", "openai", "openrouter", "gateway"):
                 if self.keys.get(candidate):
                     target_pid = candidate
                     found = True
@@ -254,17 +283,19 @@ class UniversalCloudProvider(LLMProvider):
         t0 = time.perf_counter()
         headers = {
             "Content-Type": "application/json",
-            "User-Agent": "EDITH-OS/3.0",
+            "User-Agent": BROWSER_USER_AGENT if p_clean == "codecraft" else "EDITH-OS/3.0",
+            "Accept": "application/json",
         }
         if key:
             headers["Authorization"] = f"Bearer {key}"
 
+        max_tok = 300 if p_clean == "codecraft" else 10
         payload = {
             "model": target_model,
             "messages": [
                 {"role": "user", "content": "Reply with only the word READY"}
             ],
-            "max_tokens": 10,
+            "max_tokens": max_tok,
         }
 
         req = urllib.request.Request(
@@ -274,8 +305,9 @@ class UniversalCloudProvider(LLMProvider):
             method="POST",
         )
 
+        timeout = 25.0 if p_clean == "codecraft" else 10.0
         try:
-            with urllib.request.urlopen(req, timeout=10.0) as res:
+            with urllib.request.urlopen(req, timeout=timeout) as res:
                 dt_ms = int((time.perf_counter() - t0) * 1000)
                 body = json.loads(res.read().decode("utf-8"))
                 content = body.get("choices", [{}])[0].get("message", {}).get("content", "").strip()
@@ -319,15 +351,17 @@ class UniversalCloudProvider(LLMProvider):
 
         headers = {
             "Content-Type": "application/json",
-            "User-Agent": "EDITH-OS/3.0",
+            "User-Agent": BROWSER_USER_AGENT if pid == "codecraft" else "EDITH-OS/3.0",
+            "Accept": "application/json",
         }
         if key:
             headers["Authorization"] = f"Bearer {key}"
 
+        max_tok = 4096 if pid == "codecraft" else 1200
         payload = {
             "model": m,
             "messages": messages,
-            "max_tokens": 1200,
+            "max_tokens": max_tok,
             "temperature": 0.7,
         }
 
@@ -338,8 +372,9 @@ class UniversalCloudProvider(LLMProvider):
             method="POST",
         )
 
+        timeout = 45.0 if pid == "codecraft" else 18.0
         try:
-            with urllib.request.urlopen(req, timeout=18.0) as res:
+            with urllib.request.urlopen(req, timeout=timeout) as res:
                 dt_ms = (time.perf_counter() - t0) * 1000.0
                 body = json.loads(res.read().decode("utf-8"))
                 choice = body.get("choices", [{}])[0]
@@ -378,7 +413,8 @@ class UniversalCloudProvider(LLMProvider):
 
         headers = {
             "Content-Type": "application/json",
-            "User-Agent": "EDITH-OS/3.0",
+            "User-Agent": BROWSER_USER_AGENT if pid == "codecraft" else "EDITH-OS/3.0",
+            "Accept": "application/json",
         }
         if key:
             headers["Authorization"] = f"Bearer {key}"
@@ -395,12 +431,13 @@ class UniversalCloudProvider(LLMProvider):
                 }
             })
 
+        max_tok = 4096 if pid == "codecraft" else 1200
         payload = {
             "model": m,
             "messages": messages,
             "tools": formatted_tools,
             "tool_choice": "auto",
-            "max_tokens": 1200,
+            "max_tokens": max_tok,
         }
 
         req = urllib.request.Request(
@@ -410,8 +447,9 @@ class UniversalCloudProvider(LLMProvider):
             method="POST",
         )
 
+        timeout = 50.0 if pid == "codecraft" else 22.0
         try:
-            with urllib.request.urlopen(req, timeout=22.0) as res:
+            with urllib.request.urlopen(req, timeout=timeout) as res:
                 dt_ms = (time.perf_counter() - t0) * 1000.0
                 body = json.loads(res.read().decode("utf-8"))
                 choice = body.get("choices", [{}])[0]

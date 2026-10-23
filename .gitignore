@@ -20,5 +20,12 @@ scripts/tools/
 edith/data/screenshots/
 !edith/data/screenshots/.gitkeep
 .gemini/
-*mcp_config.json
 .edith_db/
+.edith_db/postmaster.pid
+.edith_db/pg_wal/
+*.spec.bak
+edith_code_dump.txt
+.llm.env
+!.llm.env.example
+
+# Auto-added cleanup rules

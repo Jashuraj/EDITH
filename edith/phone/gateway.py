@@ -305,6 +305,27 @@ class PhoneGatewayHandler(SimpleHTTPRequestHandler):
             self._send_json({"success": True, "active_url": active_url, "tunnel_url": active_url, "url": active_url})
             return
 
+        # 6b. Messaging Channels & WhatsApp / Telegram Bridge
+        if parsed.path == "/api/channels/message":
+            channel = str(data.get("channel", "mobile_phone")).lower()
+            sender_id = str(data.get("sender_id") or data.get("from") or device_id or "mobile_user")
+            sender_name = str(data.get("sender_name") or data.get("name") or "Mobile User")
+            text = str(data.get("text") or data.get("message") or data.get("body") or "")
+            from edith.phone.channel_bridge import CHANNEL_BRIDGE
+            res = CHANNEL_BRIDGE.handle_incoming_message(
+                channel=channel,
+                sender_id=sender_id,
+                sender_name=sender_name,
+                text=text,
+            )
+            self._send_json(res)
+            return
+
+        if parsed.path == "/api/channels/status":
+            from edith.phone.channel_bridge import CHANNEL_BRIDGE
+            self._send_json(CHANNEL_BRIDGE.get_status())
+            return
+
         # 7. Standard Command Execution
         if parsed.path == "/cmd":
             command = str(data.get("command", "")).strip()

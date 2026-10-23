@@ -30,6 +30,7 @@ from edith.core.single_question import enforce_single_question
 from edith.providers.base import LLMProvider, ModelResponse, ToolCall
 from edith.providers.free_online_provider import FREE_ONLINE
 from edith.providers.cloud_provider import CLOUD_AI
+from edith.providers.llamacpp_provider import LLAMACPP
 from edith.providers.ollama_provider import OLLAMA
 from edith.providers.omniroute_provider import OMNIROUTE
 from edith.tools.reflex import REFLEX
@@ -305,6 +306,7 @@ class ModelRouter:
 
     def __init__(self, local_provider: Optional[LLMProvider] = None, cloud_provider: Optional[LLMProvider] = None):
         self.local = local_provider or OLLAMA
+        self.llamacpp = LLAMACPP
         self.cloud = cloud_provider
         self.cloud_ai = CLOUD_AI
         self.free_online = FREE_ONLINE
@@ -478,6 +480,11 @@ class ModelRouter:
             if memories:
                 memory_block = "\n".join(f"- {m}" for m in memories)
                 system_prompt = f"{system_prompt}\n\nLearned User Facts & Preferences:\n{memory_block}"
+
+            from edith.memory.rag import RAG
+            rag_context = RAG.get_context_for_prompt(clean_prompt)
+            if rag_context:
+                system_prompt = f"{system_prompt}\n\nRetrieved Local Knowledge Base Context:\n{rag_context}"
         except Exception:
             pass
 
@@ -568,6 +575,25 @@ class ModelRouter:
                     logger.warning("Tier 2 (Local Ollama) failed: %s", ex)
             else:
                 logger.debug("Ollama daemon is currently not running on host.")
+
+        # Tier 2.5: Local Llama.cpp / GGUF Server Runtime
+        if response is None and self.llamacpp.circuit_breaker.can_execute():
+            is_llama_up = await self.llamacpp.is_healthy()
+            if is_llama_up:
+                try:
+                    if tools:
+                        response = await self.llamacpp.generate_with_tools(
+                            prompt=clean_prompt,
+                            tools=tools,
+                            system_prompt=system_prompt,
+                        )
+                    else:
+                        response = await self.llamacpp.generate(
+                            prompt=clean_prompt,
+                            system_prompt=system_prompt,
+                        )
+                except Exception as ex:
+                    logger.debug("Tier 2.5 (Llama.cpp) failed: %s", ex)
 
         # Tier 3: Zero-Defect Smart Deterministic NLP & Reflex Core
         if response is None:

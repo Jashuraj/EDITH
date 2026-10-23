@@ -326,3 +326,53 @@ def register_builtin_tools(registry) -> None:
         parameters_schema={"type": "object", "properties": {"app": {"type": "string"}, "volume": {"type": "integer"}}, "required": ["app", "volume"]},
     )
 
+    # Local RAG Knowledge Base Pack
+    registry.register(
+        name="index_documents",
+        description="Index a file or directory of documents/code into local RAG vector store",
+        action_pack="FILES_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda path=".", **kwargs: {
+            "status": "success",
+            "indexed_count": (
+                __import__("edith.memory.rag", fromlist=["RAG"]).RAG.index_file(__import__("pathlib").Path(path or kwargs.get("target") or "."))
+                if __import__("pathlib").Path(path or kwargs.get("target") or ".").is_file()
+                else __import__("edith.memory.rag", fromlist=["RAG"]).RAG.index_directory(__import__("pathlib").Path(path or kwargs.get("target") or "."))
+            )
+        },
+        parameters_schema={"type": "object", "properties": {"path": {"type": "string"}}, "required": ["path"]},
+    )
+    registry.register(
+        name="query_knowledge_base",
+        description="Perform local semantic retrieval across indexed personal documents and codebase",
+        action_pack="FILES_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda query="", **kwargs: [
+            {"path": r.doc_path, "chunk": r.chunk_index, "score": r.score, "snippet": r.content[:240]}
+            for r in __import__("edith.memory.rag", fromlist=["RAG"]).RAG.search(query or kwargs.get("q") or "", top_k=4)
+        ],
+        parameters_schema={"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"]},
+    )
+
+    # Model Context Protocol (MCP) Pack
+    registry.register(
+        name="connect_mcp_server",
+        description="Connect to an external Model Context Protocol (MCP) server endpoint and register its tools",
+        action_pack="MCP_PACK",
+        risk=RiskLevel.MEDIUM,
+        fn=lambda server_id="default", url="", **kwargs: (
+            __import__("edith.tools.mcp_client", fromlist=["MCP_CLIENT"]).MCP_CLIENT.connect_http_server(
+                server_id or kwargs.get("name") or "mcp_server",
+                url or kwargs.get("endpoint") or "",
+            )
+        ),
+        parameters_schema={"type": "object", "properties": {"server_id": {"type": "string"}, "url": {"type": "string"}}, "required": ["url"]},
+    )
+    registry.register(
+        name="list_mcp_status",
+        description="List active MCP servers and registered remote tools",
+        action_pack="MCP_PACK",
+        risk=RiskLevel.LOW,
+        fn=lambda **kwargs: __import__("edith.tools.mcp_client", fromlist=["MCP_CLIENT"]).MCP_CLIENT.get_status(),
+    )
+

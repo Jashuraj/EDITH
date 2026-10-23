@@ -1,0 +1,30 @@
+# EDITH Autonomous Operating System
+# Python Runtime Dependencies for Windows 11
+
+# System Telemetry & Math
+psutil>=5.9.0
+numpy>=1.24.0
+Pillow>=10.0.0
+
+# Windows Automation & Control
+pywin32>=306
+pyautogui>=0.9.54
+pyperclip>=1.8.2
+pycaw>=20240210
+comtypes>=1.2.0
+
+# Audio, Voice & Speech Synthesis
+sounddevice>=0.4.6
+SpeechRecognition>=3.10.0
+edge-tts>=6.1.9
+
+# Networking & Cloud AI Endpoints
+requests>=2.31.0
+urllib3>=2.0.0
+
+# Testing, Compilation & Build Tools
+pytest>=7.4.0
+pyinstaller>=6.0.0
+
+# Optional Computer Vision
+opencv-python>=4.8.0

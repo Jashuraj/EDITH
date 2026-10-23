@@ -1106,6 +1106,21 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
+            <label class="text-slate-300 text-[10px] block mb-1">CODECRAFT API KEY (CLAUDE OPUS 5.5)</label>
+            <input type="password" id="api-key-codecraft" placeholder="cc_..." class="w-full bg-[#0c1320] border border-os-border/90 rounded px-2 py-1 text-slate-200">
+          </div>
+          <div>
+            <label class="text-slate-300 text-[10px] block mb-1">ACTIVE CLOUD PROVIDER</label>
+            <select id="select-active-provider" class="w-full bg-[#0c1320] border border-os-border/90 rounded px-2 py-1.5 text-os-amber">
+              <option value="auto">Auto (Prioritize CodeCraft)</option>
+              <option value="codecraft">CodeCraft (Claude Opus 5.5)</option>
+              <option value="gemini">Google Gemini</option>
+              <option value="groq">Groq</option>
+              <option value="openrouter">OpenRouter</option>
+              <option value="local">Local Only</option>
+            </select>
+          </div>
+          <div>
             <label class="text-slate-300 text-[10px] block mb-1">GOOGLE GEMINI API KEY</label>
             <input type="password" id="api-key-gemini" placeholder="AIzaSy..." class="w-full bg-[#0c1320] border border-os-border/90 rounded px-2 py-1 text-slate-200">
           </div>
@@ -1120,6 +1135,41 @@
           <div>
             <label class="text-slate-300 text-[10px] block mb-1">STATIC CLOUD TUNNEL URL</label>
             <input type="text" id="settings-cloud-url" placeholder="https://..." class="w-full bg-[#0c1320] border border-os-border/90 rounded px-2 py-1 text-slate-200">
+          </div>
+        </div>
+
+        <!-- OpenJarvis Upgrades: MCP & Local RAG & Messaging Channels -->
+        <div class="border-t border-os-border/80 pt-3 space-y-3">
+          <div class="text-[10px] font-bold text-os-cyan uppercase tracking-wider font-chakra">Advanced Modules (OpenJarvis Primitives)</div>
+          
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="bg-[#080d16] p-2.5 rounded border border-os-border">
+              <label class="text-slate-300 text-[10px] block mb-1">MODEL CONTEXT PROTOCOL (MCP)</label>
+              <div class="flex space-x-1.5 mb-1.5">
+                <input type="text" id="mcp-server-url" placeholder="http://127.0.0.1:3000" class="flex-1 bg-[#0c1320] border border-os-border/90 rounded px-2 py-1 text-[11px] text-slate-200">
+                <button class="px-2.5 py-1 bg-os-cyan/20 border border-os-cyan/60 hover:bg-os-cyan/30 text-os-cyan rounded text-[10px] font-bold" onclick="connectMCP()">Connect</button>
+              </div>
+              <div class="text-[9px] text-slate-400 font-mono" id="mcp-status-text">Status: Checking MCP servers...</div>
+            </div>
+
+            <div class="bg-[#080d16] p-2.5 rounded border border-os-border">
+              <label class="text-slate-300 text-[10px] block mb-1">LOCAL RAG KNOWLEDGE BASE</label>
+              <div class="flex space-x-1.5 mb-1.5">
+                <input type="text" id="rag-index-path" placeholder="./docs or file.txt" class="flex-1 bg-[#0c1320] border border-os-border/90 rounded px-2 py-1 text-[11px] text-slate-200">
+                <button class="px-2.5 py-1 bg-emerald-500/20 border border-emerald-500/60 hover:bg-emerald-500/30 text-emerald-400 rounded text-[10px] font-bold" onclick="indexRAG()">Index</button>
+              </div>
+              <div class="text-[9px] text-slate-400 font-mono" id="rag-status-text">Indexed: 0 docs · 0 chunks</div>
+            </div>
+          </div>
+
+          <div class="bg-[#080d16] p-2 rounded border border-os-border flex items-center justify-between text-[10px] font-mono">
+            <div class="flex items-center space-x-2">
+              <span class="text-slate-400 font-bold">CHANNELS:</span>
+              <span id="channel-wa-badge" class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">WhatsApp</span>
+              <span id="channel-tg-badge" class="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700">Telegram</span>
+              <span id="channel-hook-badge" class="px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-700">Webhook Active</span>
+            </div>
+            <span class="text-slate-500 text-[9px]">OpenAI API: :8794/v1</span>
           </div>
         </div>
 
@@ -2324,6 +2374,7 @@
       const el = document.getElementById(`modal-${name}`);
       if (el) el.style.display = 'flex';
       if (name === 'remote') refreshRemoteStream();
+      if (name === 'settings') { loadProviderSettings(); loadMCPAndRAGStatus(); }
     }
 
     function closeDialog(name) {
@@ -2458,6 +2509,161 @@
       const badge = document.getElementById('active-model-badge');
       if (badge) badge.textContent = model;
       logActivity(`Switched active local model: ${model}`);
+    }
+
+    
+    async function loadMCPAndRAGStatus() {
+      try {
+        const mcpRes = await fetch('/api/mcp/status');
+        if (mcpRes.ok) {
+          const d = await mcpRes.json();
+          const el = document.getElementById('mcp-status-text');
+          if (el) el.textContent = `Connected Servers: ${d.servers.length} · Tools: ${d.tools_count}`;
+        }
+      } catch (_) {}
+
+      try {
+        const ragRes = await fetch('/api/rag/status');
+        if (ragRes.ok) {
+          const d = await ragRes.json();
+          const el = document.getElementById('rag-status-text');
+          if (el) el.textContent = `Indexed: ${d.indexed_documents} docs · ${d.indexed_chunks} chunks`;
+        }
+      } catch (_) {}
+
+      try {
+        const chanRes = await fetch('/api/channels/status');
+        if (chanRes.ok) {
+          const d = await chanRes.json();
+          const waBadge = document.getElementById('channel-wa-badge');
+          if (waBadge && d.channels.whatsapp.configured) {
+            waBadge.className = 'px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-700';
+          }
+          const tgBadge = document.getElementById('channel-tg-badge');
+          if (tgBadge && d.channels.telegram.configured) {
+            tgBadge.className = 'px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-700';
+          }
+        }
+      } catch (_) {}
+    }
+
+    async function connectMCP() {
+      const url = document.getElementById('mcp-server-url')?.value.trim();
+      if (!url) return;
+      logActivity(`Connecting to MCP server: ${url}`);
+      try {
+        const res = await fetch('/api/mcp/connect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url })
+        });
+        const d = await res.json();
+        if (d.success) {
+          logActivity(`MCP Connected: ${d.tools_count} new tools registered.`);
+          loadMCPAndRAGStatus();
+        } else {
+          logActivity(`MCP Failed: ${d.error || 'Server error'}`);
+        }
+      } catch (err) {
+        logActivity(`MCP error: ${err.message}`);
+      }
+    }
+
+    async function indexRAG() {
+      const pathVal = document.getElementById('rag-index-path')?.value.trim() || '.';
+      logActivity(`Indexing documents into local RAG: ${pathVal}`);
+      try {
+        const res = await fetch('/api/rag/index', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: pathVal })
+        });
+        const d = await res.json();
+        if (d.success) {
+          logActivity(`RAG complete: ${d.indexed_count} items indexed.`);
+          loadMCPAndRAGStatus();
+        }
+      } catch (err) {
+        logActivity(`RAG index error: ${err.message}`);
+      }
+    }
+
+    async function loadProviderSettings() {
+      try {
+        const res = await fetch('/api/providers');
+        if (!res.ok) return;
+        const d = await res.json();
+        const selProv = document.getElementById('select-active-provider');
+        if (selProv && d.active_provider) selProv.value = d.active_provider;
+        if (d.keys) {
+          if (d.keys.codecraft && !document.getElementById('api-key-codecraft').value) {
+            document.getElementById('api-key-codecraft').placeholder = d.keys.codecraft;
+          }
+          if (d.keys.gemini && !document.getElementById('api-key-gemini').value) {
+            document.getElementById('api-key-gemini').placeholder = d.keys.gemini;
+          }
+          if (d.keys.groq && !document.getElementById('api-key-groq').value) {
+            document.getElementById('api-key-groq').placeholder = d.keys.groq;
+          }
+          if (d.keys.openrouter && !document.getElementById('api-key-openrouter').value) {
+            document.getElementById('api-key-openrouter').placeholder = d.keys.openrouter;
+          }
+        }
+      } catch (_) {}
+    }
+
+    async function saveSettings() {
+      const ccKey = document.getElementById('api-key-codecraft')?.value.trim();
+      const gemKey = document.getElementById('api-key-gemini')?.value.trim();
+      const groqKey = document.getElementById('api-key-groq')?.value.trim();
+      const orKey = document.getElementById('api-key-openrouter')?.value.trim();
+      const activeProv = document.getElementById('select-active-provider')?.value || 'auto';
+      const cloudUrl = document.getElementById('settings-cloud-url')?.value.trim();
+
+      if (ccKey) {
+        await fetch('/api/providers/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: 'codecraft', apiKey: ccKey, model: 'claude-opus-5.5' })
+        });
+      }
+      if (gemKey) {
+        await fetch('/api/providers/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: 'gemini', apiKey: gemKey })
+        });
+      }
+      if (groqKey) {
+        await fetch('/api/providers/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: 'groq', apiKey: groqKey })
+        });
+      }
+      if (orKey) {
+        await fetch('/api/providers/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: 'openrouter', apiKey: orKey })
+        });
+      }
+      if (activeProv) {
+        await fetch('/api/providers/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ provider: activeProv })
+        });
+      }
+      if (cloudUrl) {
+        await fetch('/mobile/config', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cloud_url: cloudUrl })
+        });
+      }
+      closeDialog('settings');
+      logActivity(`Saved cloud settings: provider set to ${activeProv.toUpperCase()}`);
     }
 
     async function loadMobileConfig() {
