@@ -559,6 +559,20 @@ class EdithUIHandler(SimpleHTTPRequestHandler):
                 self.wfile.write(content)
                 return
 
+        # Dedicated Spidey Mode Route: /spidey, /spidey/, /spidey.html, /edith_peter_mode_73ae9f.html
+        elif parsed.path in ("/spidey", "/spidey/", "/spidey.html", "/edith_peter_mode_73ae9f.html", "/edith_peter_mode_73ae9f"):
+            spidey_file = UI_DIR / "edith_peter_mode_73ae9f.html"
+            if not spidey_file.exists():
+                spidey_file = Path.cwd() / "edith_peter_mode_73ae9f.html"
+            if spidey_file.exists():
+                content = spidey_file.read_bytes()
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Content-Length", str(len(content)))
+                self.end_headers()
+                self.wfile.write(content)
+                return
+
         # PETER 1 Mode Theme: /peter, /peter1, /peter-one redirect cleanly to /?theme=peter1
         elif parsed.path in ("/peter", "/peter/", "/peter.html", "/peter1", "/peter1/", "/peter1.html", "/peter-one", "/peter-one/", "/peter-one.html"):
             self.send_response(302)

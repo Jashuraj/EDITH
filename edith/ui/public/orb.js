@@ -12,7 +12,7 @@
   let scene, camera, renderer, composer, bloom;
   let rootGroup, globeGroup, dotsMesh, shellMesh, innerMesh, glowMesh;
   let orbitGroup1, orbitGroup2, nodeMesh, dustPoints;
-  let spiderLogo3D, coreCrystalMesh;
+  let spiderLogo3D, coreCrystalMesh, edithLogo3D, edithCrystalMesh;
   let animFrameId = null;
 
   let pointerX = 0, pointerY = 0, pointerDown = false, lastX = 0, lastY = 0;
@@ -39,7 +39,7 @@
   let currentPalette = THEME_PALETTES.edith;
 
   function initOrb() {
-    const host = document.getElementById('orb-canvas-container') || document.getElementById('canvas-container');
+    const host = document.getElementById('threejs-globe-container') || document.getElementById('orb-canvas-container') || document.getElementById('canvas-container');
     if (!host || !window.THREE) return;
 
     host.innerHTML = '';
@@ -230,6 +230,57 @@
 
     const isSpidey = currentThemeName === 'spiderman' || currentThemeName === 'peter' || currentThemeName === 'peter1' || currentThemeName === 'peter 1' || currentThemeName === 'peter one' || currentThemeName === 'edith // peter 1' || currentThemeName === 'spidey';
     spiderLogo3D.visible = isSpidey;
+    // 9b. Procedural 3D Stark E.D.I.T.H. Hexagonal Arc Reactor Emblem
+    edithLogo3D = new THREE.Group();
+    edithLogo3D.scale.set(0.28, 0.28, 0.28);
+    globeGroup.add(edithLogo3D);
+
+    const edithHexMat = new THREE.MeshPhongMaterial({
+      color: 0xffa800,
+      emissive: 0x3d2000,
+      specular: 0xffbe28,
+      shininess: 95,
+      side: THREE.DoubleSide
+    });
+    const edithCoreMat = new THREE.MeshBasicMaterial({
+      color: 0x00f0ff,
+      wireframe: true,
+      transparent: true,
+      opacity: 0.95,
+      blending: THREE.AdditiveBlending
+    });
+    const edithInnerGemMat = new THREE.MeshPhongMaterial({
+      color: 0x00f0ff,
+      emissive: 0x003344,
+      shininess: 100,
+      side: THREE.DoubleSide
+    });
+
+    const hexOuterPts = [
+      [0, 3.8], [3.3, 1.9], [3.3, -1.9],
+      [0, -3.8], [-3.3, -1.9], [-3.3, 1.9]
+    ];
+    const hexGeo = createExtrudedPart(hexOuterPts, 0.45, 0.15);
+    if (hexGeo) {
+      const hexMesh = new THREE.Mesh(hexGeo, edithHexMat);
+      edithLogo3D.add(hexMesh);
+    }
+
+    const diamondPts = [
+      [0, 2.2], [1.8, 0], [0, -2.2], [-1.8, 0]
+    ];
+    const diamondGeo = createExtrudedPart(diamondPts, 0.55, 0.12);
+    if (diamondGeo) {
+      const diamondMesh = new THREE.Mesh(diamondGeo, edithInnerGemMat);
+      edithLogo3D.add(diamondMesh);
+    }
+
+    const arcCrystalGeo = new THREE.OctahedronGeometry(1.1, 0);
+    edithCrystalMesh = new THREE.Mesh(arcCrystalGeo, edithCoreMat);
+    edithCrystalMesh.position.set(0, 0, 0.3);
+    edithLogo3D.add(edithCrystalMesh);
+    edithLogo3D.visible = !isSpidey;
+
     if (dotsMesh) dotsMesh.visible = !isSpidey;
     if (shellMesh) shellMesh.visible = !isSpidey;
     if (innerMesh) innerMesh.visible = !isSpidey;
@@ -422,6 +473,15 @@
       orbitGroup1.rotation.z += delta * 0.015;
       dustPoints.rotation.z += delta * 0.002;
 
+      if (edithLogo3D && edithLogo3D.visible) {
+        edithLogo3D.rotation.y = time * 0.00045;
+        edithLogo3D.rotation.z = Math.sin(time * 0.0015) * 0.05;
+        edithLogo3D.position.y = Math.sin(time * 0.0020) * 0.06;
+        if (edithCrystalMesh) {
+          edithCrystalMesh.rotation.x = time * 0.0022;
+          edithCrystalMesh.rotation.y = time * 0.0028;
+        }
+      }
       if (spiderLogo3D && spiderLogo3D.visible) {
         spiderLogo3D.rotation.y = time * 0.00065;
         spiderLogo3D.rotation.z = Math.sin(time * 0.0018) * 0.08;
@@ -447,6 +507,41 @@
   }
 
   // Public Interface for Core State & Themes
+  // Gesture and Holographic Control Interface
+  window.rotateOrb = function (dx, dy) {
+    pointerX += (dx || 0) * 0.015;
+    pointerY += (dy || 0) * 0.015;
+    if (rootGroup) {
+      rootGroup.rotation.y += (dx || 0) * 0.015;
+      rootGroup.rotation.x += (dy || 0) * 0.015;
+    }
+  };
+
+  window.scaleOrb = function (factor) {
+    zoom = Math.max(0.5, Math.min(2.5, zoom * (1 + (factor || 0))));
+    if (rootGroup) {
+      rootGroup.scale.set(zoom, zoom, zoom);
+    }
+  };
+
+  window.zoomOrb = function (delta) {
+    if (camera) {
+      camera.position.z = Math.max(2.5, Math.min(12.0, camera.position.z + (delta || 0) * 0.05));
+    }
+  };
+
+  window.getOrbScale = function () {
+    return Math.round(zoom * 100);
+  };
+
+  window.resetOrb = function () {
+    pointerX = 0;
+    pointerY = 0;
+    zoom = 1.0;
+    gestureData = { x: 0, y: 0, scale: 1.0 };
+    if (camera) camera.position.z = (camera.aspect < 1.1 ? 6.1 : 5.0);
+  };
+
   window.setCoreState = function (state) {
     coreState = state || 'idle';
   };

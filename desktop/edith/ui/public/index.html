@@ -340,10 +340,12 @@
     <!-- Left: E.D.I.T.H. Mark II Stark Tactical Branding -->
     <div class="flex items-center space-x-3">
       <div class="w-9 h-9 flex items-center justify-center relative" id="brand-logo-icon">
-        <svg id="brand-icon-default" class="w-7 h-7 text-os-amber" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <polygon points="12 2 22 7.5 22 16.5 12 22 2 16.5 2 7.5 12 2"></polygon>
-          <polygon points="12 6 18 9.5 18 14.5 12 18 6 14.5 6 9.5 12 6" stroke-dasharray="1 2"></polygon>
-          <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
+        <svg id="brand-icon-default" class="w-8 h-8 text-os-amber filter drop-shadow-[0_0_8px_rgba(255,168,0,0.7)]" viewBox="0 0 40 40" fill="none">
+          <path d="M20 3 34.72 11.5v17L20 37 5.28 28.5v-17L20 3Z" stroke="#ffa800" stroke-width="1.8" />
+          <path d="M20 8 30.4 14v12L20 32 9.6 26V14L20 8Z" stroke="#ffa800" stroke-width="1.0" opacity=".6" />
+          <path d="m12 17 8-4.5 8 4.5v6l-8 4.5-8-4.5v-6Z" stroke="#ffa800" stroke-width="1.8" fill="rgba(255,168,0,0.12)" />
+          <path d="m12 17 8 4.5 8-4.5M20 21.5v6M20 3v5M34.7 11.5l-4.3 2.5M5.3 28.5l4.3-2.5" stroke="#ffa800" stroke-width="1.4" />
+          <circle cx="20" cy="13" r="2.2" fill="#00f0ff" stroke="#00f0ff" stroke-width="0.8" />
         </svg>
         <svg id="brand-icon-spidey" class="w-8 h-8 hidden text-spider-red filter drop-shadow-[0_0_6px_rgba(255,23,68,0.85)]" viewBox="0 0 100 100" fill="none">
           <defs>
@@ -385,13 +387,17 @@
 
     <!-- Center: Persona Switcher Selector Tabs -->
     <nav aria-label="AI Personas" class="flex items-center bg-[#05080e]/95 p-1 rounded-md border border-os-border/90 space-x-1 font-chakra font-bold tracking-[0.12em]">
-      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="EDITH // PETER 1">EDITH // PETER 1</button>
-      <button class="persona-tab px-3 py-0.5 text-[10px] rounded-full tracking-[0.14em] bg-transparent text-os-amber border border-os-amber/80 flex items-center space-x-1.5 transition glow-amber-sm" data-persona="JARVIS">
+      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="EDITH" onclick="setTheme('edith')">EDITH</button>
+      <button class="persona-tab px-3 py-0.5 text-[10px] rounded-full tracking-[0.14em] bg-transparent text-os-amber border border-os-amber/80 flex items-center space-x-1.5 transition glow-amber-sm" data-persona="JARVIS" onclick="setTheme('jarvis')">
         <span class="w-1.5 h-1.5 rounded-full bg-os-amber"></span><span>JARVIS</span>
       </button>
-      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="FRIDAY">FRIDAY</button>
-      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="KAREN">KAREN</button>
-      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-red-400 transition" data-persona="ULTRON">ULTRON</button>
+      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="FRIDAY" onclick="setTheme('friday')">FRIDAY</button>
+      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-white transition" data-persona="KAREN" onclick="setTheme('karen')">KAREN</button>
+      <button class="persona-tab px-3 py-0.5 text-[10px] rounded-full tracking-[0.14em] text-white bg-red-950/80 border border-neon-crimson hover:bg-neon-crimson flex items-center space-x-1 transition glow-red-sm" data-persona="SPIDEY" onclick="window.location.href='/spidey'" title="Switch to Dedicated Spider-Man Velocity Cockpit">
+        <span class="w-1.5 h-1.5 rounded-full bg-neon-crimson animate-ping"></span>
+        <span class="font-extrabold text-neon-crimson group-hover:text-white">SPIDEY HUD</span>
+      </button>
+      <button class="persona-tab px-2.5 py-0.5 text-[10px] rounded tracking-[0.14em] text-slate-400 hover:text-red-400 transition" data-persona="ULTRON" onclick="setTheme('ultron')">ULTRON</button>
     </nav>
 
     <!-- Right: Telemetry, Clock, E-Stop -->
@@ -435,52 +441,96 @@
   <main class="flex-1 flex overflow-hidden p-2 gap-2 relative z-30">
 
     <!-- LEFT HUD SLOCK DOCK -->
-    <aside class="w-12 bg-[#090f19] border border-os-border/90 rounded-lg flex flex-col items-center py-3 justify-between shrink-0 shadow-lg relative">
-      <div class="flex flex-col space-y-3 items-center">
-        <button class="w-8 h-8 rounded text-os-amber flex items-center justify-center hover:scale-105 transition" id="dock-top-btn" title="Arc Reactor / Home" onclick="openNav(null)">
-          <svg id="dock-icon-arc" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="12 2 22 7.5 22 16.5 12 22 2 16.5 2 7.5 12 2"></polygon><circle cx="12" cy="12" r="3"></circle></svg>
-          <svg id="dock-icon-spider" class="w-6 h-6 hidden text-[#ff1744] filter drop-shadow-[0_0_5px_rgba(255,23,68,0.85)]" viewBox="0 0 100 100" fill="none">
-            <polygon points="50,15 55,23 50,26 45,23" fill="#ff1744"/>
-            <path d="M 50,28 L 59,37 L 57,56 L 50,78 L 43,56 L 41,37 Z" fill="#ff1744" stroke="#ff1744" stroke-width="0.8"/>
-            <polygon points="50,42 53,48 50,54 47,48" fill="#00f0ff"/>
-            <polyline points="47,32 32,18 24,24 35,35" stroke="#ff1744" stroke-width="3.2" stroke-linecap="round"/>
-            <polyline points="53,32 68,18 76,24 65,35" stroke="#ff1744" stroke-width="3.2" stroke-linecap="round"/>
-            <polyline points="45,38 22,34 16,42 27,48" stroke="#ff1744" stroke-width="3" stroke-linecap="round"/>
-            <polyline points="55,38 78,34 84,42 73,48" stroke="#ff1744" stroke-width="3" stroke-linecap="round"/>
-            <polyline points="46,47 20,54 18,66 28,64" stroke="#ff1744" stroke-width="2.8" stroke-linecap="round"/>
-            <polyline points="54,47 80,54 82,66 72,64" stroke="#ff1744" stroke-width="2.8" stroke-linecap="round"/>
-            <polyline points="47,56 28,68 30,85 38,76" stroke="#ff1744" stroke-width="2.6" stroke-linecap="round"/>
-            <polyline points="53,56 72,68 70,85 62,76" stroke="#ff1744" stroke-width="2.6" stroke-linecap="round"/>
+    <aside class="w-12 bg-[#090f19] border border-os-border/90 rounded-lg flex flex-col items-center py-2.5 justify-between shrink-0 shadow-lg relative" id="left-taskbar-rail">
+      <div class="flex flex-col space-y-2.5 items-center w-full">
+        <!-- Brand/Home: Stark Arc Reactor Hexagon -->
+        <button class="dock-btn w-8 h-8 rounded border border-os-amber/80 text-os-amber flex items-center justify-center hover:scale-105 transition glow-amber-sm" id="dock-btn-dashboard" onclick="openNav(null)" title="EDITH Command Center">
+          <svg class="w-5 h-5 text-os-amber filter drop-shadow-[0_0_6px_rgba(255,168,0,0.7)]" viewBox="0 0 40 40" fill="none">
+            <path d="M20 3 34.72 11.5v17L20 37 5.28 28.5v-17L20 3Z" stroke="#ffa800" stroke-width="1.8" />
+            <path d="M20 8 30.4 14v12L20 32 9.6 26V14L20 8Z" stroke="#ffa800" stroke-width="1.0" opacity=".6" />
+            <path d="m12 17 8-4.5 8 4.5v6l-8 4.5-8-4.5v-6Z" stroke="#ffa800" stroke-width="1.6" fill="rgba(255,168,0,0.15)" />
+            <path d="m12 17 8 4.5 8-4.5M20 21.5v6M20 3v5M34.7 11.5l-4.3 2.5M5.3 28.5l4.3-2.5" stroke="#ffa800" stroke-width="1.2" />
+            <circle cx="20" cy="13" r="2" fill="#00f0ff" stroke="#00f0ff" stroke-width="0.8" />
           </svg>
+          <span class="dock-tooltip">Command Center</span>
         </button>
-        <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Intelligence & APIs" onclick="openDialog('settings')">
+
+        <div class="w-6 h-px bg-os-border/80 my-0.5"></div>
+
+        <!-- Intelligence & APIs -->
+        <button class="dock-btn w-8 h-8 rounded text-slate-400 hover:text-white hover:bg-os-card flex items-center justify-center transition" id="dock-btn-settings" onclick="openNav('settings')">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          <span class="dock-tooltip">Intelligence &amp; APIs</span>
         </button>
-        <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Remote Desktop" onclick="openDialog('remote')">
+
+        <!-- Remote Desktop -->
+        <button class="dock-btn w-8 h-8 rounded text-slate-400 hover:text-white hover:bg-os-card flex items-center justify-center transition" id="dock-btn-remote" onclick="openNav('remote')">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+          <span class="dock-tooltip">Remote Desktop</span>
         </button>
-        <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Face Sentinel" onclick="openDialog('sentinel')">
+
+        <!-- Neural Hand Gesture Tracking & AR Vision -->
+        <button class="dock-btn w-8 h-8 rounded text-slate-400 hover:text-white hover:bg-os-card flex items-center justify-center transition" id="dock-btn-gestures" onclick="toggleGestures()" title="Neural Hand Gesture Vision &amp; AR">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M18 11V6a2 2 0 0 0-4 0v5"></path><path d="M14 10V4a2 2 0 0 0-4 0v7"></path><path d="M10 10.5V6a2 2 0 0 0-2-2v0a2 2 0 0 0-2 2v8"></path><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"></path></svg>
+          <span class="dock-tooltip">Neural Hand Vision</span>
+        </button>
+
+        <!-- Face Sentinel -->
+        <button class="dock-btn w-8 h-8 rounded text-slate-400 hover:text-white hover:bg-os-card flex items-center justify-center transition" id="dock-btn-sentinel" onclick="openNav('sentinel')">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          <span class="dock-tooltip">Face Sentinel</span>
         </button>
-        <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Command Guide" onclick="openDialog('guide')">
+
+        <!-- Tactical Command Guide Chips -->
+        <button class="dock-btn w-8 h-8 rounded text-slate-400 hover:text-white hover:bg-os-card flex items-center justify-center transition" id="dock-btn-guide" onclick="openNav('guide')">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+          <span class="dock-tooltip">Command Guide</span>
         </button>
-        <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Audio Mixer" onclick="openDialog('mixer')">
+
+        <!-- Audio Mixer -->
+        <button class="dock-btn w-8 h-8 rounded text-slate-400 hover:text-white hover:bg-os-card flex items-center justify-center transition" id="dock-btn-mixer" onclick="openNav('mixer')">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path><path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+          <span class="dock-tooltip">Audio Mixer</span>
         </button>
-        <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Activity Logs" onclick="openDialog('activity')">
+
+        <!-- Activity Logs -->
+        <button class="dock-btn w-8 h-8 rounded text-slate-400 hover:text-white hover:bg-os-card flex items-center justify-center transition" id="dock-btn-activity" onclick="openNav('activity')">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          <span class="dock-tooltip">Activity Logs</span>
         </button>
-        <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Virtual Gamepad" onclick="openDialog('gamepad')">
+
+        <!-- Virtual Gamepad -->
+        <button class="dock-btn w-8 h-8 rounded text-slate-400 hover:text-white hover:bg-os-card flex items-center justify-center transition" id="dock-btn-gamepad" onclick="openNav('gamepad')">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          <span class="dock-tooltip">Virtual Gamepad</span>
+        </button>
+
+        <!-- Spidey HUD Dedicated Launcher -->
+        <button class="dock-btn w-8 h-8 rounded text-neon-crimson hover:bg-red-950/60 border border-neon-crimson/50 flex items-center justify-center transition glow-red-sm" id="dock-btn-spidey" onclick="window.location.href='/spidey'">
+          <svg class="w-4 h-4 text-neon-crimson" viewBox="0 0 100 100" fill="none">
+            <polygon points="50,15 55,23 50,26 45,23" fill="#ff1744"/>
+            <path d="M 50,28 L 59,37 L 57,56 L 50,78 L 43,56 L 41,37 Z" fill="#ff1744" stroke="#ff1744" stroke-width="1"/>
+            <polyline points="47,32 32,18 24,24 35,35" stroke="#ff1744" stroke-width="3.5" stroke-linecap="round"/>
+            <polyline points="53,32 68,18 76,24 65,35" stroke="#ff1744" stroke-width="3.5" stroke-linecap="round"/>
+          </svg>
+          <span class="dock-tooltip">Spider-Man Velocity HUD</span>
         </button>
       </div>
 
-      <div class="flex flex-col space-y-3 items-center">
-        <button class="w-8 h-8 rounded text-slate-400 hover:text-white flex items-center justify-center transition" title="Preferences" onclick="openDialog('settings')">
+      <div class="flex flex-col space-y-2.5 items-center w-full">
+        <!-- Settings Link -->
+        <button class="dock-btn w-8 h-8 rounded text-slate-400 hover:text-white hover:bg-os-card flex items-center justify-center transition" onclick="openNav('settings')">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span class="dock-tooltip">Preferences</span>
         </button>
-        <div class="w-7 h-7 rounded border border-os-amber/50 bg-[#0e1624] text-os-amber font-mono font-bold flex items-center justify-center text-xs cursor-pointer hover:border-os-amber" onclick="openDialog('about')">E</div>
+
+        <div class="w-6 h-px bg-os-border/80 my-0.5"></div>
+
+        <!-- About Modal -->
+        <button class="dock-btn w-7 h-7 rounded border border-os-amber/50 bg-[#0e1624] text-os-amber font-mono font-bold flex items-center justify-center text-xs hover:border-os-amber transition" id="dock-btn-about" onclick="openNav('about')">
+          E
+          <span class="dock-tooltip">About E.D.I.T.H.</span>
+        </button>
       </div>
     </aside>
 
@@ -887,7 +937,10 @@
             <canvas id="webcam-overlay"></canvas>
           </div>
           <div class="p-1 bg-slate-950 flex justify-between items-center text-[8px] font-mono">
-            <button id="btn-os-mouse" class="px-1.5 py-0.5 rounded bg-os-card border border-os-border text-slate-300" onclick="toggleOsMouse()">OS MOUSE: OFF</button>
+            <div class="flex items-center space-x-1">
+              <button id="btn-os-mouse" class="px-1.5 py-0.5 rounded bg-os-card border border-os-border text-slate-300 hover:text-white" onclick="toggleOsMouse()">OS MOUSE: OFF</button>
+              <button id="btn-ar-bg" class="px-1.5 py-0.5 rounded bg-os-card border border-os-border text-slate-300 hover:text-white" onclick="toggleArBackground()">CAM BG: OFF</button>
+            </div>
             <span id="lbl-gesture-state" class="text-slate-400">Tracking Live</span>
           </div>
         </div>
@@ -1442,6 +1495,66 @@
     </div>
   </div>
 
+    <!-- ── 5. Tactical Command Guide Modal ── -->
+  <div class="dialog-backdrop" id="modal-guide" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'guide')">
+    <div class="dialog-modal dialog-wide">
+      <div class="flex justify-between items-center border-b border-os-border/80 pb-2 mb-3">
+        <div>
+          <span class="text-[9px] font-mono text-os-amber tracking-widest uppercase">COMMAND DIRECTORY</span>
+          <h2 class="text-base font-bold text-white font-chakra">OS Automation &amp; Reflex Chips</h2>
+        </div>
+        <button class="text-slate-400 hover:text-white font-mono text-base" onclick="closeDialog('guide')">✕</button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <!-- Media & Search Column -->
+        <div class="p-2.5 rounded bg-os-card/70 border border-os-border/80 space-y-2">
+          <div class="text-[10px] font-bold text-os-amber font-mono flex items-center space-x-1 border-b border-os-border pb-1">
+            <span>▶</span><span>MEDIA &amp; SEARCH</span>
+          </div>
+          <div class="space-y-1.5 font-mono text-[9px]">
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-os-amber/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">open youtube and play brand new day trailer</button>
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-os-amber/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">play lofi beats on youtube</button>
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-os-amber/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">pause music</button>
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-os-amber/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">next song</button>
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-os-amber/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">search youtube for iron man theme</button>
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-os-amber/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">google quantum computing</button>
+          </div>
+        </div>
+
+        <!-- Applications Column -->
+        <div class="p-2.5 rounded bg-os-card/70 border border-os-border/80 space-y-2">
+          <div class="text-[10px] font-bold text-os-cyan font-mono flex items-center space-x-1 border-b border-os-border pb-1">
+            <span>⚙</span><span>APPLICATIONS</span>
+          </div>
+          <div class="space-y-1.5 font-mono text-[9px]">
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-os-cyan/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">open chrome</button>
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-os-cyan/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">close chrome</button>
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-os-cyan/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">open notepad</button>
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-os-cyan/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">close notepad</button>
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-os-cyan/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">open vs code</button>
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-os-cyan/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">open terminal</button>
+          </div>
+        </div>
+
+        <!-- System Control Column -->
+        <div class="p-2.5 rounded bg-os-card/70 border border-os-border/80 space-y-2">
+          <div class="text-[10px] font-bold text-emerald-400 font-mono flex items-center space-x-1 border-b border-os-border pb-1">
+            <span>⚡</span><span>SYSTEM CONTROL</span>
+          </div>
+          <div class="space-y-1.5 font-mono text-[9px]">
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-emerald-500/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">lock screen</button>
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-emerald-500/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">unlock screen</button>
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-emerald-500/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">look at my screen</button>
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-emerald-500/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">take screenshot</button>
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-emerald-500/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">battery status</button>
+            <button class="w-full text-left p-1.5 rounded bg-[#090e18] hover:bg-emerald-500/20 border border-os-border/60 text-slate-200 transition" onclick="submitTextCommand(this.innerText)">mute voice</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- ── 6. Activity Logs Modal ── -->
   <div class="dialog-backdrop" id="modal-activity" style="display: none;" onmousedown="closeDialogOnBackdrop(event, 'activity')">
     <div class="dialog-modal dialog-wide">
@@ -1483,7 +1596,7 @@
   <script data-purpose="edith-system-logic">
     // State management
     let globeGroup, wireMat, pMat, ring1Mesh, ring2Mesh, ringEquatorMesh, auraMat, innerNode;
-    let pointCloudMesh, wireSphereMesh, spiderLogo3D, coreCrystalMesh;
+    let pointCloudMesh, wireSphereMesh, spiderLogo3D, coreCrystalMesh, edithLogo3D, edithCrystalMesh;
     let isDragging = false, prevMousePos = { x: 0, y: 0 }, velocityX = 0, velocityY = 0;
     let ttsEnabled = true;
     let isListening = false;
@@ -1832,6 +1945,57 @@
         }
       });
 
+      // 7b. Procedural 3D Stark E.D.I.T.H. Hexagonal Arc Reactor Emblem
+      edithLogo3D = new THREE.Group();
+      edithLogo3D.scale.set(1.2, 1.2, 1.2);
+      globeGroup.add(edithLogo3D);
+
+      const edithHexMat = new THREE.MeshPhongMaterial({
+        color: 0xffa800,
+        emissive: 0x3d2000,
+        specular: 0xffbe28,
+        shininess: 95,
+        side: THREE.DoubleSide
+      });
+      const edithCoreMat = new THREE.MeshBasicMaterial({
+        color: 0x00f0ff,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.95,
+        blending: THREE.AdditiveBlending
+      });
+      const edithInnerGemMat = new THREE.MeshPhongMaterial({
+        color: 0x00f0ff,
+        emissive: 0x003344,
+        shininess: 100,
+        side: THREE.DoubleSide
+      });
+
+      const hexOuterPts = [
+        [0, 3.8], [3.3, 1.9], [3.3, -1.9],
+        [0, -3.8], [-3.3, -1.9], [-3.3, 1.9]
+      ];
+      const hexGeo = createExtrudedPart(hexOuterPts, 0.45, 0.15);
+      if (hexGeo) {
+        const hexMesh = new THREE.Mesh(hexGeo, edithHexMat);
+        edithLogo3D.add(hexMesh);
+      }
+
+      const diamondPts = [
+        [0, 2.2], [1.8, 0], [0, -2.2], [-1.8, 0]
+      ];
+      const diamondGeo = createExtrudedPart(diamondPts, 0.55, 0.12);
+      if (diamondGeo) {
+        const diamondMesh = new THREE.Mesh(diamondGeo, edithInnerGemMat);
+        edithLogo3D.add(diamondMesh);
+      }
+
+      const arcCrystalGeo = new THREE.OctahedronGeometry(1.2, 0);
+      edithCrystalMesh = new THREE.Mesh(arcCrystalGeo, edithCoreMat);
+      edithCrystalMesh.position.set(0, 0, 0.3);
+      edithLogo3D.add(edithCrystalMesh);
+      edithLogo3D.visible = true;
+
       // Lighting Rig
       const dirLight1 = new THREE.DirectionalLight(0xffffff, 1.5);
       dirLight1.position.set(6, 12, 10);
@@ -1848,14 +2012,31 @@
       // Gesture & API attachments
       window.rotateOrb = function (dx, dy) {
         if (globeGroup) {
-          globeGroup.rotation.y += dx;
-          globeGroup.rotation.x += dy;
+          globeGroup.rotation.y += (dx || 0);
+          globeGroup.rotation.x += (dy || 0);
         }
       };
       window.scaleOrb = function (factor) {
         if (globeGroup) {
-          const s = Math.max(0.6, Math.min(2.5, globeGroup.scale.x * (1 + factor)));
+          const s = Math.max(0.6, Math.min(2.5, globeGroup.scale.x * (1 + (factor || 0))));
           globeGroup.scale.set(s, s, s);
+        }
+      };
+      window.zoomOrb = function (delta) {
+        if (camera) {
+          camera.position.z = Math.max(10, Math.min(42, camera.position.z + (delta || 0)));
+        }
+      };
+      window.getOrbScale = function () {
+        return globeGroup ? Math.round(globeGroup.scale.x * 100) : 100;
+      };
+      window.resetOrb = function () {
+        if (globeGroup) {
+          globeGroup.rotation.set(0, 0, 0);
+          globeGroup.scale.set(1, 1, 1);
+        }
+        if (camera) {
+          camera.position.z = 21;
         }
       };
       window.setCoreState = function (state) {
@@ -1925,6 +2106,15 @@
         innerNode.rotation.x = time * 0.45;
         innerNode.rotation.y = time * 0.55;
 
+        if (edithLogo3D && edithLogo3D.visible) {
+          edithLogo3D.rotation.y = time * 0.45;
+          edithLogo3D.rotation.z = Math.sin(time * 1.5) * 0.06;
+          edithLogo3D.position.y = Math.sin(time * 2.0) * 0.25;
+          if (edithCrystalMesh) {
+            edithCrystalMesh.rotation.x = time * 2.2;
+            edithCrystalMesh.rotation.y = time * 2.6;
+          }
+        }
         // 3D Spider Gyroscopic Motion
         if (spiderLogo3D && spiderLogo3D.visible) {
           spiderLogo3D.rotation.y = time * 0.65;
@@ -2036,11 +2226,16 @@
       }
     }
 
+    function setTheme(theme) {
+      switchPersona(theme);
+    }
+    window.setTheme = setTheme;
+
     function switchPersona(persona) {
       const pStr = String(persona || '').trim();
       const pUpper = pStr.toUpperCase();
-      const isPeter = pUpper === 'PETER' || pUpper === 'PETER1' || pUpper === 'PETER 1' || pUpper === 'PETER ONE' || pUpper === 'PETER-ONE' || pUpper === 'PETER_1' || pUpper === 'EDITH // PETER 1' || pUpper === 'EDITH' || pUpper === 'EDITH PETER 1' || pUpper === 'EDITH PETER ONE' || pUpper === 'EDITH PETER1' || pUpper === 'SPIDEY' || pUpper === 'SPIDERMAN';
-      activeCharacter = isPeter ? 'peter' : pStr.toLowerCase();
+      const isPeter = pUpper === 'PETER' || pUpper === 'PETER1' || pUpper === 'PETER 1' || pUpper === 'PETER ONE' || pUpper === 'PETER-ONE' || pUpper === 'PETER_1' || pUpper === 'EDITH // PETER 1' || pUpper === 'EDITH PETER 1' || pUpper === 'EDITH PETER ONE' || pUpper === 'EDITH PETER1' || pUpper === 'SPIDEY' || pUpper === 'SPIDERMAN';
+      activeCharacter = isPeter ? 'peter' : (pUpper === 'EDITH' ? 'edith' : pStr.toLowerCase());
       document.title = isPeter ? 'EDITH // PETER 1 TACTICAL HUD // Stark Industries' : 'E.D.I.T.H. Mark II // Stark Industries Tactical HUD OS';
 
       if (typeof window.setActiveTheme === 'function') {
@@ -2050,7 +2245,7 @@
       const tabs = document.querySelectorAll('.persona-tab');
       tabs.forEach(t => {
         const tabPersona = (t.dataset.persona || '').toUpperCase();
-        const isMatch = (isPeter && (tabPersona === 'EDITH // PETER 1' || tabPersona === 'PETER' || tabPersona === 'PETER1' || tabPersona === 'PETER 1' || tabPersona === 'PETER ONE' || tabPersona === 'PETER-ONE' || tabPersona === 'PETER_1' || tabPersona === 'EDITH' || tabPersona === 'EDITH PETER 1' || tabPersona === 'EDITH PETER ONE' || tabPersona === 'EDITH PETER1' || tabPersona === 'SPIDEY' || tabPersona === 'SPIDERMAN')) || (tabPersona === pUpper);
+        const isMatch = (isPeter && (tabPersona === 'EDITH // PETER 1' || tabPersona === 'PETER' || tabPersona === 'PETER1' || tabPersona === 'PETER 1' || tabPersona === 'PETER ONE' || tabPersona === 'PETER-ONE' || tabPersona === 'PETER_1' || tabPersona === 'EDITH PETER 1' || tabPersona === 'EDITH PETER ONE' || tabPersona === 'EDITH PETER1' || tabPersona === 'SPIDEY' || tabPersona === 'SPIDERMAN')) || (!isPeter && tabPersona === (pUpper === 'PETER' ? 'EDITH' : pUpper));
         if (isMatch) {
           if (isPeter) {
             t.className = 'persona-tab px-3 py-0.5 text-[10px] rounded-full tracking-[0.14em] bg-[#ff1744] text-white border border-[#ff1744] flex items-center space-x-1.5 transition glow-red-sm';
@@ -2070,7 +2265,8 @@
       const badge = document.getElementById('active-voice-badge');
       if (badge) badge.innerHTML = `<span>${isPeter ? 'PETER 1 (EDITH)' : pUpper}</span>`;
 
-      // Toggle Spider-Man 3D Emblem vs Fibonacci Point Cloud
+      // Toggle Spider-Man 3D Emblem vs 3D EDITH Arc Reactor & Point Cloud
+      if (edithLogo3D) edithLogo3D.visible = !isPeter;
       if (spiderLogo3D) spiderLogo3D.visible = isPeter;
       if (pointCloudMesh) pointCloudMesh.visible = !isPeter;
       if (wireSphereMesh) wireSphereMesh.visible = !isPeter;
@@ -2602,8 +2798,31 @@
       if (e.target.id === `modal-${name}`) closeDialog(name);
     }
 
-    function openNav(name) {
-      if (name) openDialog(name);
+    function openNav(dialogName) {
+      document.querySelectorAll('.dock-btn').forEach(b => {
+        b.classList.remove('border-os-amber', 'text-os-amber');
+        b.classList.add('text-slate-400');
+      });
+      const targetId = dialogName ? `dock-btn-${dialogName}` : 'dock-btn-dashboard';
+      const activeBtn = document.getElementById(targetId);
+      if (activeBtn) {
+        activeBtn.classList.add('border-os-amber', 'text-os-amber');
+        activeBtn.classList.remove('text-slate-400');
+      }
+      if (dialogName) {
+        openDialog(dialogName);
+      } else {
+        closeAllModals();
+      }
+    }
+
+    function closeAllModals() {
+      document.querySelectorAll('.dialog-backdrop').forEach(m => m.style.display = 'none');
+      const dashBtn = document.getElementById('dock-btn-dashboard');
+      if (dashBtn) {
+        dashBtn.classList.add('border-os-amber', 'text-os-amber');
+        dashBtn.classList.remove('text-slate-400');
+      }
     }
 
     // ── Remote Desktop Controls ──
@@ -2952,5 +3171,38 @@
   </script>
 
   <script src="edith-gateway.js?v=1"></script>
+  <!-- Holographic Hand Gesture AR & Cursor Layer -->
+  <div id="ar-camera-container" class="ar-camera-container" style="display: none; position: fixed; inset: 0; z-index: 1; pointer-events: none; overflow: hidden;">
+    <video id="bg-camera" style="width: 100%; height: 100%; object-fit: cover; opacity: 0.35; transform: scaleX(-1);" autoplay playsinline muted></video>
+    <canvas id="bg-overlay" style="position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; transform: scaleX(-1);"></canvas>
+  </div>
+  <div id="hand-cursor" class="hand-cursor" style="display:none;"></div>
+
+  <!-- Neural Hand Gesture Webcam HUD Box -->
+  <div id="webcam-box" class="webcam-hud-box" style="display: none;">
+    <div class="webcam-hud-header">
+      <div class="webcam-hud-title">
+        <span class="status-dot green"></span>
+        <span>NEURAL HAND VISION</span>
+      </div>
+      <span id="gesture-tag" class="webcam-hud-tag">READY</span>
+      <button class="webcam-hud-close" onclick="toggleGestures()" title="Close Camera">&times;</button>
+    </div>
+    <div class="webcam-hud-viewport">
+      <video id="webcam-pip" autoplay playsinline muted></video>
+      <canvas id="webcam-overlay"></canvas>
+      <div class="stage-corner top-left"></div>
+      <div class="stage-corner top-right"></div>
+      <div class="stage-corner bottom-left"></div>
+      <div class="stage-corner bottom-right"></div>
+    </div>
+    <div class="webcam-hud-footer">
+      <div class="gesture-hints">
+        <span>🖐️ 1-Hand Pinch: Rotate</span>
+        <span>👐 2-Hands Pinch: Scale</span>
+      </div>
+      <button id="btn-os-mouse" class="hud-mini-btn" onclick="toggleOsMouse()">OS MOUSE: OFF</button>
+    </div>
+  </div>
 </body>
 </html>

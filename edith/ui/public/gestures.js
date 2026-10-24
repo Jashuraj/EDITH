@@ -208,12 +208,57 @@ function toggleOsMouse() {
 }
 window.toggleOsMouse = toggleOsMouse;
 
+function ensureWebcamDom() {
+  let box = document.getElementById('webcam-box');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'webcam-box';
+    box.className = 'webcam-hud-box';
+    box.style.display = 'none';
+    box.innerHTML = `
+      <div class="webcam-hud-header">
+        <div class="webcam-hud-title">
+          <span class="status-dot green"></span>
+          <span>NEURAL HAND VISION</span>
+        </div>
+        <span id="gesture-tag" class="webcam-hud-tag">READY</span>
+        <button class="webcam-hud-close" onclick="toggleGestures()" title="Close Camera">&times;</button>
+      </div>
+      <div class="webcam-hud-viewport">
+        <video id="webcam-pip" autoplay playsinline muted></video>
+        <canvas id="webcam-overlay"></canvas>
+        <div class="stage-corner top-left"></div>
+        <div class="stage-corner top-right"></div>
+        <div class="stage-corner bottom-left"></div>
+        <div class="stage-corner bottom-right"></div>
+      </div>
+      <div class="webcam-hud-footer">
+        <div class="gesture-hints">
+          <span>🖐️ 1-Hand Pinch: Rotate</span>
+          <span>👐 2-Hands Pinch: Scale</span>
+        </div>
+        <button id="btn-os-mouse" class="hud-mini-btn" onclick="toggleOsMouse()">OS MOUSE: OFF</button>
+      </div>
+    `;
+    document.body.appendChild(box);
+  }
+  return box;
+}
+window.ensureWebcamDom = ensureWebcamDom;
+
 /**
  * Toggle webcam and gesture tracking pipeline.
  */
 async function toggleGestures() {
-  const btn = document.getElementById('btn-gestures');
+  ensureWebcamDom();
+
+  const chk = document.getElementById('btn-gestures');
+  const dockBtn = document.getElementById('dock-btn-gestures');
+  const tglBtn = document.getElementById('tgl-gestures');
+  const lblMini = document.getElementById('lbl-gesture-state-mini');
+  const lblState = document.getElementById('lbl-gesture-state');
   const webcamBox = document.getElementById('webcam-box');
+
   videoElement = document.getElementById('webcam-pip');
   overlayCanvas = document.getElementById('webcam-overlay');
   bgVideoElement = document.getElementById('bg-camera');
@@ -221,6 +266,23 @@ async function toggleGestures() {
   arContainer = document.getElementById('ar-camera-container');
   cursorElement = document.getElementById('hand-cursor');
   statusTag = document.getElementById('gesture-tag');
+
+  function updateUiState(active, labelText, hint) {
+    if (chk && chk.type === 'checkbox') chk.checked = active;
+    if (tglBtn) tglBtn.classList.toggle('is-on', active);
+    if (dockBtn) {
+      if (active) {
+        dockBtn.classList.add('border-os-amber', 'text-os-amber');
+        dockBtn.classList.remove('text-slate-400');
+      } else {
+        dockBtn.classList.remove('border-os-amber', 'text-os-amber');
+        dockBtn.classList.add('text-slate-400');
+      }
+    }
+    if (lblMini) lblMini.textContent = labelText;
+    if (lblState) lblState.textContent = labelText;
+    if (statusTag && hint) statusTag.innerText = hint;
+  }
 
   if (gesturesActive) {
     // Shutdown tracking
@@ -231,9 +293,8 @@ async function toggleGestures() {
       cancelAnimationFrame(animationFrameId);
       animationFrameId = null;
     }
-    btn.innerText = 'GESTURE: OFF';
-    btn.style.color = '';
-    btn.classList.remove('active');
+    updateUiState(false, 'Camera Ready', 'STANDBY');
+
     const mouseBtn = document.getElementById('btn-os-mouse');
     if (mouseBtn) {
       mouseBtn.innerText = 'OS MOUSE: OFF';
@@ -241,7 +302,7 @@ async function toggleGestures() {
       mouseBtn.style.color = '';
     }
     document.body.classList.remove('ar-active');
-    webcamBox.style.display = 'none';
+    if (webcamBox) webcamBox.style.display = 'none';
     if (arContainer) arContainer.style.display = 'none';
     if (cursorElement) cursorElement.style.display = 'none';
     window.isUserPinching = false;
@@ -252,21 +313,22 @@ async function toggleGestures() {
     }
 
     if (videoElement && videoElement.srcObject) {
-      videoElement.srcObject.getTracks().forEach(t => t.stop());
+      try {
+        videoElement.srcObject.getTracks().forEach(t => t.stop());
+      } catch (_) {}
       videoElement.srcObject = null;
     }
     if (bgVideoElement) {
       try { bgVideoElement.pause(); } catch (_) {}
       bgVideoElement.srcObject = null;
     }
+    if (window.logActivity) window.logActivity('Hand tracking paused // Camera stream closed');
     return;
   }
 
   // Activating tracking
-  btn.innerText = 'CALIBRATING...';
-  btn.style.color = 'var(--amber)';
-  webcamBox.style.display = 'block';
-  statusTag.innerText = 'STARTING CAMERA & AI VISION...';
+  updateUiState(true, 'Requesting Camera...', 'STARTING CAMERA & AI VISION...');
+  if (webcamBox) webcamBox.style.display = 'flex';
 
   try {
     await initLandmarker();
@@ -280,8 +342,10 @@ async function toggleGestures() {
       audio: false
     });
 
-    videoElement.srcObject = stream;
-    await videoElement.play();
+    if (videoElement) {
+      videoElement.srcObject = stream;
+      await videoElement.play();
+    }
 
     arBackgroundActive = false;
     if (arContainer) arContainer.style.display = 'none';
@@ -292,9 +356,11 @@ async function toggleGestures() {
       arBtn.classList.remove('active');
     }
 
-    overlayCanvas.width = videoElement.videoWidth || 640;
-    overlayCanvas.height = videoElement.videoHeight || 480;
-    overlayCtx = overlayCanvas.getContext('2d', { alpha: true });
+    if (overlayCanvas && videoElement) {
+      overlayCanvas.width = videoElement.videoWidth || 640;
+      overlayCanvas.height = videoElement.videoHeight || 480;
+      overlayCtx = overlayCanvas.getContext('2d', { alpha: true });
+    }
 
     if (bgOverlayCanvas) {
       bgOverlayCanvas.width = window.innerWidth;
@@ -310,10 +376,7 @@ async function toggleGestures() {
     });
 
     gesturesActive = true;
-    btn.innerText = 'GESTURE: ACTIVE';
-    btn.style.color = 'var(--cyan-glow)';
-    btn.classList.add('active');
-    statusTag.innerText = 'VISION ONLINE: 1-HAND ROTATE, 2-HANDS SCALE ORB';
+    updateUiState(true, 'Tracking Live', 'VISION ONLINE: 1-HAND ROTATE, 2-HANDS SCALE');
 
     // Keep OS Mouse off by default so 3D Orb interaction is active
     osMouseActive = false;
@@ -331,13 +394,21 @@ async function toggleGestures() {
     handStates[1].prevGrabY = null;
     prevTwoHandDist = null;
 
+    if (window.logActivity) window.logActivity('Neural vision online // Camera & MediaPipe active');
     renderGestureLoop();
   } catch (err) {
     console.error("[EDITH Vision] Failed to activate gestures:", err);
-    btn.innerText = 'GESTURE: ERROR';
-    btn.style.color = 'var(--red)';
-    statusTag.innerText = 'CAMERA / VISION INITIALIZATION FAILED';
-    alert("Camera or MediaPipe initialization error: " + err.message);
+    gesturesActive = false;
+    updateUiState(false, 'Camera Error', 'CAMERA / VISION INITIALIZATION FAILED');
+    if (videoElement && videoElement.srcObject) {
+      try {
+        videoElement.srcObject.getTracks().forEach(t => t.stop());
+      } catch (_) {}
+      videoElement.srcObject = null;
+    }
+    if (webcamBox) {
+      setTimeout(() => { if (!gesturesActive) webcamBox.style.display = 'none'; }, 2500);
+    }
   }
 }
 
@@ -383,7 +454,7 @@ function renderGestureLoop() {
           prevScrollY = null;
           prevSwipeX = null;
           prevSwipeY = null;
-          statusTag.innerText = 'LOOKING FOR HANDS...';
+          if (statusTag) statusTag.innerText = 'LOOKING FOR HANDS...';
         }
       }
     }
@@ -805,7 +876,7 @@ function processUltronGestures(landmarksList) {
 
     if (cursorElement) cursorElement.style.display = 'none';
     const curScale = window.getOrbScale ? window.getOrbScale() : 100;
-    statusTag.innerText = `DUAL PINCH: ORB SCALE ${curScale}% 🌐`;
+    if (statusTag) statusTag.innerText = `DUAL PINCH: ORB SCALE ${curScale}% 🌐`;
     return;
   }
 
@@ -825,7 +896,7 @@ function processUltronGestures(landmarksList) {
     }
     prevTwoHandDist = palmDist;
     const curScale = window.getOrbScale ? window.getOrbScale() : 100;
-    statusTag.innerText = `OPEN PALMS SPREAD: ORB SCALE ${curScale}% 🌟`;
+    if (statusTag) statusTag.innerText = `OPEN PALMS SPREAD: ORB SCALE ${curScale}% 🌟`;
     return;
   }
 
@@ -839,7 +910,7 @@ function processUltronGestures(landmarksList) {
     );
     if (indexTipDist < 0.06 && !handStates[0].isPinching && !handStates[1].isPinching) {
       if (window.resetOrb) window.resetOrb();
-      statusTag.innerText = "DUAL INDEX TAP: ORB RE-CENTERED TO DEFAULT 🎯";
+      if (statusTag) statusTag.innerText = "DUAL INDEX TAP: ORB RE-CENTERED TO DEFAULT 🎯";
       prevTwoHandDist = null;
       return;
     }
@@ -851,7 +922,7 @@ function processUltronGestures(landmarksList) {
   if (numHands >= 2 && metrics[0].isClosedFist && metrics[1].isClosedFist) {
     if (window.scaleOrb) window.scaleOrb(-0.025);
     const curScale = window.getOrbScale ? window.getOrbScale() : 100;
-    statusTag.innerText = `TWO FISTS: CONTRACTING ORB (${curScale}%) ✊✊`;
+    if (statusTag) statusTag.innerText = `TWO FISTS: CONTRACTING ORB (${curScale}%) ✊✊`;
     prevTwoHandDist = null;
     return;
   }
@@ -880,7 +951,7 @@ function processUltronGestures(landmarksList) {
 
     activeState.prevGrabX = posX;
     activeState.prevGrabY = posY;
-    statusTag.innerText = `HAND ${activePinchingHandIdx + 1} PINCH: ROTATING 3D ORB 🌀`;
+    if (statusTag) statusTag.innerText = `HAND ${activePinchingHandIdx + 1} PINCH: ROTATING 3D ORB 🌀`;
   } else {
     window.isUserPinching = false;
     if (cursorElement) cursorElement.classList.remove('pinching');
@@ -889,12 +960,14 @@ function processUltronGestures(landmarksList) {
     handStates[1].prevGrabX = null;
     handStates[1].prevGrabY = null;
 
-    if (numHands >= 2) {
-      statusTag.innerText = "2 HANDS READY: PINCH BOTH TO SCALE/MAXIMIZE ORB 👐";
-    } else if (numHands === 1) {
-      statusTag.innerText = "1 HAND READY: PINCH TO ROTATE 3D ORB 🖐️";
-    } else {
-      statusTag.innerText = "LOOKING FOR HANDS... SHOW 1 OR 2 HANDS";
+    if (statusTag) {
+      if (numHands >= 2) {
+        statusTag.innerText = "2 HANDS READY: PINCH BOTH TO SCALE/MAXIMIZE ORB 👐";
+      } else if (numHands === 1) {
+        statusTag.innerText = "1 HAND READY: PINCH TO ROTATE 3D ORB 🖐️";
+      } else {
+        statusTag.innerText = "LOOKING FOR HANDS... SHOW 1 OR 2 HANDS";
+      }
     }
   }
 }

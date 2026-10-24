@@ -250,6 +250,13 @@ class TestUIServer(unittest.TestCase):
             data = json.loads(res.read().decode("utf-8"))
             self.assertTrue(data["matched"])
 
+        # 9. Test /spidey dedicated route serves edith_peter_mode_73ae9f.html
+        req = urllib.request.Request("http://127.0.0.1:8796/spidey")
+        with urllib.request.urlopen(req, timeout=3.0) as res:
+            self.assertEqual(res.status, 200)
+            html = res.read().decode("utf-8")
+            self.assertIn("Velocity Cockpit", html)
+
 
 if __name__ == "__main__":
     unittest.main()
